@@ -1,8 +1,10 @@
 <script lang="ts">
   import { browser } from '$app/environment';
-  import { faSpinner } from '@fortawesome/free-solid-svg-icons';
+  import { faSpinner, faTriangleExclamation } from '@fortawesome/free-solid-svg-icons';
   import { convertAuthErrorResponse } from '$lib/functions/replication/error-handler';
   import Fa from 'svelte-fa';
+
+  let errorMessage = '';
 
   $: if (browser) {
     handleAuthRequest();
@@ -122,11 +124,13 @@
   }
 
   function reportError(origin: string, baseError: string, detail: string) {
+    errorMessage = `${baseError}\n${detail}`;
+
     if (!window.opener) {
       return;
     }
 
-    /*     window.opener.postMessage(
+    window.opener.postMessage(
       {
         type: 'failure',
         payload: {
@@ -135,7 +139,7 @@
         }
       },
       origin
-    ); */
+    );
   }
 
   function checkAuthResponse(
@@ -198,6 +202,25 @@
   }
 </script>
 
-<div class="fixed inset-0 flex h-full w-full items-center justify-center text-7xl">
-  <Fa icon={faSpinner} spin />
-</div>
+{#if errorMessage}
+  <div
+    class="fixed inset-0 flex flex-col items-center justify-center p-6 text-center text-zinc-800 dark:text-zinc-200 bg-white dark:bg-zinc-900"
+  >
+    <div class="text-amber-500 text-5xl mb-4">
+      <Fa icon={faTriangleExclamation} />
+    </div>
+    <h2 class="text-lg font-semibold mb-2">Authentication Failed</h2>
+    <pre
+      class="text-xs text-zinc-600 dark:text-zinc-400 max-w-md whitespace-pre-wrap mb-6 font-mono bg-zinc-100 dark:bg-zinc-800 p-3 rounded text-left border border-zinc-200 dark:border-zinc-700">{errorMessage}</pre>
+    <button
+      class="px-4 py-2 text-sm font-medium rounded-lg bg-zinc-800 text-white dark:bg-zinc-200 dark:text-zinc-900 hover:opacity-90 transition-opacity"
+      on:click={() => window.close()}
+    >
+      Close Window
+    </button>
+  </div>
+{:else}
+  <div class="fixed inset-0 flex h-full w-full items-center justify-center text-7xl">
+    <Fa icon={faSpinner} spin />
+  </div>
+{/if}

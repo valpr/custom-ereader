@@ -127,11 +127,21 @@ export class StorageOAuthManager {
     let storageSource = oldStorageSource;
 
     if (storageSourceName === StorageSourceDefault.GDRIVE_DEFAULT) {
+      if (!gDriveClientId) {
+        throw new Error(
+          'Google Drive OAuth Client ID is not configured (VITE_GDRIVE_CLIENT_ID missing)'
+        );
+      }
       this.remoteData = {
         clientId: gDriveClientId,
         clientSecret: ''
       };
     } else if (storageSourceName === StorageSourceDefault.ONEDRIVE_DEFAULT) {
+      if (!oneDriveClientId) {
+        throw new Error(
+          'OneDrive OAuth Client ID is not configured (VITE_ONEDRIVE_CLIENT_ID missing)'
+        );
+      }
       this.remoteData = {
         clientId: oneDriveClientId,
         clientSecret: ''
@@ -625,6 +635,30 @@ export class StorageOAuthManager {
     let unlockResult: StorageUnlockAction | undefined;
 
     if (isDefault) {
+      const missingClientId =
+        (storageSourceName === StorageSourceDefault.GDRIVE_DEFAULT && !gDriveClientId) ||
+        (storageSourceName === StorageSourceDefault.ONEDRIVE_DEFAULT && !oneDriveClientId);
+
+      if (missingClientId) {
+        const providerName =
+          storageSourceName === StorageSourceDefault.GDRIVE_DEFAULT ? 'Google Drive' : 'OneDrive';
+        const envVar =
+          storageSourceName === StorageSourceDefault.GDRIVE_DEFAULT
+            ? 'VITE_GDRIVE_CLIENT_ID'
+            : 'VITE_ONEDRIVE_CLIENT_ID';
+        dialogManager.dialogs$.next([
+          {
+            component: MessageDialog,
+            props: {
+              title: `${providerName} Setup Required`,
+              message: `${providerName} OAuth Client ID is not configured.\n\nPlease set ${envVar} in your environment or add a custom storage source with your own credentials in the Advanced section below.`
+            },
+            disableCloseOnClick: true
+          }
+        ]);
+        return false;
+      }
+
       if (storageSourceName === StorageSourceDefault.ONEDRIVE_DEFAULT) {
         storageSourceType = StorageKey.ONEDRIVE;
         refreshEndpoint = oneDriveTokenEndpoint;
