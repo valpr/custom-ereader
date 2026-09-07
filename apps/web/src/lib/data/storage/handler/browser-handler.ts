@@ -14,9 +14,18 @@ import type {
   BooksDbSubtitleData,
   BooksDbUserBookmarkData
 } from '$lib/data/database/books-db/versions/books-db';
-import { database, lastReadingGoalsModified$ } from '$lib/data/store';
-
-import type { MergeMode } from '$lib/data/merge-mode';
+import {
+  activeProfileId$,
+  customThemes$,
+  database,
+  lastProfilesModified$,
+  lastReadingGoalsModified$,
+  readerProfiles$
+} from '$lib/data/store';
+import { applyProfile, mergeProfiles } from '$lib/data/profiles/profile-manager';
+import type { ReaderProfile } from '$lib/data/profiles/profile-types';
+import type { ThemeOption } from '$lib/data/theme-option';
+import { MergeMode } from '$lib/data/merge-mode';
 import { ReplicationSaveBehavior } from '$lib/functions/replication/replication-options';
 import { StorageDataType } from '$lib/data/storage/storage-types';
 
@@ -456,6 +465,46 @@ export class BrowserStorageHandler extends BaseStorageHandler {
     BaseStorageHandler.reportProgress();
   }
 
+  async saveProfiles(
+    data: ReaderProfile[],
+    lastProfilesModified: number,
+    remoteCustomThemes?: Record<string, ThemeOption>
+  ) {
+    const isMerge = this.profilesMergeMode === MergeMode.MERGE;
+    const localProfiles = readerProfiles$.getValue() || [];
+    let profilesToStore = data;
+    let newProfilesModified = lastProfilesModified;
+
+    if (isMerge) {
+      const result = mergeProfiles(
+        localProfiles,
+        data,
+        this.saveBehavior === ReplicationSaveBehavior.NewOnly,
+        lastProfilesModified
+      );
+      profilesToStore = result.mergedProfiles;
+      newProfilesModified = result.newLastModified;
+    }
+
+    readerProfiles$.next(profilesToStore);
+    lastProfilesModified$.next(newProfilesModified);
+
+    if (remoteCustomThemes && typeof remoteCustomThemes === 'object') {
+      customThemes$.next({
+        ...(customThemes$.getValue() || {}),
+        ...remoteCustomThemes
+      });
+    }
+
+    const activeId = activeProfileId$.getValue();
+    const activeProfile = profilesToStore.find((p) => p.id === activeId);
+    if (activeProfile) {
+      applyProfile(activeProfile);
+    }
+
+    BaseStorageHandler.reportProgress();
+  }
+
   saveCover(data: Blob | undefined) {
     if (data instanceof Blob && this.titleToBookCard.has(this.currentContext.title)) {
       this.addBookCard(this.currentContext.title, { imagePath: data });
@@ -499,6 +548,43 @@ export class BrowserStorageHandler extends BaseStorageHandler {
     }
 
     return { readingGoals, lastGoalModified };
+  }
+
+  areProfilesPresentAndUpToDate(referenceFilename: string | undefined) {
+    if (!referenceFilename) {
+      BaseStorageHandler.reportProgress();
+      return Promise.resolve(false);
+    }
+
+    const existingLastModified = lastProfilesModified$.getValue();
+    const fileName = existingLastModified
+      ? BaseStorageHandler.getProfilesFileName(existingLastModified)
+      : undefined;
+
+    BaseStorageHandler.reportProgress();
+
+    return Promise.resolve(
+      BaseStorageHandler.checkIsPresentAndUpToDate(
+        BaseStorageHandler.getProfilesMetadata,
+        'lastProfilesModified',
+        referenceFilename,
+        fileName
+      )
+    );
+  }
+
+  async getProfiles() {
+    const profiles = readerProfiles$.getValue();
+    const lastProfilesModified = lastProfilesModified$.getValue();
+    const customThemes = customThemes$.getValue();
+
+    BaseStorageHandler.reportProgress();
+
+    if (!lastProfilesModified && (!profiles || !profiles.length)) {
+      return { profiles: undefined, customThemes: undefined, lastProfilesModified: 0 };
+    }
+
+    return { profiles, customThemes, lastProfilesModified };
   }
 
   async saveAudioBook(data: BooksDbAudioBook | File) {

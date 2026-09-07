@@ -14,8 +14,10 @@ import type {
   BooksDbUserBookmarkData
 } from '$lib/data/database/books-db/versions/books-db';
 import type { MergeMode } from '$lib/data/merge-mode';
+import type { ReaderProfile, ReaderProfilesSyncPayload } from '$lib/data/profiles/profile-types';
 import { readingGoalSortFunction } from '$lib/data/reading-goal';
 import { BaseStorageHandler, FilePrefix } from '$lib/data/storage/handler/base-handler';
+import type { ThemeOption } from '$lib/data/theme-option';
 import { ReplicationSaveBehavior } from '$lib/functions/replication/replication-options';
 import type { ReplicationContext } from '$lib/functions/replication/replication-progress';
 import { BlobReader, BlobWriter, ZipReader, type Entry, type ZipWriter } from '@zip.js/zip.js';
@@ -60,6 +62,11 @@ export class BackupStorageHandler extends BaseStorageHandler {
   }
 
   areReadingGoalsPresentAndUpToDate() {
+    BaseStorageHandler.reportProgress();
+    return Promise.resolve(false);
+  }
+
+  areProfilesPresentAndUpToDate() {
     BaseStorageHandler.reportProgress();
     return Promise.resolve(false);
   }
@@ -258,6 +265,25 @@ export class BackupStorageHandler extends BaseStorageHandler {
     };
   }
 
+  async getProfiles() {
+    const { zipEntry, filename } = this.getRootFile(BaseStorageHandler.profilesFilePrefix);
+
+    if (!zipEntry) {
+      return { profiles: undefined, customThemes: undefined, lastProfilesModified: 0 };
+    }
+
+    const payload = (await this.extractAsJSON(
+      zipEntry,
+      'Unable to read reader profiles'
+    )) as ReaderProfilesSyncPayload;
+
+    return {
+      profiles: payload?.profiles,
+      customThemes: payload?.customThemes,
+      lastProfilesModified: BaseStorageHandler.getProfilesMetadata(filename).lastProfilesModified
+    };
+  }
+
   async getAudioBook() {
     const { zipEntry, filename } = this.findEntry(FilePrefix.AUDIO_BOOK);
 
@@ -382,6 +408,26 @@ export class BackupStorageHandler extends BaseStorageHandler {
     this.exportZipWriter = await this.addDataToZip(
       filename,
       JSON.stringify(data),
+      this.exportZipWriter
+    );
+  }
+
+  async saveProfiles(
+    data: ReaderProfile[],
+    lastProfilesModified: number,
+    customThemes?: Record<string, ThemeOption>
+  ) {
+    const filename = `${BaseStorageHandler.getProfilesFileName(lastProfilesModified)}`;
+    const payload: ReaderProfilesSyncPayload = {
+      version: 1,
+      lastModified: lastProfilesModified,
+      profiles: data,
+      customThemes
+    };
+
+    this.exportZipWriter = await this.addDataToZip(
+      filename,
+      JSON.stringify(payload),
       this.exportZipWriter
     );
   }

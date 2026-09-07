@@ -24,6 +24,7 @@ import {
 import { BlurMode } from '$lib/data/blur-mode';
 import type { UserFont } from '$lib/data/fonts';
 import { MergeMode } from '$lib/data/merge-mode';
+import { defaultReaderProfiles, type ReaderProfile } from '$lib/data/profiles/profile-types';
 import type { ReadingGoal } from '$lib/data/reading-goal';
 import { SortDirection, type SortOption } from '$lib/data/sort-types';
 import {
@@ -376,6 +377,18 @@ export const lastReadingGoalsModified$ = writableNumberLocalStorageSubject()(
   'lastReadingGoalsModified',
   0
 );
+
+export const readerProfiles$ = writableArrayLocalStorageSubject<ReaderProfile>()(
+  'readerProfiles',
+  defaultReaderProfiles
+);
+
+export const activeProfileId$ = writableStringLocalStorageSubject()(
+  'activeProfileId',
+  'default-desktop'
+);
+
+export const lastProfilesModified$ = writableNumberLocalStorageSubject()('lastProfilesModified', 0);
 
 export const lastStatisticsTab$ = writableStringLocalStorageSubject<StatisticsTab>()(
   'lastStatisticsTab',

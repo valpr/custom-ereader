@@ -14,7 +14,10 @@ import type {
   BooksDbUserBookmarkData
 } from '$lib/data/database/books-db/versions/books-db';
 import { database, fsStorageSource$ } from '$lib/data/store';
+import { mergeProfiles } from '$lib/data/profiles/profile-manager';
+import type { ReaderProfile, ReaderProfilesSyncPayload } from '$lib/data/profiles/profile-types';
 import { mergeReadingGoals, readingGoalSortFunction } from '$lib/data/reading-goal';
+import type { ThemeOption } from '$lib/data/theme-option';
 import { mergeStatistics, updateStatisticToStore } from '$lib/functions/statistic-util';
 
 import { BaseStorageHandler, FilePrefix } from '$lib/data/storage/handler/base-handler';
@@ -255,6 +258,22 @@ export class FilesystemStorageHandler extends BaseStorageHandler {
     );
   }
 
+  async areProfilesPresentAndUpToDate(referenceFilename: string | undefined) {
+    if (!referenceFilename) {
+      BaseStorageHandler.reportProgress();
+      return false;
+    }
+
+    const { file } = await this.getRootFile(BaseStorageHandler.profilesFilePrefix);
+
+    return BaseStorageHandler.checkIsPresentAndUpToDate(
+      BaseStorageHandler.getProfilesMetadata,
+      'lastProfilesModified',
+      referenceFilename,
+      file?.name
+    );
+  }
+
   async isAudioBookPresentAndUpToDate(referenceFilename: string | undefined) {
     if (!referenceFilename) {
       BaseStorageHandler.reportProgress();
@@ -388,6 +407,26 @@ export class FilesystemStorageHandler extends BaseStorageHandler {
     return {
       readingGoals,
       lastGoalModified: BaseStorageHandler.getReadingGoalsMetadata(file.name).lastGoalModified
+    };
+  }
+
+  async getProfiles() {
+    const { file } = await this.getRootFile(BaseStorageHandler.profilesFilePrefix, 0.6);
+
+    if (!file) {
+      return { profiles: undefined, customThemes: undefined, lastProfilesModified: 0 };
+    }
+
+    const profilesFile = await file.getFile();
+    const profilesFileData = await FilesystemStorageHandler.readFileObject(profilesFile);
+    const payload = JSON.parse(profilesFileData) as ReaderProfilesSyncPayload;
+
+    BaseStorageHandler.reportProgress(0.4);
+
+    return {
+      profiles: payload?.profiles,
+      customThemes: payload?.customThemes,
+      lastProfilesModified: BaseStorageHandler.getProfilesMetadata(file.name).lastProfilesModified
     };
   }
 
@@ -630,6 +669,66 @@ export class FilesystemStorageHandler extends BaseStorageHandler {
       file,
       0.6,
       BaseStorageHandler.readingGoalsFilePrefix
+    );
+  }
+
+  async saveProfiles(
+    profiles: ReaderProfile[],
+    lastProfilesModified: number,
+    customThemes?: Record<string, ThemeOption>
+  ) {
+    const isMerge = this.profilesMergeMode === MergeMode.MERGE;
+    const { file, rootDirectory } = await this.getRootFile(
+      BaseStorageHandler.profilesFilePrefix,
+      0.4
+    );
+
+    let profilesToStore: ReaderProfile[] = profiles;
+    let newProfilesModified = lastProfilesModified;
+    let customThemesToStore = customThemes;
+
+    if (isMerge) {
+      let existingPayload: ReaderProfilesSyncPayload | undefined;
+
+      if (file) {
+        const existingDataFile = await file.getFile();
+        existingPayload = JSON.parse(
+          await FilesystemStorageHandler.readFileObject(existingDataFile)
+        ) as ReaderProfilesSyncPayload;
+      }
+
+      const result = mergeProfiles(
+        existingPayload?.profiles || [],
+        profiles,
+        this.saveBehavior === ReplicationSaveBehavior.NewOnly,
+        lastProfilesModified
+      );
+      profilesToStore = result.mergedProfiles;
+      newProfilesModified = result.newLastModified;
+      if (existingPayload?.customThemes) {
+        customThemesToStore = {
+          ...existingPayload.customThemes,
+          ...(customThemes || {})
+        };
+      }
+    }
+
+    const filename = BaseStorageHandler.getProfilesFileName(newProfilesModified);
+    const payload: ReaderProfilesSyncPayload = {
+      version: 1,
+      lastModified: newProfilesModified,
+      profiles: profilesToStore,
+      customThemes: customThemesToStore
+    };
+
+    await this.writeFile(
+      rootDirectory,
+      filename,
+      JSON.stringify(payload),
+      [],
+      file,
+      0.6,
+      BaseStorageHandler.profilesFilePrefix
     );
   }
 

@@ -12,6 +12,7 @@
   import SettingsCustomTheme from '$lib/components/settings/settings-custom-theme.svelte';
   import SettingsDimensionPopover from '$lib/components/settings/settings-dimension-popover.svelte';
   import SettingsReadingGoals from '$lib/components/settings/settings-reading-goals.svelte';
+  import SettingsReaderProfiles from '$lib/components/settings/settings-reader-profiles.svelte';
   import SettingsStorageSourceList from '$lib/components/settings/settings-storage-source-list.svelte';
   import SettingsUserFontDialog from '$lib/components/settings/settings-user-font-dialog.svelte';
   import {
@@ -595,7 +596,10 @@
       break;
   }
 
-  $: if ((activeSettings === 'Data' || activeSettings === 'Statistics') && !$storageSources$) {
+  $: if (
+    (activeSettings === 'Reader' || activeSettings === 'Data' || activeSettings === 'Statistics') &&
+    !$storageSources$
+  ) {
     database
       .getStorageSources()
       .then((storageSources) => {
@@ -619,6 +623,60 @@
     class="flex flex-col gap-6 max-w-3xl mx-auto pb-16"
     class:hidden={activeSettings !== 'Reader'}
   >
+    <SettingsReaderProfiles
+      storageSources={$storageSources$}
+      on:spinner={({ detail }) => (showSpinner = detail)}
+      on:profileChange={({ detail }) => {
+        const s = detail.settings;
+        if (!s) return;
+        appThemeMode = s.appThemeMode;
+        selectedTheme = s.theme;
+        fontSize = s.fontSize;
+        lineHeight = s.lineHeight;
+        fontFamilyGroupOne = s.fontFamilyGroupOne;
+        fontFamilyGroupTwo = s.fontFamilyGroupTwo;
+        fontWeight = s.fontWeight;
+        viewMode = s.viewMode;
+        writingMode = s.writingMode;
+        pageColumns = s.pageColumns;
+        firstDimensionMargin = s.firstDimensionMargin;
+        secondDimensionMaxValue = s.secondDimensionMaxValue;
+        textIndentation = s.textIndentation;
+        textMarginMode = s.textMarginMode;
+        textMarginValue = s.textMarginValue;
+        blurImage = s.blurImage;
+        blurImageMode = s.blurImageMode;
+        hideFurigana = s.hideFurigana;
+        furiganaStyle = s.furiganaStyle;
+        prioritizeReaderStyles = s.prioritizeReaderStyles;
+        enableTextJustification = s.enableTextJustification;
+        enableTextWrapPretty = s.enableTextWrapPretty;
+        enableVerticalFontKerning = s.enableVerticalFontKerning;
+        enableFontVPAL = s.enableFontVPAL;
+        verticalTextOrientation = s.verticalTextOrientation;
+        swipeThreshold = s.swipeThreshold;
+        enableTapEdgeToFlip = s.enableTapEdgeToFlip;
+        avoidPageBreak = s.avoidPageBreak;
+        selectionToBookmarkEnabled = s.selectionToBookmarkEnabled;
+        autoPositionOnResize = s.autoPositionOnResize;
+        customReadingPointEnabled = s.customReadingPointEnabled;
+        pauseTrackerOnCustomPointChange = s.pauseTrackerOnCustomPointChange;
+        disableWheelNavigation = s.disableWheelNavigation;
+        confirmClose = s.confirmClose;
+        manualBookmark = s.manualBookmark;
+        autoBookmark = s.autoBookmark;
+        autoBookmarkTime = s.autoBookmarkTime;
+        autosaveHistoryEnabled = s.autosaveHistoryEnabled;
+        autosaveHistoryInterval = s.autosaveHistoryInterval;
+        autosaveHistoryMaxCount = s.autosaveHistoryMaxCount;
+        showCharacterCounter = s.showCharacterCounter;
+        showPercentage = s.showPercentage;
+        showFooterChapterCharacterCounter = s.showFooterChapterCharacterCounter;
+        showFooterChapterPercentage = s.showFooterChapterPercentage;
+        enableReaderWakeLock = s.enableReaderWakeLock;
+      }}
+    />
+
     <!-- Section 1: Appearance & Theme -->
     <ListSection
       title="Appearance & Themes"

@@ -15,7 +15,10 @@ import type {
 } from '$lib/data/database/books-db/versions/books-db';
 import { logger } from '$lib/data/logger';
 import { MergeMode } from '$lib/data/merge-mode';
+import { mergeProfiles } from '$lib/data/profiles/profile-manager';
+import type { ReaderProfile, ReaderProfilesSyncPayload } from '$lib/data/profiles/profile-types';
 import { mergeReadingGoals, readingGoalSortFunction } from '$lib/data/reading-goal';
+import type { ThemeOption } from '$lib/data/theme-option';
 import {
   BaseStorageHandler,
   FilePrefix,
@@ -288,6 +291,22 @@ export abstract class ApiStorageHandler extends BaseStorageHandler {
     );
   }
 
+  async areProfilesPresentAndUpToDate(referenceFilename: string | undefined) {
+    if (!referenceFilename) {
+      BaseStorageHandler.reportProgress();
+      return false;
+    }
+
+    const { file } = await this.getRootFile(BaseStorageHandler.profilesFilePrefix);
+
+    return BaseStorageHandler.checkIsPresentAndUpToDate(
+      BaseStorageHandler.getProfilesMetadata,
+      'lastProfilesModified',
+      referenceFilename,
+      file?.name
+    );
+  }
+
   async isAudioBookPresentAndUpToDate(referenceFilename: string | undefined) {
     if (!referenceFilename) {
       BaseStorageHandler.reportProgress();
@@ -418,6 +437,21 @@ export abstract class ApiStorageHandler extends BaseStorageHandler {
     return {
       readingGoals: data,
       lastGoalModified: BaseStorageHandler.getReadingGoalsMetadata(file.name).lastGoalModified
+    };
+  }
+
+  async getProfiles() {
+    const { file, data } = await this.getRootFile(BaseStorageHandler.profilesFilePrefix, 'json');
+
+    if (!file || !data) {
+      return { profiles: undefined, customThemes: undefined, lastProfilesModified: 0 };
+    }
+
+    const payload = data as ReaderProfilesSyncPayload;
+    return {
+      profiles: payload.profiles,
+      customThemes: payload.customThemes,
+      lastProfilesModified: BaseStorageHandler.getProfilesMetadata(file.name).lastProfilesModified
     };
   }
 
@@ -588,6 +622,58 @@ export abstract class ApiStorageHandler extends BaseStorageHandler {
       file,
       JSON.stringify(readingGoalsToStore),
       BaseStorageHandler.readingGoalsFilePrefix
+    );
+  }
+
+  async saveProfiles(
+    profiles: ReaderProfile[],
+    lastProfilesModified: number,
+    customThemes?: Record<string, ThemeOption>
+  ) {
+    const isMerge = this.profilesMergeMode === MergeMode.MERGE;
+    const { file, data: existingData } = await this.getRootFile(
+      BaseStorageHandler.profilesFilePrefix,
+      isMerge ? 'json' : '',
+      0.2
+    );
+
+    let profilesToStore: ReaderProfile[] = profiles;
+    let newProfilesModified = lastProfilesModified;
+    let customThemesToStore = customThemes;
+
+    if (isMerge && existingData) {
+      const existingPayload = existingData as ReaderProfilesSyncPayload;
+      const result = mergeProfiles(
+        existingPayload.profiles || [],
+        profiles,
+        this.saveBehavior === ReplicationSaveBehavior.NewOnly,
+        lastProfilesModified
+      );
+      profilesToStore = result.mergedProfiles;
+      newProfilesModified = result.newLastModified;
+      if (existingPayload.customThemes) {
+        customThemesToStore = {
+          ...existingPayload.customThemes,
+          ...(customThemes || {})
+        };
+      }
+    }
+
+    const filename = BaseStorageHandler.getProfilesFileName(newProfilesModified);
+    const payload: ReaderProfilesSyncPayload = {
+      version: 1,
+      lastModified: newProfilesModified,
+      profiles: profilesToStore,
+      customThemes: customThemesToStore
+    };
+
+    await this.upload(
+      this.rootId,
+      filename,
+      [],
+      file,
+      JSON.stringify(payload),
+      BaseStorageHandler.profilesFilePrefix
     );
   }
 
