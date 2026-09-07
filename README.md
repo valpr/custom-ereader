@@ -13,9 +13,9 @@ This repository is a personalized fork of the excellent [ttu-ttu/ebook-reader](h
 
 ## Why Does This Exist?
 
-1. **Keep Improving ttu-reader**: While the original [ttu-reader](https://github.com/ttu-ttu/ebook-reader) is an outstanding reading platform, upstream updates have slowed down. This fork provides active maintenance, modern dependency updates, and rapid development for new capabilities.
-2. **Open & Hackable for the Community**: Kept completely open-source so anyone in the Japanese learning and reading immersion community can benefit from these enhancements, borrow features, or fork and adapt it for their own workflows.
-3. **Better Daily Reading Experience**: Purpose-built to solve real-world friction points during long reading sessions—such as multi-bookmarking, accidental scroll fling/glitch recovery, faster navigation, and robust sync across devices.
+1. **Keep Improving ttu-reader**: While the original [ttu-reader](https://github.com/ttu-ttu/ebook-reader) is an outstanding reading platform, upstream updates have slowed down. This fork is my wish list of features that I wanted.
+2. **Open to the Community**: Kept completely open so anyone can benefit from these enhancements, borrow features, or fork and adapt it for their own workflows.
+3. **Better Daily Reading Experience**: Built to solve problems that I've had during my immersion experience and gripes about UI
 
 ---
 
@@ -26,7 +26,7 @@ This repository is a personalized fork of the excellent [ttu-ttu/ebook-reader](h
 - **Color Tags & Margin Indicators**: Categorize bookmarks with 6 distinct color tags and view interactive ribbon markers directly in the margin across both horizontal and vertical layouts.
 - **Slide-Out Bookmark Drawer**: Dedicated panel matching the Table of Contents drawer to view, edit, sort, and jump between bookmarks, with keyboard navigation support (`Shift+B` to create, `Shift+R` to open, `Shift+N`/`Shift+P` to cycle).
 - **Glitch Recovery & Rolling Autosaves**: Automatically logs position checkpoints and guards against abnormal scroll jumps, allowing you to instantly restore your place after accidental gestures or trackpad flings with one-click bookmark promotion.
-- **Multi-Device & Cloud Sync**: Seamless two-way replication across Google Drive, Microsoft OneDrive, local filesystem folders, and ZIP backups with smart conflict resolution.
+- **Opinonated Sync**: Simplified syncing pattern that allows settings/books to be automatically synced across platforms.
 - **Responsive Reader Header**: Icon toolbar progressively collapses lower-priority controls into an overflow menu (`⋯`) on narrow screens, keeping essential controls reachable on mobile.
 - **Refreshed UI & Settings**: Modernized layout featuring tabbed configuration panels, live typography sample previews, and new theme styling.
 
