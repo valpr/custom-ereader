@@ -69,7 +69,7 @@
             style:background-color={BOOKMARK_COLORS[colorKey]}
             title={colorKey}
             on:click={() => (selectedColor = colorKey)}
-          />
+          ></button>
         {/each}
       </div>
     </div>
@@ -81,8 +81,7 @@
         rows="2"
         class="w-full rounded border border-gray-300 px-3 py-1.5 focus:border-blue-500 focus:outline-none"
         placeholder="Add an optional note..."
-        bind:value={note}
-      />
+        bind:value={note}></textarea>
     </div>
   </div>
   <div class="flex grow justify-between pt-2" slot="footer">

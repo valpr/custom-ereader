@@ -515,8 +515,12 @@
 
           <!-- Action buttons for individual profile -->
           <div
+            role="toolbar"
+            aria-label="Profile actions"
+            tabindex="-1"
             class="flex items-center justify-end gap-1 w-full mt-2 pt-2 border-t border-zinc-200/60 dark:border-zinc-700/60"
             on:click|stopPropagation
+            on:keydown|stopPropagation
           >
             <Tooltip text="Rename profile">
               <IconButton

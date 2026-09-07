@@ -163,14 +163,22 @@
             class="max-h-96 lg:max-h-64"
           />
           {#if showSpoiler}
-            <button
+            <span
+              role="button"
+              tabindex="0"
               title="Show Image"
               class="spoiler-label"
               aria-hidden="true"
-              on:click={() => toggleGalleryPictureSpoiler(readerImageGalleryPicture.url)}
+              on:click|stopPropagation={() =>
+                toggleGalleryPictureSpoiler(readerImageGalleryPicture.url)}
+              on:keydown|stopPropagation={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  toggleGalleryPictureSpoiler(readerImageGalleryPicture.url);
+                }
+              }}
             >
               ネタバレ
-            </button>
+            </span>
           {/if}
         </button>
       {/each}

@@ -120,7 +120,7 @@
         }
       }}
       on:keyup={dummyFn}
-    />
+    ></div>
 
     <div
       class="relative top-1/2 left-1/2 inline-block max-w-[80vw] -translate-x-1/2 -translate-y-1/2"
@@ -136,6 +136,6 @@
   </div>
 {/if}
 
-<span style={`font-family: ${$fontFamilyGroupOne$ || 'Noto Serif JP'}`} />
+<span style={`font-family: ${$fontFamilyGroupOne$ || 'Noto Serif JP'}`}></span>
 
 <DomainHint />

@@ -385,13 +385,14 @@ export class StorageOAuthManager {
     return token;
   }
 
-  private base64Url(buffer: ArrayBuffer) {
+  private base64Url(buffer: ArrayBuffer | Uint8Array) {
     if (!this.parentWindow) {
       throw new Error('Parent window not defined');
     }
 
+    const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
     return this.parentWindow
-      .btoa(String.fromCharCode(...new Uint8Array(buffer)))
+      .btoa(String.fromCharCode(...bytes))
       .replace(/\+/g, '-')
       .replace(/\//g, '_')
       .replace(/=+$/, '');

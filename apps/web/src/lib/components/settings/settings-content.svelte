@@ -651,7 +651,7 @@
         prioritizeReaderStyles = s.prioritizeReaderStyles;
         enableTextJustification = s.enableTextJustification;
         enableTextWrapPretty = s.enableTextWrapPretty;
-        enableVerticalFontKerning = s.enableVerticalFontKerning;
+        enableFontKerning = s.enableVerticalFontKerning;
         enableFontVPAL = s.enableFontVPAL;
         verticalTextOrientation = s.verticalTextOrientation;
         swipeThreshold = s.swipeThreshold;
@@ -950,7 +950,7 @@
             style:background-color={currentThemeOption?.backgroundColor ??
               'var(--astryx-color-surface-subtle, rgba(0, 0, 0, 0.03))'}
             style:color={currentThemeOption?.fontColor ?? 'var(--astryx-color-fg-primary, inherit)'}
-          />
+          ></div>
 
           <div
             class="flex flex-wrap items-center justify-between gap-2 text-xs text-zinc-500 dark:text-zinc-400 px-0.5"
@@ -1796,7 +1796,7 @@
   </div>
 {/if}
 {#if showSpinner}
-  <div class="tap-highlight-transparent fixed inset-0 bg-black/[.2]" />
+  <div class="tap-highlight-transparent fixed inset-0 bg-black/[.2]"></div>
   <div class="fixed inset-0 flex h-full w-full items-center justify-center text-7xl">
     <Fa icon={faSpinner} spin />
   </div>

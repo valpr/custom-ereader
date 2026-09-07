@@ -254,7 +254,6 @@
         overflowWidth={36}
         gap={4}
         let:item
-        let:overflowItems
       >
         <!-- Visible Items on the Bar -->
         {#if item.id === 'complete'}
