@@ -27,7 +27,13 @@
   </div>
 
   <div class="flex items-center justify-center w-full max-w-xs sm:max-w-sm">
-    <Tabs items={settingItems} bind:activeId={activeSettings} variant="pill" size="sm" />
+    <Tabs
+      items={settingItems}
+      bind:activeId={activeSettings}
+      on:change={(e) => (activeSettings = e.detail.id)}
+      variant="pill"
+      size="sm"
+    />
   </div>
 
   <div slot="end" class="flex items-center">

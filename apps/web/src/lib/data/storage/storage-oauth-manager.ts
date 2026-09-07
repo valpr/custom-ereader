@@ -32,7 +32,7 @@ import {
   type StorageUnlockAction
 } from '$lib/data/storage/storage-source-manager';
 import { StorageSourceDefault, StorageKey } from '$lib/data/storage/storage-types';
-import { database } from '$lib/data/store';
+import { database, syncTarget$ } from '$lib/data/store';
 import { convertAuthErrorResponse } from '$lib/functions/replication/error-handler';
 import { writableSubject } from '$lib/functions/svelte/store';
 import { isMobile } from '$lib/functions/utils';
@@ -763,6 +763,8 @@ export class StorageOAuthManager {
 
       setConnectionState(storageSourceName, StorageConnectionState.CONNECTED);
 
+      await StorageOAuthManager.disconnectOtherCloudSources(storageSourceName);
+
       const db = await database.db;
       const updatedSources = await db.getAll('storageSource');
       database.storageSourcesChanged$.next(updatedSources);
@@ -785,24 +787,68 @@ export class StorageOAuthManager {
     }
   }
 
-  static async disconnect(storageSourceName: string): Promise<boolean> {
-    const wasCanceled = await new Promise<boolean>((resolve) => {
-      dialogManager.dialogs$.next([
-        {
-          component: ConfirmDialog,
-          props: {
-            dialogHeader: 'Disconnect Storage Source',
-            dialogMessage: `Are you sure you want to disconnect "${storageSourceName}"?\n\nYour local books and remote cloud files will remain completely safe. You can reconnect at any time.`,
-            contentStyles: 'white-space: pre-line;',
-            resolver: resolve
-          },
-          disableCloseOnClick: true
-        }
-      ]);
-    });
+  static async disconnectOtherCloudSources(currentSourceName: string) {
+    const sourcesToDisconnect: string[] = [];
 
-    if (wasCanceled) {
-      return false;
+    if (
+      currentSourceName !== StorageSourceDefault.GDRIVE_DEFAULT &&
+      (storageOAuthTokens.has(StorageSourceDefault.GDRIVE_DEFAULT) ||
+        storageConnectionStates$.getValue()[StorageSourceDefault.GDRIVE_DEFAULT] ===
+          StorageConnectionState.CONNECTED)
+    ) {
+      sourcesToDisconnect.push(StorageSourceDefault.GDRIVE_DEFAULT);
+    }
+
+    if (
+      currentSourceName !== StorageSourceDefault.ONEDRIVE_DEFAULT &&
+      (storageOAuthTokens.has(StorageSourceDefault.ONEDRIVE_DEFAULT) ||
+        storageConnectionStates$.getValue()[StorageSourceDefault.ONEDRIVE_DEFAULT] ===
+          StorageConnectionState.CONNECTED)
+    ) {
+      sourcesToDisconnect.push(StorageSourceDefault.ONEDRIVE_DEFAULT);
+    }
+
+    try {
+      const db = await database.db;
+      const allSources = await db.getAll('storageSource');
+      for (const src of allSources) {
+        if (
+          src.name !== currentSourceName &&
+          (src.type === StorageKey.GDRIVE || src.type === StorageKey.ONEDRIVE) &&
+          (!src.disconnected || storageOAuthTokens.has(src.name))
+        ) {
+          sourcesToDisconnect.push(src.name);
+        }
+      }
+    } catch (_) {
+      // Ignore database read errors
+    }
+
+    for (const name of sourcesToDisconnect) {
+      await StorageOAuthManager.disconnect(name, true);
+    }
+  }
+
+  static async disconnect(storageSourceName: string, skipConfirmation = false): Promise<boolean> {
+    if (!skipConfirmation) {
+      const wasCanceled = await new Promise<boolean>((resolve) => {
+        dialogManager.dialogs$.next([
+          {
+            component: ConfirmDialog,
+            props: {
+              dialogHeader: 'Disconnect Storage Source',
+              dialogMessage: `Are you sure you want to disconnect "${storageSourceName}"?\n\nYour local books and remote cloud files will remain completely safe. You can reconnect at any time.`,
+              contentStyles: 'white-space: pre-line;',
+              resolver: resolve
+            },
+            disableCloseOnClick: true
+          }
+        ]);
+      });
+
+      if (wasCanceled) {
+        return false;
+      }
     }
 
     const isDefault = isAppDefault(storageSourceName);
@@ -869,6 +915,10 @@ export class StorageOAuthManager {
     storageOAuthTokens.delete(storageSourceName);
     setConnectionState(storageSourceName, StorageConnectionState.DISCONNECTED);
 
+    if (syncTarget$.getValue() === storageSourceName) {
+      syncTarget$.next('');
+    }
+
     const db = await database.db;
     const updatedSources = await db.getAll('storageSource');
     database.storageSourcesChanged$.next(updatedSources);
@@ -904,8 +954,11 @@ export function getConnectionState(
       if (!storageSource.data.refreshToken) {
         return StorageConnectionState.DISCONNECTED;
       }
+      return StorageConnectionState.NEEDS_RECONNECT;
     }
+
+    return StorageConnectionState.DISCONNECTED;
   }
 
-  return StorageConnectionState.CONNECTED;
+  return StorageConnectionState.DISCONNECTED;
 }
