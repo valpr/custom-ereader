@@ -1,3 +1,6 @@
+<script lang="ts">
+</script>
+
 <section
   class="astryx-dialog-surface mdc-elevation--z24 rounded-xl bg-[var(--astryx-color-surface-elevated,var(--astryx-color-surface,#ffffff))] text-[var(--astryx-color-fg-primary,#18181b)] border border-[var(--astryx-color-border-subtle,transparent)] p-6 transition-colors shadow-2xl"
 >

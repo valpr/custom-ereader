@@ -95,7 +95,7 @@
       type="button"
       class="astryx-list-item-inner is-button"
       {disabled}
-      aria-selected={selected}
+      aria-pressed={selected}
       on:click={handleClick}
       on:keydown={handleKeyDown}
     >
@@ -124,7 +124,7 @@
       {/if}
     </button>
   {:else}
-    <div class="astryx-list-item-inner" on:click={handleClick}>
+    <div class="astryx-list-item-inner">
       {#if layout === 'stacked'}
         <div class="astryx-list-item-stacked-header">
           {#if $$slots.prefix}

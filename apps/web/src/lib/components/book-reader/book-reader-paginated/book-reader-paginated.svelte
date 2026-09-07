@@ -40,7 +40,7 @@
     throttleTime
   } from 'rxjs';
   import Fa from 'svelte-fa';
-  import { swipe } from 'svelte-gestures';
+  import { swipe, type SwipePointerEventDetail } from 'svelte-gestures';
   import type { BookmarkManager, PageManager } from '../types';
   import { BookmarkManagerPaginated } from './bookmark-manager-paginated';
   import { PageManagerPaginated } from './page-manager-paginated';
@@ -700,7 +700,7 @@
     }
   }
 
-  function onSwipe(ev: CustomEvent<{ direction: 'top' | 'right' | 'left' | 'bottom' }>) {
+  function onSwipe(ev: CustomEvent<SwipePointerEventDetail>) {
     if (!concretePageManager || $skipKeyDownListener$) return;
     if (ev.detail.direction !== 'left' && ev.detail.direction !== 'right') return;
     const swipeLeft = ev.detail.direction === 'left';
