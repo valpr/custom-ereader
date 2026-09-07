@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { goto } from '$app/navigation';
+  import { goto, preloadCode } from '$app/navigation';
   import {
     faCalendarDays,
     faCopy,
@@ -123,6 +123,8 @@
           variant="ghost"
           size="md"
           label="Back to Current Book"
+          on:mouseenter={() => preloadCode(`${pagePath}/b?id=${currentBookId}`)}
+          on:pointerdown={() => preloadCode(`${pagePath}/b?id=${currentBookId}`)}
           on:click={() => goto(`${pagePath}/b?id=${currentBookId}`)}
         >
           <svg

@@ -1416,7 +1416,8 @@
     return bookId;
   }
 
-  async function bookmarkPage() {
+  async function bookmarkPage(pulse: boolean | CustomEvent<void> = true) {
+    const shouldPulse = typeof pulse === 'boolean' ? pulse : true;
     const bookId = getBookIdSync();
     if (!bookId || !bookmarkManager) return;
 
@@ -1430,7 +1431,9 @@
         : undefined;
       const bookmarkRange = userSelectedRange || customReadingPointRange;
 
-      pulseElement(bookmarkRange?.endContainer?.parentElement, 'add', 0.5, 500);
+      if (shouldPulse) {
+        pulseElement(bookmarkRange?.endContainer?.parentElement, 'add', 0.5, 500);
+      }
 
       data = bookmarkManager.formatBookmarkDataByRange(bookId, bookmarkRange);
 
@@ -1658,34 +1661,37 @@
         await tick();
       }
 
-      openActionBackdrop();
+      const exitTasks: Promise<any>[] = [];
 
       if (deleteLastItem) {
-        await database.deleteLastItem();
+        exitTasks.push(database.deleteLastItem());
       }
 
       if (!$manualBookmark$) {
-        await bookmarkPage();
+        exitTasks.push(bookmarkPage(false));
       }
 
       if ($statisticsEnabled$ && trackerElm) {
-        const [hadError, updated] = await trackerElm.flushUpdates(true);
+        exitTasks.push(
+          trackerElm.flushUpdates(true).then(([hadError, updated]) => {
+            if (hadError) {
+              throw new Error('Error updating Statistics');
+            }
 
-        if (hadError) {
-          throw new Error('Error updating Statistics');
-        }
-
-        if (updated) {
-          scheduleReplication(StorageDataType.STATISTICS);
-        }
+            if (updated) {
+              scheduleReplication(StorageDataType.STATISTICS);
+            }
+          })
+        );
       }
 
-      dialogManager.dialogs$.next([]);
+      await Promise.all(exitTasks);
 
       if (upSyncEnabled) {
         await executeReplication(false);
       }
     } catch (error: any) {
+      dialogManager.dialogs$.next([]);
       message = error.message;
     }
 

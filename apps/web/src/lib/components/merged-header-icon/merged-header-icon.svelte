@@ -1,7 +1,7 @@
 <script lang="ts">
   import Fa from 'svelte-fa';
   import { createEventDispatcher } from 'svelte';
-  import { goto } from '$app/navigation';
+  import { goto, preloadCode } from '$app/navigation';
   import { page } from '$app/stores';
   import { mergeEntries } from '$lib/components/merged-header-icon/merged-entries';
   import Popover from '$lib/components/popover/popover.svelte';
@@ -26,6 +26,15 @@
   $: actionItems = items.filter((item) => item.routeId !== $page.route.id);
 
   let menuElm: Popover;
+
+  function preloadActionItem(target: string) {
+    if (!disableRouteNavigation) {
+      const action = actionItems.find((item) => item.label === target);
+      if (action?.routeId) {
+        preloadCode(`${pagePath}${action.routeId}`);
+      }
+    }
+  }
 
   function handleActionMenuItem(target: string) {
     dispatch('action', target);
@@ -54,13 +63,18 @@
 </script>
 
 {#if leavePageLink}
-  <a href={leavePageLink} class="inline-flex items-center" aria-label={backEntry.title || 'Back'}>
-    <Tooltip text={backEntry.title || 'Back'}>
-      <IconButton variant="ghost" size="md" label={backEntry.title || 'Back'}>
-        <Fa icon={backEntry.icon} />
-      </IconButton>
-    </Tooltip>
-  </a>
+  <Tooltip text={backEntry.title || 'Back'}>
+    <IconButton
+      variant="ghost"
+      size="md"
+      label={backEntry.title || 'Back'}
+      on:mouseenter={() => preloadCode(leavePageLink)}
+      on:pointerdown={() => preloadCode(leavePageLink)}
+      on:click={() => goto(leavePageLink)}
+    >
+      <Fa icon={backEntry.icon} />
+    </IconButton>
+  </Tooltip>
 {:else}
   {#if !mobileOnly}
     <div class="hidden sm:flex items-center gap-1">
@@ -70,6 +84,8 @@
             variant="ghost"
             size="md"
             label={actionItem.title || actionItem.label}
+            on:mouseenter={() => preloadActionItem(actionItem.label)}
+            on:pointerdown={() => preloadActionItem(actionItem.label)}
             on:click={() => handleActionMenuItem(actionItem.label)}
           >
             <Fa icon={actionItem.icon} />
@@ -98,6 +114,8 @@
           <button
             type="button"
             class="w-full flex items-center gap-2.5 px-3.5 py-2 text-sm text-left text-[var(--astryx-color-fg-primary)] hover:bg-[var(--astryx-color-surface-hover)] focus-visible:bg-[var(--astryx-color-surface-hover)] outline-none transition-colors cursor-pointer"
+            on:mouseenter={() => preloadActionItem(actionItem.label)}
+            on:pointerdown={() => preloadActionItem(actionItem.label)}
             on:click={() => handleActionMenuItem(actionItem.label)}
           >
             <Fa icon={actionItem.icon} class="w-4 text-center opacity-70" />
