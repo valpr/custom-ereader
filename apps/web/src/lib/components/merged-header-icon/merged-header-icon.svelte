@@ -19,6 +19,7 @@
       }
     | undefined = undefined;
   export let disableRouteNavigation = false;
+  export let mobileOnly = false;
 
   const dispatch = createEventDispatcher<{ action: string }>();
 
@@ -61,20 +62,22 @@
     </Tooltip>
   </a>
 {:else}
-  <div class="hidden sm:flex items-center gap-1">
-    {#each actionItems as actionItem (actionItem.label)}
-      <Tooltip text={actionItem.title || actionItem.label}>
-        <IconButton
-          variant="ghost"
-          size="md"
-          label={actionItem.title || actionItem.label}
-          on:click={() => handleActionMenuItem(actionItem.label)}
-        >
-          <Fa icon={actionItem.icon} />
-        </IconButton>
-      </Tooltip>
-    {/each}
-  </div>
+  {#if !mobileOnly}
+    <div class="hidden sm:flex items-center gap-1">
+      {#each actionItems as actionItem (actionItem.label)}
+        <Tooltip text={actionItem.title || actionItem.label}>
+          <IconButton
+            variant="ghost"
+            size="md"
+            label={actionItem.title || actionItem.label}
+            on:click={() => handleActionMenuItem(actionItem.label)}
+          >
+            <Fa icon={actionItem.icon} />
+          </IconButton>
+        </Tooltip>
+      {/each}
+    </div>
+  {/if}
   <div class="flex sm:hidden items-center">
     <Popover
       placement="bottom"

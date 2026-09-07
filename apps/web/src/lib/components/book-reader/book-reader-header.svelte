@@ -4,11 +4,17 @@
   import {
     faBookBookmark,
     faBookmark as fasBookmark,
+    faChartLine,
+    faCog,
     faCrosshairs,
     faExpand,
     faFlag,
+    faHashtag,
+    faImages,
     faList,
     faRotateLeft,
+    faSignOutAlt,
+    faTriangleExclamation,
     type IconDefinition
   } from '@fortawesome/free-solid-svg-icons';
   import { readerImageGalleryPictures$ } from '$lib/components/book-reader/book-reader-image-gallery/book-reader-image-gallery';
@@ -95,6 +101,8 @@
   $: {
     const items = [];
 
+    items.push(mergeEntries.SETTINGS, mergeEntries.MANAGE);
+
     if (isOldUrl) {
       items.push(mergeEntries.DOMAIN_HINT);
     } else {
@@ -108,8 +116,6 @@
     if ($readerImageGalleryPictures$.length) {
       items.push(mergeEntries.READER_IMAGE_GALLERY);
     }
-
-    items.push(mergeEntries.SETTINGS, mergeEntries.MANAGE);
 
     menuItems = items;
   }
@@ -190,6 +196,55 @@
 
   <!-- Right / End Actions -->
   <div slot="end" class="flex items-center gap-0.5 sm:gap-1">
+    <!-- Desktop Navigation Hub (Settings, Manager, Statistics as left-most icons on the right side) -->
+    <div class="hidden sm:flex items-center gap-0.5 sm:gap-1">
+      <Tooltip text={mergeEntries.SETTINGS.title}>
+        <IconButton
+          label={mergeEntries.SETTINGS.title}
+          size="md"
+          variant="ghost"
+          on:click={() => dispatch('settingsClick')}
+        >
+          <Fa icon={faCog} class="text-base" />
+        </IconButton>
+      </Tooltip>
+
+      <Tooltip text={mergeEntries.MANAGE.title}>
+        <IconButton
+          label={mergeEntries.MANAGE.title}
+          size="md"
+          variant="ghost"
+          on:click={() => dispatch('bookManagerClick')}
+        >
+          <Fa icon={faSignOutAlt} class="text-base" />
+        </IconButton>
+      </Tooltip>
+
+      {#if isOldUrl}
+        <Tooltip text={mergeEntries.DOMAIN_HINT.title}>
+          <IconButton
+            label={mergeEntries.DOMAIN_HINT.title}
+            size="md"
+            variant="ghost"
+            on:click={() => dispatch('domainHintClick')}
+          >
+            <Fa icon={faTriangleExclamation} class="text-base" />
+          </IconButton>
+        </Tooltip>
+      {:else}
+        <Tooltip text={mergeEntries.STATISTICS.title}>
+          <IconButton
+            label={mergeEntries.STATISTICS.title}
+            size="md"
+            variant="ghost"
+            on:click={() => dispatch('statisticsClick')}
+          >
+            <Fa icon={faChartLine} class="text-base" />
+          </IconButton>
+        </Tooltip>
+      {/if}
+    </div>
+
     <Tooltip text="Complete Book">
       <IconButton
         label="Complete Book"
@@ -247,7 +302,38 @@
       </Tooltip>
     {/if}
 
+    {#if hasText}
+      <div class="hidden sm:flex items-center">
+        <Tooltip text={mergeEntries.JUMP_TO_POSITION.title}>
+          <IconButton
+            label={mergeEntries.JUMP_TO_POSITION.title}
+            size="md"
+            variant="ghost"
+            on:click={() => dispatch('jumpClick')}
+          >
+            <Fa icon={faHashtag} class="text-base" />
+          </IconButton>
+        </Tooltip>
+      </div>
+    {/if}
+
+    {#if $readerImageGalleryPictures$.length}
+      <div class="hidden sm:flex items-center">
+        <Tooltip text={mergeEntries.READER_IMAGE_GALLERY.title}>
+          <IconButton
+            label={mergeEntries.READER_IMAGE_GALLERY.title}
+            size="md"
+            variant="ghost"
+            on:click={() => dispatch('readerImageGalleryClick')}
+          >
+            <Fa icon={faImages} class="text-base" />
+          </IconButton>
+        </Tooltip>
+      </div>
+    {/if}
+
     <MergedHeaderIcon
+      mobileOnly
       disableRouteNavigation
       items={menuItems}
       on:action={({ detail }) => {
