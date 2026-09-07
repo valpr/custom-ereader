@@ -29,9 +29,10 @@ Welcome to **custom-ereader** (an enhanced e-book reader based on ッツ Reader)
   - Always prefer importing and using components from `@custom-ereader/ui` over writing custom ad-hoc HTML/CSS or duplicate Tailwind controls.
   - Available components in `@custom-ereader/ui`:
     - **Buttons**: `Button`, `IconButton`, `ButtonGroup`, `ToggleButton`, `ToggleButtonGroup`
-    - **Controls**: `SegmentedControl`, `Slider`, `Switch`, `Input`
+    - **Controls**: `SegmentedControl`, `Slider`, `Switch`, `Input`, `Select`
     - **Surfaces & Overlays**: `Card`, `Dialog`, `Tooltip`
-    - **Lists**: `List`, `ListItem`
+    - **Lists**: `List`, `ListItem`, `ListSection`
+    - **Navigation & Layout**: `Tabs`, `TopBar`, `OverflowList`
 - **Missing Components Policy**:
   - If a required component does not exist in `packages/ui`, investigate whether an equivalent Astryx design system component should be created or migrated into `packages/ui` first.
   - Implement the component in `packages/ui/src/`, export it in `packages/ui/src/index.ts`, and then consume it in `apps/web`.
@@ -43,9 +44,10 @@ Welcome to **custom-ereader** (an enhanced e-book reader based on ッツ Reader)
 
 ## 3. Tech Stack & State Architecture
 
-- **Svelte 4**:
-  - The web application uses **Svelte 4**.
-  - **Do NOT use Svelte 5 runes** (`$state`, `$derived`, `$props`, `$effect`, snippet syntax).
+- **Svelte 5 (Legacy Mode)**:
+  - The workspace has been upgraded to **Svelte 5** (`^5.0.0`) with `@sveltejs/vite-plugin-svelte` v4.
+  - All existing components still use Svelte 4 **legacy syntax** (stores, reactive declarations, `on:event` directives).
+  - **Do NOT introduce Svelte 5 runes** (`$state`, `$derived`, `$props`, `$effect`, snippet syntax) — Svelte 5 is the runtime but the codebase runs in compatibility/legacy mode throughout.
 - **RxJS State Management**:
   - Global application state resides in `apps/web/src/lib/data/store.ts` using RxJS `BehaviorSubject` stores suffixed with `$` (e.g., `$syncTarget$`, `$verticalMode$`, `$statisticsMergeMode$`).
   - In Svelte files, use reactive auto-subscription syntax: `$storeName$`.
@@ -90,3 +92,27 @@ Every change to the book reader view (`apps/web/src/routes/b/+page.svelte` or re
   - Ensure `pnpm -F web check` produces no new errors or regressions in modified files.
 - **Formatting & Linting**:
   - Ensure ESLint and Prettier pass cleanly.
+- **E2E Tests**:
+  - Run `pnpm -F web exec playwright test` to execute the Playwright test suite.
+  - Tests run against a dev server on port **5174** (see `apps/web/playwright.config.ts`).
+  - The fixture (`apps/web/tests/fixtures/book-fixture.ts`) seeds IndexedDB directly via `page.evaluate`; do not bypass or stub it.
+  - Test specs cover: reader loading, header responsiveness (OverflowList), dual-mode matrix (paginated/continuous × horizontal/vertical), navigation, bookmarks, TOC drawer, and header controls.
+  - All 22 tests must remain passing. Do not disable tests without explicit justification in the PR description.
+
+---
+
+## 7. E2E Testing (Playwright)
+
+- **Test Directory**: `apps/web/tests/`
+- **Config**: `apps/web/playwright.config.ts` — Chromium only, `baseURL: http://localhost:5174`.
+- **Fixture**: `book-fixture.ts` — seeds a complete EPUB into IndexedDB so tests start with a real book loaded. Use this fixture for any new reader-level tests.
+- **Test Files**:
+  - `app.spec.ts` — general app smoke tests
+  - `reader-loading.spec.ts` — book load and parse flow
+  - `reader-header.spec.ts` — header control interactions
+  - `reader-header-responsive.spec.ts` — OverflowList collapse at narrow widths
+  - `reader-modes.spec.ts` — paginated vs. continuous, horizontal vs. vertical
+  - `reader-navigation.spec.ts` — page turns, scroll, keyboard shortcuts
+  - `reader-bookmarks.spec.ts` — bookmark creation, drawer, color tags, autosaves
+  - `reader-toc.spec.ts` — table of contents drawer
+- **Adding New Tests**: Follow the existing `test.describe` / `test.beforeEach` pattern. Use the `bookFixture` helper to pre-seed state. Avoid hard-coded timeouts; use `waitFor` assertions instead.
