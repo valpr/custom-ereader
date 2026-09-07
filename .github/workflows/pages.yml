@@ -48,8 +48,8 @@ jobs:
         run: pnpm build
         working-directory: apps/web
         env:
-          BASE_PATH: '/custom-ereader'
-          VITE_PAGE_PATH: '/custom-ereader'
+          BASE_PATH: '/reader'
+          VITE_PAGE_PATH: '/reader'
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
