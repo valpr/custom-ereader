@@ -192,26 +192,15 @@
       </IconButton>
     </Tooltip>
 
-    {#if isOldUrl}
-      <Tooltip text={mergeEntries.DOMAIN_HINT.title}>
+    {#if showFullscreenButton}
+      <Tooltip text="Toggle Fullscreen">
         <IconButton
-          label={mergeEntries.DOMAIN_HINT.title}
+          label="Toggle Fullscreen"
           size="md"
           variant="ghost"
-          on:click={() => dispatch('domainHintClick')}
+          on:click={() => dispatch('fullscreenClick')}
         >
-          <Fa icon={faTriangleExclamation} class="text-base" />
-        </IconButton>
-      </Tooltip>
-    {:else}
-      <Tooltip text={mergeEntries.STATISTICS.title}>
-        <IconButton
-          label={mergeEntries.STATISTICS.title}
-          size="md"
-          variant="ghost"
-          on:click={() => dispatch('statisticsClick')}
-        >
-          <Fa icon={faChartLine} class="text-base" />
+          <Fa icon={faExpand} class="text-base" />
         </IconButton>
       </Tooltip>
     {/if}
@@ -262,15 +251,26 @@
         </Popover>
       {/if}
 
-      {#if showFullscreenButton}
-        <Tooltip text="Toggle Fullscreen">
+      {#if isOldUrl}
+        <Tooltip text={mergeEntries.DOMAIN_HINT.title}>
           <IconButton
-            label="Toggle Fullscreen"
+            label={mergeEntries.DOMAIN_HINT.title}
             size="md"
             variant="ghost"
-            on:click={() => dispatch('fullscreenClick')}
+            on:click={() => dispatch('domainHintClick')}
           >
-            <Fa icon={faExpand} class="text-base" />
+            <Fa icon={faTriangleExclamation} class="text-base" />
+          </IconButton>
+        </Tooltip>
+      {:else}
+        <Tooltip text={mergeEntries.STATISTICS.title}>
+          <IconButton
+            label={mergeEntries.STATISTICS.title}
+            size="md"
+            variant="ghost"
+            on:click={() => dispatch('statisticsClick')}
+          >
+            <Fa icon={faChartLine} class="text-base" />
           </IconButton>
         </Tooltip>
       {/if}
@@ -371,17 +371,29 @@
             {/if}
           {/if}
 
-          {#if showFullscreenButton}
+          {#if isOldUrl}
             <button
               type="button"
               class="w-full flex items-center gap-2.5 px-3.5 py-2 text-sm text-left text-[var(--astryx-color-fg-primary)] hover:bg-[var(--astryx-color-surface-hover)] focus-visible:bg-[var(--astryx-color-surface-hover)] outline-none transition-colors cursor-pointer"
               on:click={() => {
-                dispatch('fullscreenClick');
+                dispatch('domainHintClick');
                 overflowMenuElm?.toggleOpen();
               }}
             >
-              <Fa icon={faExpand} class="w-4 text-center opacity-70" />
-              <span>Toggle Fullscreen</span>
+              <Fa icon={faTriangleExclamation} class="w-4 text-center opacity-70" />
+              <span>{mergeEntries.DOMAIN_HINT.label}</span>
+            </button>
+          {:else}
+            <button
+              type="button"
+              class="w-full flex items-center gap-2.5 px-3.5 py-2 text-sm text-left text-[var(--astryx-color-fg-primary)] hover:bg-[var(--astryx-color-surface-hover)] focus-visible:bg-[var(--astryx-color-surface-hover)] outline-none transition-colors cursor-pointer"
+              on:click={() => {
+                dispatch('statisticsClick');
+                overflowMenuElm?.toggleOpen();
+              }}
+            >
+              <Fa icon={faChartLine} class="w-4 text-center opacity-70" />
+              <span>{mergeEntries.STATISTICS.label}</span>
             </button>
           {/if}
 
