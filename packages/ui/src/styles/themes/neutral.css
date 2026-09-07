@@ -9,6 +9,7 @@
   --astryx-color-canvas: #fafafa;
   --astryx-color-surface: #ffffff;
   --astryx-color-surface-subtle: #f4f4f5;
+  --astryx-color-surface-hover: #f4f4f5;
   --astryx-color-surface-active: #e4e4e7;
   --astryx-color-surface-elevated: #ffffff;
   --astryx-color-overlay: rgba(0, 0, 0, 0.4);
@@ -47,6 +48,7 @@
     --astryx-color-canvas: #09090b;
     --astryx-color-surface: #121214;
     --astryx-color-surface-subtle: #1c1c20;
+    --astryx-color-surface-hover: #1c1c20;
     --astryx-color-surface-active: #27272a;
     --astryx-color-surface-elevated: #18181b;
     --astryx-color-overlay: rgba(0, 0, 0, 0.7);
@@ -86,6 +88,7 @@
   --astryx-color-canvas: #09090b;
   --astryx-color-surface: #121214;
   --astryx-color-surface-subtle: #1c1c20;
+  --astryx-color-surface-hover: #1c1c20;
   --astryx-color-surface-active: #27272a;
   --astryx-color-surface-elevated: #18181b;
   --astryx-color-overlay: rgba(0, 0, 0, 0.7);

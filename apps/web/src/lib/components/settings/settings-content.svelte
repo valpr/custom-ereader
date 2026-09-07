@@ -37,6 +37,8 @@
   import { defaultStorageSources } from '$lib/data/storage/storage-types';
   import { isStorageSourceAvailable } from '$lib/data/storage/storage-view';
   import {
+    appThemeMode$,
+    type AppThemeMode,
     customThemes$,
     database,
     fontFamilyGroupOne$,
@@ -61,6 +63,8 @@
   import { map } from 'rxjs';
   import Fa from 'svelte-fa';
   import { onDestroy } from 'svelte';
+
+  export let appThemeMode: AppThemeMode = 'system';
 
   export let selectedTheme: string;
 
@@ -412,6 +416,13 @@
     ...fontGroupTwoOptions
   ];
 
+  const segmentsForAppTheme = [
+    { value: 'system', label: 'Auto (System)' },
+    { value: 'neutral', label: 'Neutral' },
+    { value: 'stone', label: 'Stone' },
+    { value: 'gothic', label: 'Gothic' }
+  ];
+
   const segmentsForWritingMode = optionsForWritingMode.map((o) => ({ value: o.id, label: o.text }));
   const segmentsForViewMode = optionsForViewMode.map((o) => ({ value: o.id, label: o.text }));
   const segmentsForVerticalTextOrientation = optionsForVerticalTextOrientation.map((o) => ({
@@ -602,12 +613,25 @@
   <!-- Section 1: Appearance & Theme -->
   <ListSection
     title="Appearance & Themes"
-    description="Customize reading color palettes, contrast, and spoiler image blur"
+    description="Customize interface theme, reading color palettes, and spoiler image blur"
   >
     <ListItem
       layout="stacked"
-      headline="Theme Palette"
-      description="Select an active reader color palette or create and customize new themes"
+      headline="App Theme"
+      description="Select the interface theme for collections, settings, and menus, or track system preference"
+    >
+      <SegmentedControl
+        fullWidth
+        size="sm"
+        options={segmentsForAppTheme}
+        bind:value={appThemeMode}
+      />
+    </ListItem>
+
+    <ListItem
+      layout="stacked"
+      headline="Reader Palette"
+      description="Select an active reading view color palette or create and customize new themes"
     >
       <ButtonToggleGroup
         options={optionsForTheme}

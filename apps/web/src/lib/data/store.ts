@@ -62,6 +62,20 @@ import type { WritingMode } from './writing-mode';
 import { writableSetLocalStorageSubject } from './internal/writable-set-local-storage-subject';
 import { writableStringLocalStorageSubject } from './internal/writable-string-local-storage-subject';
 
+export type AppTheme = 'neutral' | 'stone' | 'gothic';
+export type AppThemeMode = 'system' | AppTheme;
+
+export function getSystemAppTheme(): AppTheme {
+  if (typeof window !== 'undefined' && window.matchMedia) {
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'gothic' : 'neutral';
+  }
+  return 'neutral';
+}
+
+export const appThemeMode$ = writableStringLocalStorageSubject<AppThemeMode>()(
+  'appTheme',
+  'system'
+);
 export const theme$ = writableStringLocalStorageSubject()('theme', 'light-theme');
 export const customThemes$ = writableObjectLocalStorageSubject<Record<string, ThemeOption>>()(
   'customThemes',

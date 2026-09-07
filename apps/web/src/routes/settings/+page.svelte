@@ -8,6 +8,7 @@
   import {
     addCharactersOnCompletion$,
     adjustStatisticsAfterIdleTime$,
+    appThemeMode$,
     autoBookmark$,
     autoBookmarkTime$,
     autosaveHistoryEnabled$,
@@ -152,6 +153,7 @@
     <SettingsContent
       {activeSettings}
       {storageQuota}
+      bind:appThemeMode={$appThemeMode$}
       bind:selectedTheme={$theme$}
       bind:fontFamilyGroupOne={$fontFamilyGroupOne$}
       bind:fontFamilyGroupTwo={$fontFamilyGroupTwo$}
