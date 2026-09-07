@@ -79,6 +79,7 @@
     showFooterChapterPercentage$,
     enableReaderWakeLock$
   } from '$lib/data/store';
+  import { issuesUrl } from '$lib/data/env';
 
   export let title = 'Error';
 
@@ -188,13 +189,8 @@
     <p>{message}</p>
   </svelte:fragment>
   <svelte:fragment slot="footer">
-    <a
-      class={buttonClasses}
-      href="https://github.com/ttu-ttu/ebook-reader"
-      target="_blank"
-      rel="noreferrer"
-    >
-      Open Repository
+    <a class={buttonClasses} href={issuesUrl} target="_blank" rel="noreferrer">
+      Report Issue
       <Ripple />
     </a>
     <a class={buttonClasses} href={downloadableLog} download="log.json">
