@@ -1,0 +1,191 @@
+/**
+ * @license BSD-3-Clause
+ * Copyright (c) 2026, ッツ Reader Authors
+ * All rights reserved.
+ */
+
+import { BlurMode } from '$lib/data/blur-mode';
+import { FuriganaStyle } from '$lib/data/furigana-style';
+import type { AppThemeMode } from '$lib/data/store';
+import type { TextMarginMode } from '$lib/data/text-margin-mode';
+import type { ThemeOption } from '$lib/data/theme-option';
+import type { VerticalTextOrientation } from '$lib/data/vertical-text-orientation';
+import { ViewMode } from '$lib/data/view-mode';
+import type { WritingMode } from '$lib/data/writing-mode';
+
+export interface ReaderProfileSettings {
+  // Appearance & Themes
+  appThemeMode: AppThemeMode;
+  theme: string;
+  blurImage: boolean;
+  blurImageMode: string;
+
+  // Layout & Reading Modes
+  viewMode: ViewMode;
+  writingMode: WritingMode;
+  pageColumns: number;
+  enableReaderWakeLock: boolean;
+
+  // Typography & Fonts
+  fontFamilyGroupOne: string;
+  fontFamilyGroupTwo: string;
+  fontSize: number;
+  lineHeight: number;
+  fontWeight: number | null;
+  textIndentation: number;
+  textMarginMode: TextMarginMode;
+  textMarginValue: number;
+
+  // Reader Margins & Boundaries
+  firstDimensionMargin: number;
+  secondDimensionMaxValue: number;
+
+  // Text Rendering & Furigana
+  prioritizeReaderStyles: boolean;
+  enableTextJustification: boolean;
+  enableTextWrapPretty: boolean;
+  enableVerticalFontKerning: boolean;
+  enableFontVPAL: boolean;
+  verticalTextOrientation: VerticalTextOrientation;
+  hideFurigana: boolean;
+  furiganaStyle: FuriganaStyle;
+
+  // Navigation, Gestures & Page Turns
+  swipeThreshold: number;
+  enableTapEdgeToFlip: boolean;
+  avoidPageBreak: boolean;
+  selectionToBookmarkEnabled: boolean;
+  autoPositionOnResize: boolean;
+  customReadingPointEnabled: boolean;
+  pauseTrackerOnCustomPointChange: boolean;
+  disableWheelNavigation: boolean;
+  confirmClose: boolean;
+
+  // Bookmarks, Autosaves & Progress
+  manualBookmark: boolean;
+  autoBookmark: boolean;
+  autoBookmarkTime: number;
+  autosaveHistoryEnabled: boolean;
+  autosaveHistoryInterval: number;
+  autosaveHistoryMaxCount: number;
+  showCharacterCounter: boolean;
+  showPercentage: boolean;
+  showFooterChapterCharacterCounter: boolean;
+  showFooterChapterPercentage: boolean;
+}
+
+export type ProfileIconType = 'desktop' | 'mobile' | 'tablet' | 'custom';
+
+export interface ReaderProfile {
+  id: string;
+  name: string;
+  icon?: ProfileIconType;
+  description?: string;
+  updatedAt: number;
+  isDefault?: boolean;
+  settings: ReaderProfileSettings;
+}
+
+export interface ReaderProfilesSyncPayload {
+  version: number;
+  lastModified: number;
+  profiles: ReaderProfile[];
+  customThemes?: Record<string, ThemeOption>;
+}
+
+export const defaultDesktopSettings: ReaderProfileSettings = {
+  appThemeMode: 'system',
+  theme: 'light-theme',
+  blurImage: true,
+  blurImageMode: BlurMode.AFTER_TOC,
+  viewMode: ViewMode.Paginated,
+  writingMode: 'vertical-rl',
+  pageColumns: 0,
+  enableReaderWakeLock: false,
+  fontFamilyGroupOne: 'Noto Serif JP',
+  fontFamilyGroupTwo: 'Noto Sans JP',
+  fontSize: 20,
+  lineHeight: 1.65,
+  fontWeight: null,
+  textIndentation: 0,
+  textMarginMode: 'auto',
+  textMarginValue: 0,
+  firstDimensionMargin: 0,
+  secondDimensionMaxValue: 0,
+  prioritizeReaderStyles: false,
+  enableTextJustification: false,
+  enableTextWrapPretty: false,
+  enableVerticalFontKerning: false,
+  enableFontVPAL: false,
+  verticalTextOrientation: 'mixed',
+  hideFurigana: false,
+  furiganaStyle: FuriganaStyle.Partial,
+  swipeThreshold: 10,
+  enableTapEdgeToFlip: false,
+  avoidPageBreak: false,
+  selectionToBookmarkEnabled: false,
+  autoPositionOnResize: true,
+  customReadingPointEnabled: false,
+  pauseTrackerOnCustomPointChange: true,
+  disableWheelNavigation: false,
+  confirmClose: false,
+  manualBookmark: false,
+  autoBookmark: true,
+  autoBookmarkTime: 3,
+  autosaveHistoryEnabled: true,
+  autosaveHistoryInterval: 3,
+  autosaveHistoryMaxCount: 10,
+  showCharacterCounter: true,
+  showPercentage: true,
+  showFooterChapterCharacterCounter: false,
+  showFooterChapterPercentage: false
+};
+
+export const defaultMobileSettings: ReaderProfileSettings = {
+  ...defaultDesktopSettings,
+  fontSize: 17,
+  lineHeight: 1.55,
+  pageColumns: 1,
+  swipeThreshold: 15,
+  enableTapEdgeToFlip: true
+};
+
+export const defaultTabletSettings: ReaderProfileSettings = {
+  ...defaultDesktopSettings,
+  fontSize: 22,
+  lineHeight: 1.7,
+  pageColumns: 1,
+  firstDimensionMargin: 20,
+  secondDimensionMaxValue: 900,
+  enableTapEdgeToFlip: true
+};
+
+export const defaultReaderProfiles: ReaderProfile[] = [
+  {
+    id: 'default-desktop',
+    name: 'PC / Desktop',
+    icon: 'desktop',
+    description: 'Optimized for large screens & monitors (20px font, auto columns)',
+    updatedAt: 1,
+    isDefault: true,
+    settings: defaultDesktopSettings
+  },
+  {
+    id: 'default-mobile',
+    name: 'Mobile / Phone',
+    icon: 'mobile',
+    description: 'Compact screen layout with tap-edge page turning (17px font, 1 column)',
+    updatedAt: 1,
+    isDefault: true,
+    settings: defaultMobileSettings
+  },
+  {
+    id: 'default-tablet',
+    name: 'Tablet / E-Reader',
+    icon: 'tablet',
+    description: 'Balanced margins for tablets and handheld reading (22px font)',
+    updatedAt: 1,
+    isDefault: true,
+    settings: defaultTabletSettings
+  }
+];

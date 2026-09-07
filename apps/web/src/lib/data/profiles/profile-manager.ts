@@ -1,0 +1,426 @@
+/**
+ * @license BSD-3-Clause
+ * Copyright (c) 2026, ッツ Reader Authors
+ * All rights reserved.
+ */
+
+import { browser } from '$app/environment';
+import {
+  activeProfileId$,
+  appThemeMode$,
+  autoBookmark$,
+  autoBookmarkTime$,
+  autoPositionOnResize$,
+  autosaveHistoryEnabled$,
+  autosaveHistoryInterval$,
+  autosaveHistoryMaxCount$,
+  avoidPageBreak$,
+  confirmClose$,
+  customReadingPointEnabled$,
+  customThemes$,
+  disableWheelNavigation$,
+  enableFontVPAL$,
+  enableReaderWakeLock$,
+  enableTapEdgeToFlip$,
+  enableTextJustification$,
+  enableTextWrapPretty$,
+  enableVerticalFontKerning$,
+  firstDimensionMargin$,
+  fontFamilyGroupOne$,
+  fontFamilyGroupTwo$,
+  fontSize$,
+  fontWeight$,
+  furiganaStyle$,
+  hideFurigana$,
+  hideSpoilerImage$,
+  hideSpoilerImageMode$,
+  lastProfilesModified$,
+  lineHeight$,
+  manualBookmark$,
+  pageColumns$,
+  pauseTrackerOnCustomPointChange$,
+  prioritizeReaderStyles$,
+  readerProfiles$,
+  secondDimensionMaxValue$,
+  selectionToBookmarkEnabled$,
+  showCharacterCounter$,
+  showFooterChapterCharacterCounter$,
+  showFooterChapterPercentage$,
+  showPercentage$,
+  swipeThreshold$,
+  textIndentation$,
+  textMarginMode$,
+  textMarginValue$,
+  theme$,
+  verticalTextOrientation$,
+  viewMode$,
+  writingMode$
+} from '$lib/data/store';
+import {
+  defaultDesktopSettings,
+  defaultReaderProfiles,
+  type ProfileIconType,
+  type ReaderProfile,
+  type ReaderProfileSettings,
+  type ReaderProfilesSyncPayload
+} from './profile-types';
+
+export function getCurrentReaderSettings(): ReaderProfileSettings {
+  return {
+    appThemeMode: appThemeMode$.getValue(),
+    theme: theme$.getValue(),
+    blurImage: hideSpoilerImage$.getValue(),
+    blurImageMode: hideSpoilerImageMode$.getValue(),
+    viewMode: viewMode$.getValue(),
+    writingMode: writingMode$.getValue(),
+    pageColumns: pageColumns$.getValue(),
+    enableReaderWakeLock: enableReaderWakeLock$.getValue(),
+    fontFamilyGroupOne: fontFamilyGroupOne$.getValue(),
+    fontFamilyGroupTwo: fontFamilyGroupTwo$.getValue(),
+    fontSize: fontSize$.getValue(),
+    lineHeight: lineHeight$.getValue(),
+    fontWeight: fontWeight$.getValue(),
+    textIndentation: textIndentation$.getValue(),
+    textMarginMode: textMarginMode$.getValue(),
+    textMarginValue: textMarginValue$.getValue(),
+    firstDimensionMargin: firstDimensionMargin$.getValue(),
+    secondDimensionMaxValue: secondDimensionMaxValue$.getValue(),
+    prioritizeReaderStyles: prioritizeReaderStyles$.getValue(),
+    enableTextJustification: enableTextJustification$.getValue(),
+    enableTextWrapPretty: enableTextWrapPretty$.getValue(),
+    enableVerticalFontKerning: enableVerticalFontKerning$.getValue(),
+    enableFontVPAL: enableFontVPAL$.getValue(),
+    verticalTextOrientation: verticalTextOrientation$.getValue(),
+    hideFurigana: hideFurigana$.getValue(),
+    furiganaStyle: furiganaStyle$.getValue(),
+    swipeThreshold: swipeThreshold$.getValue(),
+    enableTapEdgeToFlip: enableTapEdgeToFlip$.getValue(),
+    avoidPageBreak: avoidPageBreak$.getValue(),
+    selectionToBookmarkEnabled: selectionToBookmarkEnabled$.getValue(),
+    autoPositionOnResize: autoPositionOnResize$.getValue(),
+    customReadingPointEnabled: customReadingPointEnabled$.getValue(),
+    pauseTrackerOnCustomPointChange: pauseTrackerOnCustomPointChange$.getValue(),
+    disableWheelNavigation: disableWheelNavigation$.getValue(),
+    confirmClose: confirmClose$.getValue(),
+    manualBookmark: manualBookmark$.getValue(),
+    autoBookmark: autoBookmark$.getValue(),
+    autoBookmarkTime: autoBookmarkTime$.getValue(),
+    autosaveHistoryEnabled: autosaveHistoryEnabled$.getValue(),
+    autosaveHistoryInterval: autosaveHistoryInterval$.getValue(),
+    autosaveHistoryMaxCount: autosaveHistoryMaxCount$.getValue(),
+    showCharacterCounter: showCharacterCounter$.getValue(),
+    showPercentage: showPercentage$.getValue(),
+    showFooterChapterCharacterCounter: showFooterChapterCharacterCounter$.getValue(),
+    showFooterChapterPercentage: showFooterChapterPercentage$.getValue()
+  };
+}
+
+export function applyProfile(profile: ReaderProfile): void {
+  const s = profile.settings;
+  if (!s) return;
+
+  if (s.appThemeMode !== undefined) appThemeMode$.next(s.appThemeMode);
+  if (s.theme !== undefined) theme$.next(s.theme);
+  if (s.blurImage !== undefined) hideSpoilerImage$.next(s.blurImage);
+  if (s.blurImageMode !== undefined) hideSpoilerImageMode$.next(s.blurImageMode as any);
+  if (s.viewMode !== undefined) viewMode$.next(s.viewMode);
+  if (s.writingMode !== undefined) writingMode$.next(s.writingMode);
+  if (s.pageColumns !== undefined) pageColumns$.next(s.pageColumns);
+  if (s.enableReaderWakeLock !== undefined) enableReaderWakeLock$.next(s.enableReaderWakeLock);
+  if (s.fontFamilyGroupOne !== undefined) fontFamilyGroupOne$.next(s.fontFamilyGroupOne);
+  if (s.fontFamilyGroupTwo !== undefined) fontFamilyGroupTwo$.next(s.fontFamilyGroupTwo);
+  if (s.fontSize !== undefined) fontSize$.next(s.fontSize);
+  if (s.lineHeight !== undefined) lineHeight$.next(s.lineHeight);
+  if (s.fontWeight !== undefined) fontWeight$.next(s.fontWeight);
+  if (s.textIndentation !== undefined) textIndentation$.next(s.textIndentation);
+  if (s.textMarginMode !== undefined) textMarginMode$.next(s.textMarginMode);
+  if (s.textMarginValue !== undefined) textMarginValue$.next(s.textMarginValue);
+  if (s.firstDimensionMargin !== undefined) firstDimensionMargin$.next(s.firstDimensionMargin);
+  if (s.secondDimensionMaxValue !== undefined)
+    secondDimensionMaxValue$.next(s.secondDimensionMaxValue);
+  if (s.prioritizeReaderStyles !== undefined)
+    prioritizeReaderStyles$.next(s.prioritizeReaderStyles);
+  if (s.enableTextJustification !== undefined)
+    enableTextJustification$.next(s.enableTextJustification);
+  if (s.enableTextWrapPretty !== undefined) enableTextWrapPretty$.next(s.enableTextWrapPretty);
+  if (s.enableVerticalFontKerning !== undefined)
+    enableVerticalFontKerning$.next(s.enableVerticalFontKerning);
+  if (s.enableFontVPAL !== undefined) enableFontVPAL$.next(s.enableFontVPAL);
+  if (s.verticalTextOrientation !== undefined)
+    verticalTextOrientation$.next(s.verticalTextOrientation);
+  if (s.hideFurigana !== undefined) hideFurigana$.next(s.hideFurigana);
+  if (s.furiganaStyle !== undefined) furiganaStyle$.next(s.furiganaStyle);
+  if (s.swipeThreshold !== undefined) swipeThreshold$.next(s.swipeThreshold);
+  if (s.enableTapEdgeToFlip !== undefined) enableTapEdgeToFlip$.next(s.enableTapEdgeToFlip);
+  if (s.avoidPageBreak !== undefined) avoidPageBreak$.next(s.avoidPageBreak);
+  if (s.selectionToBookmarkEnabled !== undefined)
+    selectionToBookmarkEnabled$.next(s.selectionToBookmarkEnabled);
+  if (s.autoPositionOnResize !== undefined) autoPositionOnResize$.next(s.autoPositionOnResize);
+  if (s.customReadingPointEnabled !== undefined)
+    customReadingPointEnabled$.next(s.customReadingPointEnabled);
+  if (s.pauseTrackerOnCustomPointChange !== undefined)
+    pauseTrackerOnCustomPointChange$.next(s.pauseTrackerOnCustomPointChange);
+  if (s.disableWheelNavigation !== undefined)
+    disableWheelNavigation$.next(s.disableWheelNavigation);
+  if (s.confirmClose !== undefined) confirmClose$.next(s.confirmClose);
+  if (s.manualBookmark !== undefined) manualBookmark$.next(s.manualBookmark);
+  if (s.autoBookmark !== undefined) autoBookmark$.next(s.autoBookmark);
+  if (s.autoBookmarkTime !== undefined) autoBookmarkTime$.next(s.autoBookmarkTime);
+  if (s.autosaveHistoryEnabled !== undefined)
+    autosaveHistoryEnabled$.next(s.autosaveHistoryEnabled);
+  if (s.autosaveHistoryInterval !== undefined)
+    autosaveHistoryInterval$.next(s.autosaveHistoryInterval);
+  if (s.autosaveHistoryMaxCount !== undefined)
+    autosaveHistoryMaxCount$.next(s.autosaveHistoryMaxCount);
+  if (s.showCharacterCounter !== undefined) showCharacterCounter$.next(s.showCharacterCounter);
+  if (s.showPercentage !== undefined) showPercentage$.next(s.showPercentage);
+  if (s.showFooterChapterCharacterCounter !== undefined)
+    showFooterChapterCharacterCounter$.next(s.showFooterChapterCharacterCounter);
+  if (s.showFooterChapterPercentage !== undefined)
+    showFooterChapterPercentage$.next(s.showFooterChapterPercentage);
+
+  activeProfileId$.next(profile.id);
+}
+
+export function applyProfileById(id: string): boolean {
+  const profiles = readerProfiles$.getValue() || defaultReaderProfiles;
+  const target = profiles.find((p) => p.id === id);
+  if (target) {
+    applyProfile(target);
+    return true;
+  }
+  return false;
+}
+
+export function getActiveProfile(): ReaderProfile {
+  const profiles = readerProfiles$.getValue() || defaultReaderProfiles;
+  const activeId = activeProfileId$.getValue();
+  return profiles.find((p) => p.id === activeId) || profiles[0] || defaultReaderProfiles[0];
+}
+
+export function saveCurrentToActiveProfile(): void {
+  const profiles = [...(readerProfiles$.getValue() || defaultReaderProfiles)];
+  const activeId = activeProfileId$.getValue();
+  const index = profiles.findIndex((p) => p.id === activeId);
+  const now = Date.now();
+
+  if (index !== -1) {
+    profiles[index] = {
+      ...profiles[index],
+      updatedAt: now,
+      settings: getCurrentReaderSettings()
+    };
+  } else {
+    profiles.push({
+      id: activeId || `profile-${now}`,
+      name: 'Custom Profile',
+      updatedAt: now,
+      settings: getCurrentReaderSettings()
+    });
+  }
+
+  readerProfiles$.next(profiles);
+  lastProfilesModified$.next(now);
+}
+
+export function createProfile(
+  name: string,
+  icon: ProfileIconType = 'custom',
+  fromCurrent = true,
+  templateSettings?: ReaderProfileSettings
+): ReaderProfile {
+  const now = Date.now();
+  const id = `profile-${now}-${Math.random().toString(36).substring(2, 7)}`;
+  const settings = fromCurrent
+    ? getCurrentReaderSettings()
+    : templateSettings || defaultDesktopSettings;
+
+  const newProfile: ReaderProfile = {
+    id,
+    name: name.trim() || 'New Profile',
+    icon,
+    updatedAt: now,
+    settings
+  };
+
+  const profiles = [...(readerProfiles$.getValue() || defaultReaderProfiles), newProfile];
+  readerProfiles$.next(profiles);
+  activeProfileId$.next(id);
+  lastProfilesModified$.next(now);
+
+  return newProfile;
+}
+
+export function updateProfileMetadata(
+  id: string,
+  updates: { name?: string; icon?: ProfileIconType; description?: string }
+): void {
+  const profiles = [...(readerProfiles$.getValue() || defaultReaderProfiles)];
+  const index = profiles.findIndex((p) => p.id === id);
+  if (index === -1) return;
+
+  const now = Date.now();
+  profiles[index] = {
+    ...profiles[index],
+    ...updates,
+    updatedAt: now
+  };
+
+  readerProfiles$.next(profiles);
+  lastProfilesModified$.next(now);
+}
+
+export function deleteProfile(id: string): boolean {
+  const profiles = [...(readerProfiles$.getValue() || defaultReaderProfiles)];
+  if (profiles.length <= 1) return false;
+
+  const filtered = profiles.filter((p) => p.id !== id);
+  if (filtered.length === profiles.length) return false;
+
+  const activeId = activeProfileId$.getValue();
+  if (activeId === id) {
+    const nextActive = filtered[0];
+    applyProfile(nextActive);
+  }
+
+  readerProfiles$.next(filtered);
+  lastProfilesModified$.next(Date.now());
+  return true;
+}
+
+export function duplicateProfile(id: string): ReaderProfile | undefined {
+  const profiles = [...(readerProfiles$.getValue() || defaultReaderProfiles)];
+  const source = profiles.find((p) => p.id === id);
+  if (!source) return undefined;
+
+  const now = Date.now();
+  const newProfile: ReaderProfile = {
+    ...source,
+    id: `profile-${now}-${Math.random().toString(36).substring(2, 7)}`,
+    name: `${source.name} (Copy)`,
+    isDefault: false,
+    updatedAt: now,
+    settings: { ...source.settings }
+  };
+
+  profiles.push(newProfile);
+  readerProfiles$.next(profiles);
+  activeProfileId$.next(newProfile.id);
+  lastProfilesModified$.next(now);
+
+  return newProfile;
+}
+
+export function hasUnsavedChanges(profile: ReaderProfile): boolean {
+  if (!profile || !profile.settings) return false;
+  const current = getCurrentReaderSettings();
+  const saved = profile.settings;
+
+  for (const key of Object.keys(current) as (keyof ReaderProfileSettings)[]) {
+    if (current[key] !== saved[key]) {
+      return true;
+    }
+  }
+  return false;
+}
+
+export function revertActiveProfile(): void {
+  const active = getActiveProfile();
+  if (active) {
+    applyProfile(active);
+  }
+}
+
+export function mergeProfiles(
+  localProfiles: ReaderProfile[] = [],
+  remoteProfiles: ReaderProfile[] = [],
+  isNewOnly = false,
+  fallbackLastModified = 0
+): { mergedProfiles: ReaderProfile[]; newLastModified: number } {
+  const mergedMap = new Map<string, ReaderProfile>();
+  let newLastModified = fallbackLastModified;
+
+  // Add all local profiles to map
+  for (const local of localProfiles) {
+    mergedMap.set(local.id, local);
+    if (local.updatedAt > newLastModified) {
+      newLastModified = local.updatedAt;
+    }
+  }
+
+  // Merge remote profiles
+  for (const remote of remoteProfiles) {
+    const existing = mergedMap.get(remote.id);
+    if (!existing) {
+      mergedMap.set(remote.id, remote);
+      if (remote.updatedAt > newLastModified) {
+        newLastModified = remote.updatedAt;
+      }
+    } else if (!isNewOnly && remote.updatedAt > existing.updatedAt) {
+      mergedMap.set(remote.id, remote);
+      if (remote.updatedAt > newLastModified) {
+        newLastModified = remote.updatedAt;
+      }
+    }
+  }
+
+  const mergedProfiles = Array.from(mergedMap.values());
+  return { mergedProfiles, newLastModified };
+}
+
+export function exportProfilesAsJson(): void {
+  if (!browser) return;
+
+  const payload: ReaderProfilesSyncPayload = {
+    version: 1,
+    lastModified: lastProfilesModified$.getValue() || Date.now(),
+    profiles: readerProfiles$.getValue() || defaultReaderProfiles,
+    customThemes: customThemes$.getValue() || {}
+  };
+
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const dateStr = new Date().toISOString().split('T')[0];
+  a.href = url;
+  a.download = `ttu-reader-profiles-${dateStr}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+export function importProfilesFromJson(jsonString: string): {
+  success: boolean;
+  count: number;
+  error?: string;
+} {
+  try {
+    const data = JSON.parse(jsonString) as ReaderProfilesSyncPayload;
+    if (!data || !Array.isArray(data.profiles) || data.profiles.length === 0) {
+      return { success: false, count: 0, error: 'Invalid profile file format' };
+    }
+
+    const localProfiles = readerProfiles$.getValue() || defaultReaderProfiles;
+    const { mergedProfiles, newLastModified } = mergeProfiles(
+      localProfiles,
+      data.profiles,
+      false,
+      data.lastModified || Date.now()
+    );
+
+    readerProfiles$.next(mergedProfiles);
+    lastProfilesModified$.next(newLastModified);
+
+    if (data.customThemes && typeof data.customThemes === 'object') {
+      customThemes$.next({
+        ...(customThemes$.getValue() || {}),
+        ...data.customThemes
+      });
+    }
+
+    return { success: true, count: data.profiles.length };
+  } catch (err: any) {
+    return { success: false, count: 0, error: err?.message || 'Failed to parse JSON' };
+  }
+}

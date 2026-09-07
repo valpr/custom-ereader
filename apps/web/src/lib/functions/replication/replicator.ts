@@ -153,6 +153,7 @@ export async function importBackup(
       StorageDataType.PROGRESS,
       StorageDataType.STATISTICS,
       StorageDataType.READING_GOALS,
+      StorageDataType.PROFILES,
       StorageDataType.AUDIOBOOK,
       StorageDataType.SUBTITLE,
       StorageDataType.USER_BOOKMARKS
@@ -169,8 +170,9 @@ export async function replicateData(
   dataToReplicate: StorageDataType[],
   cancelSignal?: AbortSignal
 ) {
+  const nonBookOperations = [StorageDataType.READING_GOALS, StorageDataType.PROFILES];
   const bookOperationsLength = dataToReplicate.filter(
-    (entry) => entry !== StorageDataType.READING_GOALS
+    (entry) => !nonBookOperations.includes(entry)
   ).length;
   const otherOperationsLength = dataToReplicate.length - bookOperationsLength;
   // recent check -> source retrieval -> target storage per data type + retrieve and store cover
@@ -182,6 +184,7 @@ export async function replicateData(
   const processProgressData = dataToReplicate.includes(StorageDataType.PROGRESS);
   const processStatistics = dataToReplicate.includes(StorageDataType.STATISTICS);
   const processReadingGoals = dataToReplicate.includes(StorageDataType.READING_GOALS);
+  const processProfiles = dataToReplicate.includes(StorageDataType.PROFILES);
   const processAudioBook = dataToReplicate.includes(StorageDataType.AUDIOBOOK);
   const processSubtitleData = dataToReplicate.includes(StorageDataType.SUBTITLE);
   const processUserBookmarks = dataToReplicate.includes(StorageDataType.USER_BOOKMARKS);
@@ -417,6 +420,43 @@ export async function replicateData(
           errorMessage = handleErrorDuringReplication(
             error,
             `Error Processing Reading Goals: `,
+            [replicationLimiter],
+            progressBaseForOtherOperations
+          );
+        }
+      })
+    );
+  }
+
+  if (processProfiles) {
+    replicationTasks.push(
+      replicationLimiter(async () => {
+        try {
+          if (
+            await targetHandler.areProfilesPresentAndUpToDate(
+              await sourceHandler.getFilenameForRecentCheck(BaseStorageHandler.profilesFilePrefix)
+            )
+          ) {
+            checkCancelAndProgress(cancelSignal, true, true);
+            checkCancelAndProgress(cancelSignal, true, true);
+          } else {
+            const { profiles, customThemes, lastProfilesModified } =
+              await sourceHandler.getProfiles();
+
+            checkCancelAndProgress(cancelSignal);
+
+            if (profiles) {
+              await targetHandler.saveProfiles(profiles, lastProfilesModified, customThemes);
+            }
+
+            checkCancelAndProgress(cancelSignal, false, !profiles);
+          }
+
+          processed += 1;
+        } catch (error) {
+          errorMessage = handleErrorDuringReplication(
+            error,
+            `Error Processing Reader Profiles: `,
             [replicationLimiter],
             progressBaseForOtherOperations
           );

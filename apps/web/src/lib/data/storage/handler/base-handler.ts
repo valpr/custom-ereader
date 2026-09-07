@@ -18,6 +18,8 @@ import {
 import type { Section } from '$lib/data/database/books-db/versions/v4/books-db-v4';
 import { storageRootName } from '$lib/data/env';
 import { MergeMode } from '$lib/data/merge-mode';
+import type { ReaderProfile } from '$lib/data/profiles/profile-types';
+import type { ThemeOption } from '$lib/data/theme-option';
 import { InternalStorageSources, type StorageKey } from '$lib/data/storage/storage-types';
 import { exporterVersion } from '$lib/functions/replication/replicator';
 import { throwIfAborted } from '$lib/functions/replication/replication-error';
@@ -81,6 +83,8 @@ export abstract class BaseStorageHandler {
     referenceFilename: string | undefined
   ): Promise<boolean>;
 
+  abstract areProfilesPresentAndUpToDate(referenceFilename: string | undefined): Promise<boolean>;
+
   abstract isAudioBookPresentAndUpToDate(referenceFilename: string | undefined): Promise<boolean>;
 
   abstract isSubtitleDataPresentAndUpToDate(
@@ -109,6 +113,12 @@ export abstract class BaseStorageHandler {
     lastGoalModified: number;
   }>;
 
+  abstract getProfiles(): Promise<{
+    profiles: ReaderProfile[] | undefined;
+    customThemes?: Record<string, ThemeOption>;
+    lastProfilesModified: number;
+  }>;
+
   abstract getAudioBook(): Promise<BooksDbAudioBook | File | undefined>;
 
   abstract getSubtitleData(): Promise<BooksDbSubtitleData | File | undefined>;
@@ -129,6 +139,12 @@ export abstract class BaseStorageHandler {
 
   abstract saveReadingGoals(data: BooksDbReadingGoal[], lastGoalModified: number): Promise<void>;
 
+  abstract saveProfiles(
+    data: ReaderProfile[],
+    lastProfilesModified: number,
+    customThemes?: Record<string, ThemeOption>
+  ): Promise<void>;
+
   abstract saveAudioBook(data: BooksDbAudioBook | File): Promise<void>;
 
   abstract saveSubtitleData(data: BooksDbSubtitleData | File): Promise<void>;
@@ -142,6 +158,8 @@ export abstract class BaseStorageHandler {
   static rootName = storageRootName;
 
   static readingGoalsFilePrefix = 'ttu-user-goals_';
+
+  static profilesFilePrefix = 'ttu-user-profiles_';
 
   storageType: StorageKey;
 
@@ -158,6 +176,8 @@ export abstract class BaseStorageHandler {
   protected statisticsMergeMode = MergeMode.MERGE;
 
   protected readingGoalsMergeMode = MergeMode.MERGE;
+
+  protected profilesMergeMode = MergeMode.MERGE;
 
   protected askForStorageUnlock = true;
 
@@ -179,7 +199,10 @@ export abstract class BaseStorageHandler {
 
   protected rootFiles = new Map<string, ExternalFile>();
 
-  protected validRootFiles = [BaseStorageHandler.readingGoalsFilePrefix];
+  protected validRootFiles = [
+    BaseStorageHandler.readingGoalsFilePrefix,
+    BaseStorageHandler.profilesFilePrefix
+  ];
 
   constructor(window: Window, storageType: StorageKey) {
     this.window = window;
@@ -310,6 +333,10 @@ export abstract class BaseStorageHandler {
 
   static getReadingGoalsFileName(lastGoalModified: number) {
     return `${BaseStorageHandler.readingGoalsFilePrefix}${exporterVersion}_${currentDbVersion}_${lastGoalModified}.json`;
+  }
+
+  static getProfilesFileName(lastProfilesModified: number) {
+    return `${BaseStorageHandler.profilesFilePrefix}${exporterVersion}_${currentDbVersion}_${lastProfilesModified}.json`;
   }
 
   static getImageMimeTypeFromExtension(value: string) {
@@ -760,6 +787,16 @@ export abstract class BaseStorageHandler {
       exporterVersion: +parts[1],
       dbVersion: +parts[2],
       lastGoalModified: +parts[3]
+    };
+  }
+
+  protected static getProfilesMetadata(filename: string) {
+    const parts = filename.split('_').map((part) => part.replace(/\.json$/, ''));
+
+    return {
+      exporterVersion: +parts[1],
+      dbVersion: +parts[2],
+      lastProfilesModified: +parts[3]
     };
   }
 
