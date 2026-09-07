@@ -52,7 +52,7 @@
             tabindex="0"
             role="button"
             title="Book selected"
-            class="absolute inset-0 bg-gray-700 bg-opacity-20"
+            class="absolute inset-0 bg-[var(--astryx-color-overlay,rgba(0,0,0,0.15))]"
             on:click={() => onBookCardClick(bookCard.id)}
             on:keyup={dummyFn}
           >

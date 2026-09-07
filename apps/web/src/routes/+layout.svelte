@@ -1,11 +1,19 @@
 <script lang="ts">
   import { browser } from '$app/environment';
   import { page } from '$app/stores';
+  import { onMount } from 'svelte';
   import DomainHint from '$lib/components/domain-hint.svelte';
   import { basePath, clearConsoleOnReload } from '$lib/data/env';
   import { dialogManager, type Dialog } from '$lib/data/dialog-manager';
   import { userFontsCacheName, type UserFont } from '$lib/data/fonts';
-  import { fontFamilyGroupOne$, isOnline$, userFonts$ } from '$lib/data/store';
+  import {
+    appThemeMode$,
+    getSystemAppTheme,
+    type AppTheme,
+    fontFamilyGroupOne$,
+    isOnline$,
+    userFonts$
+  } from '$lib/data/store';
   import { dummyFn, isMobile, isMobile$ } from '$lib/functions/utils';
   import { MetaTags } from 'svelte-meta-tags';
   import '../app.scss';
@@ -14,11 +22,30 @@
   let dialogs: Dialog[] = [];
   let clickOnCloseDisabled = false;
   let zIndex = '';
+  let effectiveTheme: AppTheme = 'neutral';
 
   $: if (browser) {
     isMobile$.next(isMobile(window));
     addUserFonts($userFonts$);
+    if ($appThemeMode$ === 'system') {
+      effectiveTheme = getSystemAppTheme();
+    } else {
+      effectiveTheme = $appThemeMode$;
+    }
+    document.documentElement.setAttribute('data-astryx-theme', effectiveTheme);
   }
+
+  onMount(() => {
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleColorSchemeChange = () => {
+      if ($appThemeMode$ === 'system') {
+        effectiveTheme = getSystemAppTheme();
+        document.documentElement.setAttribute('data-astryx-theme', effectiveTheme);
+      }
+    };
+    mediaQuery.addEventListener('change', handleColorSchemeChange);
+    return () => mediaQuery.removeEventListener('change', handleColorSchemeChange);
+  });
 
   if (clearConsoleOnReload && import.meta.hot) {
     // eslint-disable-next-line no-console
@@ -109,7 +136,8 @@
     <div
       tabindex="0"
       role="button"
-      class="tap-highlight-transparent absolute inset-0 bg-black/[.32]"
+      class="tap-highlight-transparent absolute inset-0 backdrop-blur-[2px] transition-opacity"
+      style="background-color: var(--astryx-color-overlay, rgba(0, 0, 0, 0.4));"
       on:click={() => {
         if (!clickOnCloseDisabled) {
           closeAllDialogs();

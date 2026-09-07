@@ -7,6 +7,7 @@
   --astryx-color-canvas: #000000;
   --astryx-color-surface: #0a0a0c;
   --astryx-color-surface-subtle: #141418;
+  --astryx-color-surface-hover: #141418;
   --astryx-color-surface-active: #1f1f24;
   --astryx-color-surface-elevated: #111115;
   --astryx-color-overlay: rgba(0, 0, 0, 0.85);

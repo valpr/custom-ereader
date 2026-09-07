@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html class="writing-horizontal-tb h-full w-full" lang="ja">
   <head>
     <meta charset="utf-8" />
@@ -23,6 +23,20 @@
     <link rel="manifest" href="%sveltekit.assets%/manifest.webmanifest" />
     <meta name="theme-color" content="#37474f" />
     <link rel="mask-icon" href="%sveltekit.assets%/safari-pinned-tab.svg" color="#37474f" />
+    <script>
+      try {
+        var savedTheme = localStorage.getItem('appTheme') || 'system';
+        var theme = savedTheme;
+        if (savedTheme === 'system') {
+          var isDark =
+            window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+          theme = isDark ? 'gothic' : 'neutral';
+        }
+        document.documentElement.setAttribute('data-astryx-theme', theme);
+      } catch (e) {
+        document.documentElement.setAttribute('data-astryx-theme', 'neutral');
+      }
+    </script>
     %sveltekit.head%
   </head>
   <body class="h-full w-full break-words font-sans">

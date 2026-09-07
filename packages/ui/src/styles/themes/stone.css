@@ -8,6 +8,7 @@
   --astryx-color-canvas: #f6f5f0;
   --astryx-color-surface: #fdfcf7;
   --astryx-color-surface-subtle: #eceae1;
+  --astryx-color-surface-hover: #eceae1;
   --astryx-color-surface-active: #dfdbcf;
   --astryx-color-surface-elevated: #ffffff;
   --astryx-color-overlay: rgba(50, 45, 40, 0.4);
@@ -46,6 +47,7 @@
   --astryx-color-canvas: #1c1917;
   --astryx-color-surface: #262220;
   --astryx-color-surface-subtle: #332d29;
+  --astryx-color-surface-hover: #332d29;
   --astryx-color-surface-active: #443c37;
   --astryx-color-surface-elevated: #2d2825;
   --astryx-color-overlay: rgba(0, 0, 0, 0.7);
