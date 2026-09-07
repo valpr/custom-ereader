@@ -3,7 +3,8 @@
  * Minimalist, balanced, and modern. Default starting theme.
  */
 
-:root,
+/* Zero-specificity fallback so any data-astryx-theme attribute always wins */
+:where(:root),
 [data-astryx-theme='neutral'],
 [data-astryx-theme='neutral'][data-theme='light'] {
   --astryx-color-canvas: #fafafa;
@@ -44,7 +45,9 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) {
+  /* Only apply dark neutral tokens when the theme is explicitly neutral (or unset via :where) */
+  :where(:root),
+  [data-astryx-theme='neutral'] {
     --astryx-color-canvas: #09090b;
     --astryx-color-surface: #121214;
     --astryx-color-surface-subtle: #1c1c20;

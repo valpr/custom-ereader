@@ -66,13 +66,6 @@ import { writableStringLocalStorageSubject } from './internal/writable-string-lo
 export type AppTheme = 'neutral' | 'stone' | 'gothic';
 export type AppThemeMode = 'system' | AppTheme;
 
-export function getSystemAppTheme(): AppTheme {
-  if (typeof window !== 'undefined' && window.matchMedia) {
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'gothic' : 'neutral';
-  }
-  return 'neutral';
-}
-
 export const appThemeMode$ = writableStringLocalStorageSubject<AppThemeMode>()(
   'appTheme',
   'system'
@@ -272,6 +265,8 @@ export const oneDriveStorageSource$ = writableStringLocalStorageSubject()(
 export const fsStorageSource$ = writableStringLocalStorageSubject()('fsStorageSource', '');
 
 export const syncTarget$ = writableStringLocalStorageSubject()('syncTarget', '');
+
+export const lastSyncTimestamp$ = writableNumberLocalStorageSubject()('lastSyncTimestamp', 0);
 
 export const keepLocalStatisticsOnDeletion$ = writableBooleanLocalStorageSubject()(
   'keepLocalStatisticsOnDeletion',

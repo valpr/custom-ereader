@@ -8,7 +8,7 @@ import { BackupStorageHandler } from '$lib/data/storage/handler/backup-handler';
 import { BaseStorageHandler, FilePrefix } from '$lib/data/storage/handler/base-handler';
 import { storage } from '$lib/data/window/navigator/storage';
 import { StorageDataType, StorageKey } from '$lib/data/storage/storage-types';
-import { database, requestPersistentStorage$ } from '$lib/data/store';
+import { database, lastSyncTimestamp$, requestPersistentStorage$ } from '$lib/data/store';
 import loadEpub from '$lib/functions/file-loaders/epub/load-epub';
 import loadHtmlz from '$lib/functions/file-loaders/htmlz/load-htmlz';
 import loadTxt from '$lib/functions/file-loaders/txt/load-txt';
@@ -473,6 +473,15 @@ export async function replicateData(
       .catch((error) => {
         errorMessage = error.message;
       });
+  }
+
+  if (
+    !errorMessage &&
+    !cancelSignal?.aborted &&
+    !(targetHandler instanceof BackupStorageHandler) &&
+    !(sourceHandler instanceof BackupStorageHandler)
+  ) {
+    lastSyncTimestamp$.next(Date.now());
   }
 
   return errorMessage;

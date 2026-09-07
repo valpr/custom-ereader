@@ -28,6 +28,7 @@ This repository is a personalized fork of the excellent [ttu-ttu/ebook-reader](h
 - **Completely Client-Side & Private**: All books, progress, and settings are stored locally in your browser via IndexedDB—no external servers required.
 - **Offline Capable (PWA)**: Installable as a Progressive Web App for offline reading on desktop and mobile.
 - **Reading Tracker & Statistics**: Track characters read, reading time, and reading sessions.
+- **Responsive Reader Header**: Icon toolbar progressively collapses into an overflow menu (`⋯`) on narrow screens, keeping all controls reachable on mobile.
 
 ---
 
@@ -62,10 +63,28 @@ _Base ttu-reader only supported a single reading bookmark representing your curr
 - **Auto-Replication**: Automatically triggers background cloud/filesystem sync whenever bookmarks are created, modified, or removed.
 - **Export Selection UI**: Added a dedicated "User Bookmarks" checkbox in the export modal, enabled by default in export preferences.
 
+### 🎨 Astryx UI System & Responsive Header
+
+_The reader UI has been fully migrated to the custom `@custom-ereader/ui` Astryx design system (available in `packages/ui`):_
+
+- **Astryx Component Library**: Dedicated monorepo UI package (`@custom-ereader/ui`) providing `Button`, `IconButton`, `ButtonGroup`, `ToggleButton`, `ToggleButtonGroup`, `SegmentedControl`, `Slider`, `Switch`, `Input`, `Select`, `Card`, `Dialog`, `Tooltip`, `List`, `ListItem`, `ListSection`, `Tabs`, `TopBar`, and `OverflowList`.
+- **Semantic Theme Tokens**: All components use Astryx semantic variables (`var(--astryx-...)`) with theme variants (`neutral`, `stone`, `gothic`).
+- **TopBar Migration**: Reader and settings top bars replaced with the Astryx `TopBar` component for consistent styling and mobile optimization.
+- **Responsive OverflowList Header**: Reader icon toolbar uses `OverflowList` for smooth progressive collapse — lower-priority icons automatically move into an ellipsis (`⋯`) overflow menu as the window narrows. Settings, Manager, and Statistics icons are always visible as the left-most priority group.
+- **Settings UI Overhaul**: Reader, Data, Statistics, and Reading Goals settings panels migrated to Astryx `List`/`ListItem`/`Tabs` layouts with live typography and font sample previews.
+- **App Rebrand**: Browser tab and PWA title updated to **Valpr Reader** with refreshed app icons and favicons.
+
 ### 🚀 CI/CD & Deployment
 
 - **Automated GitHub Pages Deployment**: Fully automated build and deploy workflow via GitHub Actions (`pages.yml`).
 - **Configurable Base Path**: Native support for subpath hosting (`svelte.config.js` with `BASE_PATH`) and automated `.nojekyll` inclusion.
+
+### 🧪 E2E Test Suite (Playwright)
+
+- **Playwright Integration**: Comprehensive E2E test suite in `apps/web/tests/` covering 22 tests across 7 spec files.
+- **IndexedDB Book Fixture**: A `book-fixture.ts` helper seeds a real EPUB into IndexedDB so tests run against authentic reader state without mocking.
+- **Coverage**: Reader loading, header responsiveness (OverflowList collapse), full dual-mode matrix (paginated/continuous × horizontal/vertical), page navigation, bookmark creation and drawer, TOC drawer, and all header controls.
+- **CI-Ready**: Configured with parallel execution, CI retry logic, and a dedicated dev server on port 5174.
 
 ---
 

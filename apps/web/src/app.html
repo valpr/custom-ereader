@@ -26,12 +26,7 @@
     <script>
       try {
         var savedTheme = localStorage.getItem('appTheme') || 'system';
-        var theme = savedTheme;
-        if (savedTheme === 'system') {
-          var isDark =
-            window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-          theme = isDark ? 'gothic' : 'neutral';
-        }
+        var theme = savedTheme === 'stone' || savedTheme === 'gothic' ? savedTheme : 'neutral';
         document.documentElement.setAttribute('data-astryx-theme', theme);
       } catch (e) {
         document.documentElement.setAttribute('data-astryx-theme', 'neutral');
@@ -39,7 +34,7 @@
     </script>
     %sveltekit.head%
   </head>
-  <body class="h-full w-full break-words font-sans">
+  <body class="h-full w-full break-words font-sans" data-sveltekit-preload-data="hover">
     <div class="h-full w-full">%sveltekit.body%</div>
   </body>
 </html>
