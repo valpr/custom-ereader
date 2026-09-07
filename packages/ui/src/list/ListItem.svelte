@@ -365,6 +365,26 @@
     color: var(--astryx-color-fg-muted, #71717a);
   }
 
+  @media (max-width: 640px) {
+    .astryx-list-item-content-row {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: var(--astryx-space-2, 8px);
+    }
+
+    [data-layout='stacked'] .astryx-list-item-stacked-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: var(--astryx-space-2, 8px);
+    }
+
+    .astryx-list-item-suffix {
+      margin-left: 0;
+      width: 100%;
+      justify-content: flex-start;
+    }
+  }
+
   /* Interactive hover and active feedback */
   .is-interactive:not(.is-disabled) .astryx-list-item-inner:hover {
     background-color: var(--astryx-color-surface-subtle, #f4f4f5);
