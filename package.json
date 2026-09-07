@@ -10,7 +10,8 @@
     "check": "eslint --fix-dry-run .",
     "check:pretty": "prettier --debug-check .",
     "lint": "eslint --fix .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "test:e2e": "pnpm -F web test:e2e"
   },
   "devDependencies": {
     "@commitlint/cli": "21.2.2",

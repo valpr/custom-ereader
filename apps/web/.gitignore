@@ -5,3 +5,7 @@ package
 .env
 .firebaserc
 *.local
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/

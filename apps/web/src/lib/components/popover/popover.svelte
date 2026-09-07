@@ -28,13 +28,10 @@
   let iconElement: HTMLElement;
   let popoverElement: HTMLElement;
 
-  let id: symbol;
+  const id = Symbol('popover');
   let instance: Instance;
   let isOpen = false;
 
-  $: if (browser) {
-    id = Symbol('popover');
-  }
   $: if (isOpen && singlePopover && !$popovers.includes(id)) {
     isOpen = false;
   }
