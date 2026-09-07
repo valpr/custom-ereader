@@ -7,6 +7,7 @@
     faChartLine,
     faCog,
     faCrosshairs,
+    faEllipsis,
     faExpand,
     faFlag,
     faHashtag,
@@ -19,7 +20,6 @@
   } from '@fortawesome/free-solid-svg-icons';
   import { readerImageGalleryPictures$ } from '$lib/components/book-reader/book-reader-image-gallery/book-reader-image-gallery';
   import { mergeEntries } from '$lib/components/merged-header-icon/merged-entries';
-  import MergedHeaderIcon from '$lib/components/merged-header-icon/merged-header-icon.svelte';
   import Popover from '$lib/components/popover/popover.svelte';
   import { IconButton, Tooltip, TopBar } from '@custom-ereader/ui';
   import { customReadingPointEnabled$, viewMode$ } from '$lib/data/store';
@@ -78,47 +78,20 @@
     dispatch('bookmarkClick');
   }
 
-  const customReadingPointMenuItems: {
-    label: string;
-    action: any;
-  }[] = [
-    ...(hasCustomReadingPoint ? [{ label: 'Show Point', action: 'showCustomReadingPoint' }] : []),
-    { label: 'Set Point', action: 'setCustomReadingPoint' },
-    ...(hasCustomReadingPoint ? [{ label: 'Reset Point', action: 'resetCustomReadingPoint' }] : [])
+  $: customReadingPointMenuItems = [
+    ...(hasCustomReadingPoint
+      ? [{ label: 'Show Point', action: 'showCustomReadingPoint' as const }]
+      : []),
+    { label: 'Set Point', action: 'setCustomReadingPoint' as const },
+    ...(hasCustomReadingPoint
+      ? [{ label: 'Reset Point', action: 'resetCustomReadingPoint' as const }]
+      : [])
   ];
 
   let customReadingPointMenuElm: Popover;
-
-  let menuItems: {
-    routeId: string;
-    label: string;
-    icon: IconDefinition;
-    title: string;
-  }[] = [];
+  let overflowMenuElm: Popover;
 
   $: isOldUrl = browser && isOnOldUrl(window);
-
-  $: {
-    const items = [];
-
-    items.push(mergeEntries.SETTINGS, mergeEntries.MANAGE);
-
-    if (isOldUrl) {
-      items.push(mergeEntries.DOMAIN_HINT);
-    } else {
-      items.push(mergeEntries.STATISTICS);
-    }
-
-    if (hasText) {
-      items.push(mergeEntries.JUMP_TO_POSITION);
-    }
-
-    if ($readerImageGalleryPictures$.length) {
-      items.push(mergeEntries.READER_IMAGE_GALLERY);
-    }
-
-    menuItems = items;
-  }
 
   function dispatchCustomReadingPointAction(action: any) {
     dispatch(action);
@@ -243,65 +216,66 @@
       </Tooltip>
     {/if}
 
-    <Tooltip text="Complete Book">
-      <IconButton
-        label="Complete Book"
-        size="md"
-        variant="ghost"
-        on:click={() => dispatch('completeBook')}
-      >
-        <Fa icon={faFlag} class="text-base" />
-      </IconButton>
-    </Tooltip>
-
-    {#if $customReadingPointEnabled$ || $viewMode$ === ViewMode.Paginated}
-      <Popover
-        placement="bottom"
-        fallbackPlacements={['bottom-end', 'bottom-start']}
-        yOffset={4}
-        bind:this={customReadingPointMenuElm}
-      >
-        <div
-          slot="icon"
-          class="flex h-9 w-9 cursor-pointer items-center justify-center rounded-[var(--astryx-radius-md,6px)] text-[var(--astryx-color-fg-muted)] transition-colors hover:bg-[var(--astryx-color-surface-hover)] hover:text-[var(--astryx-color-fg-primary)]"
-          title="Open Custom Point Actions"
-        >
-          <Fa icon={faCrosshairs} class="text-base" />
-        </div>
-        <div
-          class="min-w-[8.5rem] rounded-lg border border-[var(--astryx-color-border-subtle)] bg-[var(--astryx-color-surface)] py-1 shadow-lg"
-          slot="content"
-        >
-          {#each customReadingPointMenuItems as actionItem (actionItem.label)}
-            <div
-              tabindex="0"
-              role="button"
-              class="cursor-pointer px-4 py-2 text-left text-sm text-[var(--astryx-color-fg-primary)] transition-colors hover:bg-[var(--astryx-color-surface-hover)]"
-              on:click={() => dispatchCustomReadingPointAction(actionItem.action)}
-              on:keyup={dummyFn}
-            >
-              {actionItem.label}
-            </div>
-          {/each}
-        </div>
-      </Popover>
-    {/if}
-
-    {#if showFullscreenButton}
-      <Tooltip text="Toggle Fullscreen">
+    <!-- Desktop Secondary Icons (hidden on mobile / narrow screens) -->
+    <div class="hidden sm:flex items-center gap-0.5 sm:gap-1">
+      <Tooltip text="Complete Book">
         <IconButton
-          label="Toggle Fullscreen"
+          label="Complete Book"
           size="md"
           variant="ghost"
-          on:click={() => dispatch('fullscreenClick')}
+          on:click={() => dispatch('completeBook')}
         >
-          <Fa icon={faExpand} class="text-base" />
+          <Fa icon={faFlag} class="text-base" />
         </IconButton>
       </Tooltip>
-    {/if}
 
-    {#if hasText}
-      <div class="hidden sm:flex items-center">
+      {#if $customReadingPointEnabled$ || $viewMode$ === ViewMode.Paginated}
+        <Popover
+          placement="bottom"
+          fallbackPlacements={['bottom-end', 'bottom-start']}
+          yOffset={4}
+          bind:this={customReadingPointMenuElm}
+        >
+          <div
+            slot="icon"
+            class="flex h-9 w-9 cursor-pointer items-center justify-center rounded-[var(--astryx-radius-md,6px)] text-[var(--astryx-color-fg-muted)] transition-colors hover:bg-[var(--astryx-color-surface-hover)] hover:text-[var(--astryx-color-fg-primary)]"
+            title="Open Custom Point Actions"
+          >
+            <Fa icon={faCrosshairs} class="text-base" />
+          </div>
+          <div
+            class="min-w-[8.5rem] rounded-lg border border-[var(--astryx-color-border-subtle)] bg-[var(--astryx-color-surface)] py-1 shadow-lg"
+            slot="content"
+          >
+            {#each customReadingPointMenuItems as actionItem (actionItem.label)}
+              <div
+                tabindex="0"
+                role="button"
+                class="cursor-pointer px-4 py-2 text-left text-sm text-[var(--astryx-color-fg-primary)] transition-colors hover:bg-[var(--astryx-color-surface-hover)]"
+                on:click={() => dispatchCustomReadingPointAction(actionItem.action)}
+                on:keyup={dummyFn}
+              >
+                {actionItem.label}
+              </div>
+            {/each}
+          </div>
+        </Popover>
+      {/if}
+
+      {#if showFullscreenButton}
+        <Tooltip text="Toggle Fullscreen">
+          <IconButton
+            label="Toggle Fullscreen"
+            size="md"
+            variant="ghost"
+            on:click={() => dispatch('fullscreenClick')}
+          >
+            <Fa icon={faExpand} class="text-base" />
+          </IconButton>
+        </Tooltip>
+      {/if}
+
+      {#if hasText}
         <Tooltip text={mergeEntries.JUMP_TO_POSITION.title}>
           <IconButton
             label={mergeEntries.JUMP_TO_POSITION.title}
@@ -312,11 +286,9 @@
             <Fa icon={faHashtag} class="text-base" />
           </IconButton>
         </Tooltip>
-      </div>
-    {/if}
+      {/if}
 
-    {#if $readerImageGalleryPictures$.length}
-      <div class="hidden sm:flex items-center">
+      {#if $readerImageGalleryPictures$.length}
         <Tooltip text={mergeEntries.READER_IMAGE_GALLERY.title}>
           <IconButton
             label={mergeEntries.READER_IMAGE_GALLERY.title}
@@ -327,28 +299,121 @@
             <Fa icon={faImages} class="text-base" />
           </IconButton>
         </Tooltip>
-      </div>
-    {/if}
+      {/if}
+    </div>
 
-    <MergedHeaderIcon
-      mobileOnly
-      disableRouteNavigation
-      items={menuItems}
-      on:action={({ detail }) => {
-        if (detail === mergeEntries.STATISTICS.label) {
-          dispatch('statisticsClick');
-        } else if (detail === mergeEntries.JUMP_TO_POSITION.label) {
-          dispatch('jumpClick');
-        } else if (detail === mergeEntries.READER_IMAGE_GALLERY.label) {
-          dispatch('readerImageGalleryClick');
-        } else if (detail === mergeEntries.SETTINGS.label) {
-          dispatch('settingsClick');
-        } else if (detail === mergeEntries.DOMAIN_HINT.label) {
-          dispatch('domainHintClick');
-        } else if (detail === mergeEntries.MANAGE.label) {
-          dispatch('bookManagerClick');
-        }
-      }}
-    />
+    <!-- Mobile Overflow Menu (visible on narrow screens when space is constrained) -->
+    <div class="flex sm:hidden items-center">
+      <Popover
+        placement="bottom"
+        fallbackPlacements={['bottom-end', 'bottom-start']}
+        yOffset={4}
+        bind:this={overflowMenuElm}
+      >
+        <div slot="icon">
+          <IconButton variant="ghost" size="md" label="More Actions">
+            <Fa icon={faEllipsis} class="text-base" />
+          </IconButton>
+        </div>
+        <div
+          class="w-52 py-1.5 rounded-lg border border-[var(--astryx-color-border-subtle)] bg-[var(--astryx-color-surface)] text-[var(--astryx-color-fg-primary)] shadow-lg text-sm"
+          slot="content"
+        >
+          <button
+            type="button"
+            class="w-full flex items-center gap-2.5 px-3.5 py-2 text-sm text-left text-[var(--astryx-color-fg-primary)] hover:bg-[var(--astryx-color-surface-hover)] focus-visible:bg-[var(--astryx-color-surface-hover)] outline-none transition-colors cursor-pointer"
+            on:click={() => {
+              dispatch('completeBook');
+              overflowMenuElm?.toggleOpen();
+            }}
+          >
+            <Fa icon={faFlag} class="w-4 text-center opacity-70" />
+            <span>Complete Book</span>
+          </button>
+
+          {#if $customReadingPointEnabled$ || $viewMode$ === ViewMode.Paginated}
+            {#if hasCustomReadingPoint}
+              <button
+                type="button"
+                class="w-full flex items-center gap-2.5 px-3.5 py-2 text-sm text-left text-[var(--astryx-color-fg-primary)] hover:bg-[var(--astryx-color-surface-hover)] focus-visible:bg-[var(--astryx-color-surface-hover)] outline-none transition-colors cursor-pointer"
+                on:click={() => {
+                  dispatch('showCustomReadingPoint');
+                  overflowMenuElm?.toggleOpen();
+                }}
+              >
+                <Fa icon={faCrosshairs} class="w-4 text-center opacity-70" />
+                <span>Show Reading Point</span>
+              </button>
+            {/if}
+            <button
+              type="button"
+              class="w-full flex items-center gap-2.5 px-3.5 py-2 text-sm text-left text-[var(--astryx-color-fg-primary)] hover:bg-[var(--astryx-color-surface-hover)] focus-visible:bg-[var(--astryx-color-surface-hover)] outline-none transition-colors cursor-pointer"
+              on:click={() => {
+                dispatch('setCustomReadingPoint');
+                overflowMenuElm?.toggleOpen();
+              }}
+            >
+              <Fa icon={faCrosshairs} class="w-4 text-center opacity-70" />
+              <span>Set Reading Point</span>
+            </button>
+            {#if hasCustomReadingPoint}
+              <button
+                type="button"
+                class="w-full flex items-center gap-2.5 px-3.5 py-2 text-sm text-left text-[var(--astryx-color-fg-primary)] hover:bg-[var(--astryx-color-surface-hover)] focus-visible:bg-[var(--astryx-color-surface-hover)] outline-none transition-colors cursor-pointer"
+                on:click={() => {
+                  dispatch('resetCustomReadingPoint');
+                  overflowMenuElm?.toggleOpen();
+                }}
+              >
+                <Fa icon={faCrosshairs} class="w-4 text-center opacity-70" />
+                <span>Reset Reading Point</span>
+              </button>
+            {/if}
+          {/if}
+
+          {#if showFullscreenButton}
+            <button
+              type="button"
+              class="w-full flex items-center gap-2.5 px-3.5 py-2 text-sm text-left text-[var(--astryx-color-fg-primary)] hover:bg-[var(--astryx-color-surface-hover)] focus-visible:bg-[var(--astryx-color-surface-hover)] outline-none transition-colors cursor-pointer"
+              on:click={() => {
+                dispatch('fullscreenClick');
+                overflowMenuElm?.toggleOpen();
+              }}
+            >
+              <Fa icon={faExpand} class="w-4 text-center opacity-70" />
+              <span>Toggle Fullscreen</span>
+            </button>
+          {/if}
+
+          {#if hasText}
+            <button
+              type="button"
+              class="w-full flex items-center gap-2.5 px-3.5 py-2 text-sm text-left text-[var(--astryx-color-fg-primary)] hover:bg-[var(--astryx-color-surface-hover)] focus-visible:bg-[var(--astryx-color-surface-hover)] outline-none transition-colors cursor-pointer"
+              on:click={() => {
+                dispatch('jumpClick');
+                overflowMenuElm?.toggleOpen();
+              }}
+            >
+              <Fa icon={faHashtag} class="w-4 text-center opacity-70" />
+              <span>Jump to Position</span>
+            </button>
+          {/if}
+
+          {#if $readerImageGalleryPictures$.length}
+            <button
+              type="button"
+              class="w-full flex items-center gap-2.5 px-3.5 py-2 text-sm text-left text-[var(--astryx-color-fg-primary)] hover:bg-[var(--astryx-color-surface-hover)] focus-visible:bg-[var(--astryx-color-surface-hover)] outline-none transition-colors cursor-pointer"
+              on:click={() => {
+                dispatch('readerImageGalleryClick');
+                overflowMenuElm?.toggleOpen();
+              }}
+            >
+              <Fa icon={faImages} class="w-4 text-center opacity-70" />
+              <span>Image Gallery</span>
+            </button>
+          {/if}
+        </div>
+      </Popover>
+    </div>
   </div>
 </TopBar>
