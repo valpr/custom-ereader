@@ -1,10 +1,10 @@
 <script lang="ts">
-  import { browser } from '$app/environment';
+  import { browser, dev } from '$app/environment';
   import type { BookCardProps } from '$lib/components/book-card/book-card-props';
   import { mergeEntries } from '$lib/components/merged-header-icon/merged-entries';
   import MergedHeaderIcon from '$lib/components/merged-header-icon/merged-header-icon.svelte';
   import Popover from '$lib/components/popover/popover.svelte';
-  import { IconButton, Tooltip, TopBar } from '@custom-ereader/ui';
+  import { Button, IconButton, Tooltip, TopBar } from '@custom-ereader/ui';
   import { SortDirection } from '$lib/data/sort-types';
   import { FilesystemStorageHandler } from '$lib/data/storage/handler/filesystem-handler';
   import { getStorageHandler } from '$lib/data/storage/storage-handler-factory';
@@ -31,6 +31,7 @@
     faArrowDownWideShort,
     faCalendarXmark,
     faChartLine,
+    faChevronDown,
     faCircleXmark,
     faCloudArrowUp,
     faSortDown,
@@ -64,7 +65,7 @@
     cancelReplication: void;
   }>();
 
-  const importMenuItems = [mergeEntries.FILE_IMPORT];
+  let importMenuItems = [mergeEntries.FILE_IMPORT];
   const storageSourceMenuItems = [
     { label: 'Browser', key: StorageKey.BROWSER, requiresConnectivity: false }
   ];
@@ -73,6 +74,7 @@
   let folderImportElm: HTMLElement;
   let backupImportElm: HTMLElement;
   let countImportElm: HTMLInputElement;
+  let importMenuElm: Popover;
   let storageSourceElm: Popover;
   let sortOptionsElm: Popover;
   let isOldUrl = false;
@@ -82,12 +84,14 @@
     isOldUrl = isOnOldUrl(window);
     showLoadCount = new URLSearchParams(window.location.search).has('count');
 
-    importMenuItems.push(
+    importMenuItems = [
+      mergeEntries.FILE_IMPORT,
       ...($isMobile$
         ? [mergeEntries.BACKUP_IMPORT]
         : [mergeEntries.FOLDER_IMPORT, mergeEntries.BACKUP_IMPORT])
-    );
+    ];
 
+    storageSourceMenuItems.length = 1;
     storageSourceMenuItems.push(
       ...(isStorageSourceAvailable(StorageKey.GDRIVE, $gDriveStorageSource$, window)
         ? [
@@ -129,8 +133,9 @@
     { property: 'lastBookmarkModified', label: 'Bookmarked' }
   ];
 
-  function triggerInput(event: CustomEvent<string>) {
-    switch (event.detail) {
+  function triggerInput(event: CustomEvent<string> | string) {
+    const action = typeof event === 'string' ? event : event.detail;
+    switch (action) {
       case mergeEntries.FOLDER_IMPORT.label:
         folderImportElm.click();
         break;
@@ -301,11 +306,43 @@
 
     <div slot="end" class="flex items-center gap-1">
       {#if !selectMode}
-        <MergedHeaderIcon
-          items={importMenuItems}
-          mergeTo={mergeEntries.FILE_IMPORT}
-          on:action={triggerInput}
-        />
+        <Popover
+          placement="bottom"
+          fallbackPlacements={['bottom-end', 'bottom-start']}
+          yOffset={4}
+          bind:this={importMenuElm}
+        >
+          <div slot="icon">
+            <Button
+              variant="ghost"
+              size="md"
+              class="gap-1.5 px-2.5 text-sm font-medium text-[var(--astryx-color-fg-secondary)] hover:text-[var(--astryx-color-fg-primary)]"
+              title="Import Books or Backup"
+            >
+              <Fa icon={mergeEntries.FILE_IMPORT.icon} class="text-sm opacity-80" />
+              <span>Import</span>
+              <Fa icon={faChevronDown} class="text-xs opacity-60" />
+            </Button>
+          </div>
+          <div
+            class="min-w-[12rem] rounded-lg border border-[var(--astryx-color-border-subtle,#e4e4e7)] bg-[var(--astryx-color-surface,#ffffff)] py-1 shadow-lg text-sm"
+            slot="content"
+          >
+            {#each importMenuItems as item (item.label)}
+              <button
+                type="button"
+                class="w-full flex items-center gap-2.5 px-3.5 py-2 text-sm text-left text-[var(--astryx-color-fg-primary)] hover:bg-[var(--astryx-color-surface-hover)] focus-visible:bg-[var(--astryx-color-surface-hover)] outline-none transition-colors cursor-pointer"
+                on:click={() => {
+                  triggerInput(item.label);
+                  importMenuElm.toggleOpen();
+                }}
+              >
+                <Fa icon={item.icon} class="w-4 text-center opacity-70" />
+                <span>{item.label}</span>
+              </button>
+            {/each}
+          </div>
+        </Popover>
 
         <Popover
           placement="bottom"
@@ -437,15 +474,16 @@
             ? [
                 mergeEntries.MANAGE,
                 mergeEntries.DOMAIN_HINT,
+                mergeEntries.SETTINGS,
                 mergeEntries.BUG_REPORT,
-                mergeEntries.SETTINGS
+                ...(dev ? [mergeEntries.UI_SHOWCASE] : [])
               ]
             : [
                 mergeEntries.MANAGE,
-                mergeEntries.UI_SHOWCASE,
                 mergeEntries.STATISTICS,
                 mergeEntries.SETTINGS,
-                mergeEntries.BUG_REPORT
+                mergeEntries.BUG_REPORT,
+                ...(dev ? [mergeEntries.UI_SHOWCASE] : [])
               ]}
           on:action={({ detail }) => {
             if (detail === mergeEntries.BUG_REPORT.label) {
