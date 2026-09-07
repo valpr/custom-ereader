@@ -2,19 +2,29 @@
   import { browser } from '$app/environment';
   import {
     faArrowsRotate,
-    faCircleQuestion,
-    faCloudArrowUp,
+    faChevronDown,
+    faChevronRight,
+    faCloud,
     faPenToSquare,
     faPlus,
     faRightFromBracket,
     faSpinner,
-    faTableList,
     faTrash,
     faTriangleExclamation
   } from '@fortawesome/free-solid-svg-icons';
   import MessageDialog from '$lib/components/message-dialog.svelte';
   import SettingsStorageSource from '$lib/components/settings/settings-storage-source.svelte';
-  import { Button, IconButton, List, ListItem, ListSection, Tooltip } from '@custom-ereader/ui';
+  import {
+    Button,
+    Card,
+    IconButton,
+    List,
+    ListItem,
+    ListSection,
+    Select,
+    Switch,
+    Tooltip
+  } from '@custom-ereader/ui';
   import type { BooksDbStorageSource } from '$lib/data/database/books-db/versions/books-db';
   import { dialogManager } from '$lib/data/dialog-manager';
   import { gDriveRevokeEndpoint } from '$lib/data/env';
@@ -35,25 +45,41 @@
     type RemoteContext,
     unlockStorageData
   } from '$lib/data/storage/storage-source-manager';
-  import { StorageKey } from '$lib/data/storage/storage-types';
+  import {
+    StorageDataType,
+    StorageKey,
+    StorageSourceDefault
+  } from '$lib/data/storage/storage-types';
   import { getStorageIconData } from '$lib/data/storage/storage-view';
   import {
     autoReplication$,
+    cacheStorageData$,
     database,
     fsStorageSource$,
     gDriveStorageSource$,
     isOnline$,
+    lastSyncTimestamp$,
     oneDriveStorageSource$,
+    readingGoalsMergeMode$,
+    replicationSaveBehavior$,
+    statisticsMergeMode$,
     syncTarget$
   } from '$lib/data/store';
   import { AutoReplicationType } from '$lib/functions/replication/replication-options';
-  import { dummyFn } from '$lib/functions/utils';
+  import { replicateData } from '$lib/functions/replication/replicator';
+  import { getStorageHandler } from '$lib/data/storage/storage-handler-factory';
+  import { formatRelativeTime } from '$lib/functions/time-util';
+  import { logger } from '$lib/data/logger';
+  import { onDestroy, onMount } from 'svelte';
   import Fa from 'svelte-fa';
 
   export let storageSources: BooksDbStorageSource[];
 
   let listLoading = true;
-  let listTooltip = 'Allows you to add a custom set of credentials';
+  let actionLoading: Record<string, boolean> = {};
+  let isSyncing = false;
+  let enableAutoSyncOnConnect = true;
+  let showAdvanced = false;
 
   $: if (storageSources) {
     listLoading = false;
@@ -61,33 +87,278 @@
 
   $: fileSystemAvailable = browser && 'showDirectoryPicker' in window;
 
-  $: if (fileSystemAvailable) {
-    listTooltip += ' or filesystem access';
+  let relativeSyncTime = 'Never synced';
+  let timeInterval: ReturnType<typeof setInterval> | undefined;
+
+  function updateRelativeTime() {
+    relativeSyncTime = formatRelativeTime($lastSyncTimestamp$);
   }
 
-  function isSyncTarget(name: string, referenceName: string) {
-    return name === referenceName;
+  $: if ($lastSyncTimestamp$ !== undefined) {
+    updateRelativeTime();
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  onMount(() => {
+    updateRelativeTime();
+    timeInterval = setInterval(updateRelativeTime, 30000);
+  });
+
+  onDestroy(() => {
+    if (timeInterval) {
+      clearInterval(timeInterval);
+    }
+  });
+
+  $: dropdownOptions = [
+    { value: '', label: 'None (Local Storage Only)' },
+    { value: StorageSourceDefault.GDRIVE_DEFAULT, label: 'Google Drive' },
+    { value: StorageSourceDefault.ONEDRIVE_DEFAULT, label: 'OneDrive' },
+    ...(fileSystemAvailable && storageSources
+      ? storageSources
+          .filter((s) => s.type === StorageKey.FS)
+          .map((s) => ({ value: s.name, label: `Filesystem (${s.name})` }))
+      : []),
+    ...(storageSources
+      ? storageSources
+          .filter((s) => !isAppDefault(s.name) && s.type !== StorageKey.FS)
+          .map((s) => ({
+            value: s.name,
+            label: `${s.name} (${s.type === StorageKey.GDRIVE ? 'Google Drive' : 'OneDrive'})`
+          }))
+      : [])
+  ];
+
+  $: activeSource =
+    storageSources?.find((s) => s.name === $syncTarget$) ||
+    ($syncTarget$ === StorageSourceDefault.GDRIVE_DEFAULT
+      ? {
+          name: StorageSourceDefault.GDRIVE_DEFAULT,
+          type: StorageKey.GDRIVE,
+          storedInManager: false,
+          encryptionDisabled: false,
+          data: new ArrayBuffer(0),
+          lastSourceModified: 0
+        }
+      : $syncTarget$ === StorageSourceDefault.ONEDRIVE_DEFAULT
+        ? {
+            name: StorageSourceDefault.ONEDRIVE_DEFAULT,
+            type: StorageKey.ONEDRIVE,
+            storedInManager: false,
+            encryptionDisabled: false,
+            data: new ArrayBuffer(0),
+            lastSourceModified: 0
+          }
+        : null);
+  $: activeConnectionState = activeSource
+    ? $storageConnectionStates$[activeSource.name] ||
+      getConnectionState(activeSource.name, activeSource)
+    : StorageConnectionState.DISCONNECTED;
+  $: isCloudSource =
+    activeSource?.type === StorageKey.GDRIVE || activeSource?.type === StorageKey.ONEDRIVE;
+  $: activeEmail = activeSource ? getAccountEmail(activeSource) : '';
+  $: activeIcon = activeSource
+    ? getStorageIconData(activeSource.type)
+    : getStorageIconData(StorageKey.BROWSER);
+
+  $: customSources = storageSources?.filter((s) => !isAppDefault(s.name)) || [];
+
+  function handleDropdownChange(e: CustomEvent<{ value: string | number }>) {
+    const val = `${e.detail.value}`;
+    $syncTarget$ = val;
+    if (val) {
+      const found =
+        storageSources?.find((s) => s.name === val) ||
+        (val === StorageSourceDefault.GDRIVE_DEFAULT
+          ? { type: StorageKey.GDRIVE }
+          : val === StorageSourceDefault.ONEDRIVE_DEFAULT
+            ? { type: StorageKey.ONEDRIVE }
+            : null);
+      if (found) {
+        setStorageSourceDefault(val, found.type);
+      }
+    }
+  }
+
+  function getProviderDisplayName(source: BooksDbStorageSource | null) {
+    if (!source) return 'None';
+    if (source.name === StorageSourceDefault.GDRIVE_DEFAULT) return 'Google Drive';
+    if (source.name === StorageSourceDefault.ONEDRIVE_DEFAULT) return 'OneDrive';
+    return source.name;
+  }
+
+  function getAccountEmail(storageSource: BooksDbStorageSource) {
+    if (storageSource.encryptionDisabled && isRemoteContext(storageSource.data)) {
+      return storageSource.data.accountEmail || '';
+    }
+    return '';
+  }
+
+  function isFSHandle(
+    type: StorageKey,
+    data: FsHandle | ArrayBuffer | RemoteContext
+  ): data is FsHandle {
+    return !!data && type === StorageKey.FS;
+  }
+
   function isStorageSourceDefault(name: string, type: StorageKey, _sources: string[] = []) {
-    let configuredIsSourceDefault = false;
-
     switch (type) {
       case StorageKey.GDRIVE:
-        configuredIsSourceDefault = name === $gDriveStorageSource$;
-        break;
+        return name === $gDriveStorageSource$;
       case StorageKey.ONEDRIVE:
-        configuredIsSourceDefault = name === $oneDriveStorageSource$;
-        break;
+        return name === $oneDriveStorageSource$;
       case StorageKey.FS:
-        configuredIsSourceDefault = name === $fsStorageSource$;
-        break;
+        return name === $fsStorageSource$;
       default:
-        break;
+        return false;
     }
+  }
 
-    return configuredIsSourceDefault;
+  async function connectAndInitialSync(source: BooksDbStorageSource) {
+    actionLoading[source.name] = true;
+    actionLoading = { ...actionLoading };
+
+    try {
+      const connected = await StorageOAuthManager.reconnect(window, source.name);
+      if (connected) {
+        $syncTarget$ = source.name;
+        setStorageSourceDefault(source.name, source.type);
+
+        if (enableAutoSyncOnConnect) {
+          $autoReplication$ = AutoReplicationType.All;
+        }
+
+        await triggerManualSync(source.name);
+      }
+    } finally {
+      actionLoading[source.name] = false;
+      actionLoading = { ...actionLoading };
+    }
+  }
+
+  async function reconnectStorageSource(source: BooksDbStorageSource) {
+    actionLoading[source.name] = true;
+    actionLoading = { ...actionLoading };
+
+    try {
+      await StorageOAuthManager.reconnect(window, source.name);
+    } finally {
+      actionLoading[source.name] = false;
+      actionLoading = { ...actionLoading };
+    }
+  }
+
+  async function disconnectStorageSource(source: BooksDbStorageSource) {
+    actionLoading[source.name] = true;
+    actionLoading = { ...actionLoading };
+
+    try {
+      await StorageOAuthManager.disconnect(source.name);
+    } finally {
+      actionLoading[source.name] = false;
+      actionLoading = { ...actionLoading };
+    }
+  }
+
+  async function triggerManualSync(sourceName: string) {
+    if (!sourceName || isSyncing) return;
+
+    isSyncing = true;
+    try {
+      const source =
+        storageSources?.find((s) => s.name === sourceName) ||
+        (sourceName === StorageSourceDefault.GDRIVE_DEFAULT
+          ? {
+              name: StorageSourceDefault.GDRIVE_DEFAULT,
+              type: StorageKey.GDRIVE,
+              storedInManager: false,
+              encryptionDisabled: false,
+              data: new ArrayBuffer(0),
+              lastSourceModified: 0
+            }
+          : sourceName === StorageSourceDefault.ONEDRIVE_DEFAULT
+            ? {
+                name: StorageSourceDefault.ONEDRIVE_DEFAULT,
+                type: StorageKey.ONEDRIVE,
+                storedInManager: false,
+                encryptionDisabled: false,
+                data: new ArrayBuffer(0),
+                lastSourceModified: 0
+              }
+            : null);
+      if (!source) return;
+
+      const targetHandler = getStorageHandler(
+        window,
+        source.type,
+        source.name,
+        true,
+        $cacheStorageData$,
+        $replicationSaveBehavior$,
+        $statisticsMergeMode$,
+        $readingGoalsMergeMode$
+      );
+
+      const localStorageHandler = getStorageHandler(
+        window,
+        StorageKey.BROWSER,
+        '',
+        true,
+        $cacheStorageData$,
+        $replicationSaveBehavior$,
+        $statisticsMergeMode$,
+        $readingGoalsMergeMode$
+      );
+
+      const db = await database.db;
+      const books = await db.getAll('data');
+      const contexts = books.map((b) => ({
+        id: b.id,
+        title: b.title,
+        imagePath: b.coverImage || ''
+      }));
+
+      const syncDataTypes = [
+        StorageDataType.PROGRESS,
+        StorageDataType.STATISTICS,
+        StorageDataType.READING_GOALS,
+        StorageDataType.USER_BOOKMARKS
+      ];
+
+      const error = await replicateData(
+        localStorageHandler,
+        targetHandler,
+        false,
+        contexts,
+        syncDataTypes
+      );
+
+      if (error) {
+        throw new Error(error);
+      }
+
+      if (
+        $autoReplication$ === AutoReplicationType.All ||
+        $autoReplication$ === AutoReplicationType.Down
+      ) {
+        await replicateData(targetHandler, localStorageHandler, false, contexts, syncDataTypes);
+      }
+
+      lastSyncTimestamp$.next(Date.now());
+      updateRelativeTime();
+    } catch (err: any) {
+      logger.error(`Manual sync failed: ${err.message}`);
+      dialogManager.dialogs$.next([
+        {
+          component: MessageDialog,
+          props: {
+            title: 'Sync Failed',
+            message: `Failed to synchronize: ${err.message}`
+          }
+        }
+      ]);
+    } finally {
+      isSyncing = false;
+    }
   }
 
   async function modifyStorageSource(storageSource?: BooksDbStorageSource) {
@@ -144,7 +415,6 @@
 
     if (saveResult.old) {
       const oldToken = storageOAuthTokens.get(saveResult.old);
-
       storageOAuthTokens.delete(saveResult.old);
 
       if (oldToken && saveResult.new.type === storageSource?.type) {
@@ -157,13 +427,6 @@
     } else {
       database.storageSourcesChanged$.next([...storageSources, saveResult.new]);
     }
-  }
-
-  function isFSHandle(
-    type: StorageKey,
-    data: FsHandle | ArrayBuffer | RemoteContext
-  ): data is FsHandle {
-    return data && type === StorageKey.FS;
   }
 
   async function deleteStorageSource(
@@ -200,8 +463,7 @@
           props: {
             title: 'Error',
             message: 'You need to be online to delete this storage source'
-          },
-          disableCloseOnClick: true
+          }
         }
       ]);
       return;
@@ -219,253 +481,359 @@
       storageSources.filter((source) => source.name !== storageSource.name)
     );
   }
-
-  let actionLoading: Record<string, boolean> = {};
-
-  function getAccountEmail(storageSource: BooksDbStorageSource) {
-    if (storageSource.encryptionDisabled && isRemoteContext(storageSource.data)) {
-      return storageSource.data.accountEmail || '';
-    }
-    return '';
-  }
-
-  async function reconnectStorageSource(storageSource: BooksDbStorageSource) {
-    actionLoading[storageSource.name] = true;
-    actionLoading = { ...actionLoading };
-
-    try {
-      await StorageOAuthManager.reconnect(window, storageSource.name);
-    } finally {
-      actionLoading[storageSource.name] = false;
-      actionLoading = { ...actionLoading };
-    }
-  }
-
-  async function disconnectStorageSource(storageSource: BooksDbStorageSource) {
-    actionLoading[storageSource.name] = true;
-    actionLoading = { ...actionLoading };
-
-    try {
-      await StorageOAuthManager.disconnect(storageSource.name);
-    } finally {
-      actionLoading[storageSource.name] = false;
-      actionLoading = { ...actionLoading };
-    }
-  }
 </script>
 
-<ListSection title="Storage Sources" description={listTooltip}>
-  <div slot="action" class="flex items-center gap-2">
-    {#if $autoReplication$ !== AutoReplicationType.Off && !$syncTarget$}
-      <Tooltip
-        content="Auto import/export enabled but no sync target selected from list"
-        placement="bottom"
-      >
-        <span
-          class="flex items-center gap-1.5 text-xs font-medium px-2 py-1 bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-md"
-        >
-          <Fa icon={faTriangleExclamation} />
-          <span class="hidden sm:inline">No sync target</span>
-        </span>
-      </Tooltip>
-    {/if}
-    <Button
-      size="sm"
-      variant="primary"
-      disabled={!storageSources}
-      on:click={() => modifyStorageSource()}
-    >
-      <Fa icon={faPlus} class="mr-1.5" />
-      <span>Add Source</span>
-    </Button>
-  </div>
+<ListSection
+  title="Cloud & Storage Sync"
+  description="Select your active cloud synchronization service to keep your books, reading progress, and statistics synchronized across devices."
+>
+  <div class="flex flex-col gap-4 mt-2">
+    <!-- Dropdown Selector -->
+    <div class="w-full">
+      <Select
+        id="cloud-storage-select"
+        label="Active Cloud Storage Source"
+        helperText="Choose a cloud provider or keep reading progress strictly on this device"
+        options={dropdownOptions}
+        value={$syncTarget$}
+        on:change={handleDropdownChange}
+      />
+    </div>
 
-  {#if !listLoading && storageSources}
-    {#if storageSources.length === 0}
-      <div class="py-8 text-center text-sm text-zinc-500 dark:text-zinc-400">
-        No storage sources configured. Click "Add Source" above to connect cloud or local storage.
-      </div>
-    {:else}
-      <List variant="bordered" divided={true}>
-        {#each storageSources as storageSource (storageSource.name)}
-          {@const icon = getStorageIconData(storageSource.type)}
-          {@const isDefault = isAppDefault(storageSource.name)}
-          {@const storageSourceIsSyncTarget = isSyncTarget(storageSource.name, $syncTarget$)}
-          {@const storageSourceIsSourceDefault = isStorageSourceDefault(
-            storageSource.name,
-            storageSource.type,
-            [$gDriveStorageSource$, $oneDriveStorageSource$, $fsStorageSource$]
-          )}
-          {@const isCloudSource =
-            storageSource.type === StorageKey.GDRIVE || storageSource.type === StorageKey.ONEDRIVE}
-          {@const connectionState =
-            $storageConnectionStates$[storageSource.name] ||
-            getConnectionState(storageSource.name, storageSource)}
-          {@const accountEmail = getAccountEmail(storageSource)}
-          {@const isLoading = !!actionLoading[storageSource.name]}
+    <!-- Active Provider Card -->
+    {#if !listLoading}
+      {#if activeSource}
+        <Card variant="surface" padding="md" class="border border-zinc-200 dark:border-zinc-800">
+          <div class="flex flex-col gap-3">
+            <!-- Header Row -->
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <div
+                  class="w-10 h-10 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center shrink-0 text-zinc-700 dark:text-zinc-300"
+                >
+                  <svg class="h-5 w-5 fill-current" viewBox={activeIcon.viewBox}>
+                    <path d={activeIcon.d} />
+                  </svg>
+                </div>
+                <div>
+                  <h4
+                    class="text-base font-semibold text-zinc-900 dark:text-zinc-100 leading-tight"
+                  >
+                    {getProviderDisplayName(activeSource)}
+                  </h4>
+                  <div class="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+                    {#if isCloudSource}
+                      {#if activeConnectionState === StorageConnectionState.CONNECTED}
+                        {activeEmail ? `Connected as ${activeEmail}` : 'Connected'}
+                      {:else if activeConnectionState === StorageConnectionState.NEEDS_RECONNECT}
+                        Session Expired — Reconnect required
+                      {:else}
+                        Not connected
+                      {/if}
+                    {:else}
+                      Local file system storage
+                    {/if}
+                  </div>
+                </div>
+              </div>
 
-          <ListItem
-            headline={storageSource.name}
-            description={isCloudSource
-              ? connectionState === StorageConnectionState.CONNECTED
-                ? accountEmail
-                  ? `Connected (${accountEmail})`
-                  : 'Connected'
-                : connectionState === StorageConnectionState.NEEDS_RECONNECT
-                  ? 'Session Expired — Reconnect required'
-                  : 'Disconnected'
-              : 'Local file system storage'}
-          >
+              <!-- Status Badge -->
+              <div>
+                {#if isCloudSource}
+                  {#if activeConnectionState === StorageConnectionState.CONNECTED}
+                    <span
+                      class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400"
+                    >
+                      <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                      Connected
+                    </span>
+                  {:else if activeConnectionState === StorageConnectionState.NEEDS_RECONNECT}
+                    <span
+                      class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400"
+                    >
+                      <Fa icon={faTriangleExclamation} />
+                      Needs Reconnect
+                    </span>
+                  {:else}
+                    <span
+                      class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400"
+                    >
+                      Disconnected
+                    </span>
+                  {/if}
+                {:else}
+                  <span
+                    class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-400"
+                  >
+                    Local Filesystem
+                  </span>
+                {/if}
+              </div>
+            </div>
+
+            <!-- Sync Status Row -->
             <div
-              slot="prefix"
-              class="w-10 h-10 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center shrink-0 text-zinc-700 dark:text-zinc-300"
+              class="flex flex-wrap items-center justify-between gap-2 py-2.5 px-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-100 dark:border-zinc-800"
             >
-              <svg class="h-5 w-5 fill-current" viewBox={icon.viewBox}>
-                <path d={icon.d} />
-              </svg>
+              <div class="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
+                {#if isSyncing}
+                  <Fa icon={faSpinner} spin class="text-sky-500" />
+                  <span class="font-medium">Syncing data with cloud...</span>
+                {:else}
+                  <Fa icon={faCloud} class="text-zinc-400 dark:text-zinc-500" />
+                  <span
+                    >Sync status: <strong class="font-medium text-zinc-900 dark:text-zinc-100"
+                      >{relativeSyncTime}</strong
+                    ></span
+                  >
+                {/if}
+              </div>
+
+              {#if isCloudSource && activeConnectionState === StorageConnectionState.CONNECTED}
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  disabled={isSyncing}
+                  on:click={() => triggerManualSync(activeSource?.name || '')}
+                >
+                  <Fa
+                    icon={isSyncing ? faSpinner : faArrowsRotate}
+                    spin={isSyncing}
+                    class="mr-1.5"
+                  />
+                  <span>Sync Now</span>
+                </Button>
+              {/if}
             </div>
 
-            <div class="flex items-center gap-1.5 mt-1">
-              {#if isDefault}
-                <span
-                  class="text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-500 tracking-wider"
-                >
-                  Default
-                </span>
-              {/if}
-              {#if storageSourceIsSyncTarget}
-                <span
-                  class="text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded bg-sky-100 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 tracking-wider"
-                >
-                  Sync Target
-                </span>
-              {/if}
-              {#if storageSourceIsSourceDefault}
-                <span
-                  class="text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 tracking-wider"
-                >
-                  Type Default
-                </span>
-              {/if}
-            </div>
+            <!-- Disconnected State: Opt-In Switch & Connect Button -->
+            {#if isCloudSource && activeConnectionState !== StorageConnectionState.CONNECTED && activeConnectionState !== StorageConnectionState.NEEDS_RECONNECT}
+              <div
+                class="flex items-center justify-between p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200/80 dark:border-zinc-700/60 mt-1"
+              >
+                <div>
+                  <div class="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                    Enable automatic background sync across devices (Recommended)
+                  </div>
+                  <div class="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+                    Automatically keeps your reading progress, bookmarks, and statistics in sync as
+                    you read.
+                  </div>
+                </div>
+                <Switch bind:checked={enableAutoSyncOnConnect} />
+              </div>
 
-            <div slot="suffix" class="flex items-center gap-1">
-              {#if isCloudSource}
-                <Tooltip
-                  content={connectionState === StorageConnectionState.CONNECTED
-                    ? 'Reconnect session'
-                    : 'Connect session'}
+              <div class="flex justify-end mt-2">
+                <Button
+                  variant="primary"
+                  disabled={!!actionLoading[activeSource.name]}
+                  on:click={() => activeSource && connectAndInitialSync(activeSource)}
                 >
-                  <IconButton
+                  {#if actionLoading[activeSource.name]}
+                    <Fa icon={faSpinner} spin class="mr-1.5" />
+                  {/if}
+                  <span>Connect {getProviderDisplayName(activeSource)}</span>
+                </Button>
+              </div>
+            {/if}
+
+            <!-- Connected State: Inline Auto-Sync & Session Actions -->
+            {#if isCloudSource && (activeConnectionState === StorageConnectionState.CONNECTED || activeConnectionState === StorageConnectionState.NEEDS_RECONNECT)}
+              <div
+                class="flex items-center justify-between py-2 border-t border-zinc-100 dark:border-zinc-800 mt-1"
+              >
+                <div>
+                  <div class="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                    Automatic Background Sync
+                  </div>
+                  <div class="text-xs text-zinc-500 dark:text-zinc-400">
+                    {$autoReplication$ !== AutoReplicationType.Off
+                      ? 'Enabled (two-way background sync active while reading)'
+                      : 'Disabled (manual sync only via Sync Now)'}
+                  </div>
+                </div>
+                <Switch
+                  checked={$autoReplication$ !== AutoReplicationType.Off}
+                  on:change={(e) => {
+                    $autoReplication$ = e.detail
+                      ? AutoReplicationType.All
+                      : AutoReplicationType.Off;
+                  }}
+                />
+              </div>
+
+              <!-- Action buttons -->
+              <div
+                class="flex items-center justify-between border-t border-zinc-100 dark:border-zinc-800 pt-3 mt-1"
+              >
+                <div class="text-xs text-zinc-500 dark:text-zinc-400">
+                  {#if activeConnectionState === StorageConnectionState.NEEDS_RECONNECT}
+                    <span class="text-amber-500 font-medium"
+                      >Session has expired. Please reconnect to resume syncing.</span
+                    >
+                  {/if}
+                </div>
+                <div class="flex items-center gap-2">
+                  <Button
                     size="sm"
-                    variant="ghost"
-                    label={connectionState === StorageConnectionState.CONNECTED
-                      ? 'Reconnect session'
-                      : 'Connect session'}
-                    disabled={isLoading}
-                    on:click={() => !isLoading && reconnectStorageSource(storageSource)}
+                    variant={activeConnectionState === StorageConnectionState.NEEDS_RECONNECT
+                      ? 'primary'
+                      : 'secondary'}
+                    disabled={!!actionLoading[activeSource.name]}
+                    on:click={() => activeSource && reconnectStorageSource(activeSource)}
                   >
                     <Fa
-                      icon={isLoading ? faSpinner : faArrowsRotate}
-                      spin={isLoading}
-                      class={connectionState === StorageConnectionState.NEEDS_RECONNECT
-                        ? 'text-amber-500'
-                        : ''}
+                      icon={actionLoading[activeSource.name] ? faSpinner : faArrowsRotate}
+                      spin={!!actionLoading[activeSource.name]}
+                      class="mr-1.5"
                     />
-                  </IconButton>
-                </Tooltip>
-
-                {#if connectionState === StorageConnectionState.CONNECTED}
-                  <Tooltip content="Disconnect session">
-                    <IconButton
-                      size="sm"
-                      variant="ghost"
-                      label="Disconnect session"
-                      disabled={isLoading}
-                      on:click={() => !isLoading && disconnectStorageSource(storageSource)}
+                    <span
+                      >{activeConnectionState === StorageConnectionState.NEEDS_RECONNECT
+                        ? 'Reconnect Session'
+                        : 'Re-authenticate'}</span
                     >
-                      <Fa icon={faRightFromBracket} />
-                    </IconButton>
-                  </Tooltip>
-                {/if}
-              {/if}
+                  </Button>
 
-              {#if !isDefault}
-                <Tooltip content="Edit source settings">
-                  <IconButton
+                  <Button
                     size="sm"
                     variant="ghost"
-                    label="Edit source"
-                    on:click={() => modifyStorageSource(storageSource)}
+                    class="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
+                    disabled={!!actionLoading[activeSource.name]}
+                    on:click={() => activeSource && disconnectStorageSource(activeSource)}
                   >
-                    <Fa icon={faPenToSquare} />
-                  </IconButton>
-                </Tooltip>
-              {/if}
-
-              <Tooltip
-                content={storageSourceIsSyncTarget
-                  ? 'Current Sync Target (click to unset)'
-                  : 'Set as Sync Target'}
+                    <Fa icon={faRightFromBracket} class="mr-1.5" />
+                    <span>Disconnect</span>
+                  </Button>
+                </div>
+              </div>
+            {/if}
+          </div>
+        </Card>
+      {:else}
+        <!-- No Storage Source Selected (Local Only) -->
+        <Card variant="surface" padding="md" class="border border-zinc-200 dark:border-zinc-800">
+          <div class="flex items-start gap-3">
+            <div
+              class="w-10 h-10 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center shrink-0 text-zinc-600 dark:text-zinc-400"
+            >
+              <svg
+                class="h-5 w-5 fill-current"
+                viewBox={getStorageIconData(StorageKey.BROWSER).viewBox}
               >
-                <IconButton
-                  size="sm"
-                  variant={storageSourceIsSyncTarget ? 'primary' : 'ghost'}
-                  active={storageSourceIsSyncTarget}
-                  label="Toggle sync target"
-                  on:click={() =>
-                    syncTarget$.next($syncTarget$ === storageSource.name ? '' : storageSource.name)}
-                >
-                  <Fa icon={faCloudArrowUp} />
-                </IconButton>
-              </Tooltip>
-
-              <Tooltip
-                content={storageSourceIsSourceDefault
-                  ? 'Default for this source type (click to unset)'
-                  : 'Set as default for this source type'}
-              >
-                <IconButton
-                  size="sm"
-                  variant={storageSourceIsSourceDefault ? 'secondary' : 'ghost'}
-                  active={storageSourceIsSourceDefault}
-                  label="Toggle type default"
-                  on:click={() =>
-                    setStorageSourceDefault(
-                      storageSourceIsSourceDefault ? '' : storageSource.name,
-                      storageSource.type
-                    )}
-                >
-                  <Fa icon={faTableList} />
-                </IconButton>
-              </Tooltip>
-
-              {#if !isDefault}
-                <Tooltip content="Delete source">
-                  <IconButton
-                    size="sm"
-                    variant="ghost"
-                    label="Delete source"
-                    class="hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30"
-                    on:click={() =>
-                      deleteStorageSource(
-                        storageSource,
-                        storageSourceIsSyncTarget,
-                        storageSourceIsSourceDefault
-                      )}
-                  >
-                    <Fa icon={faTrash} />
-                  </IconButton>
-                </Tooltip>
-              {/if}
+                <path d={getStorageIconData(StorageKey.BROWSER).d} />
+              </svg>
             </div>
-          </ListItem>
-        {/each}
-      </List>
+            <div>
+              <h4 class="text-base font-semibold text-zinc-900 dark:text-zinc-100">
+                Local Storage Only
+              </h4>
+              <p class="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
+                Your reading progress, statistics, and bookmarks are saved strictly on this device.
+                To enable automatic backups and cross-device sync, select <strong
+                  >Google Drive</strong
+                >
+                or <strong>OneDrive</strong> from the dropdown above.
+              </p>
+            </div>
+          </div>
+        </Card>
+      {/if}
+    {:else}
+      <div class="py-8 flex justify-center text-xl text-zinc-400">
+        <Fa icon={faSpinner} spin />
+      </div>
     {/if}
-  {:else}
-    <div class="py-8 flex justify-center text-xl text-zinc-400">
-      <Fa icon={faSpinner} spin />
+
+    <!-- Advanced / Custom Credentials Collapsible -->
+    <div class="mt-4 border-t border-zinc-200 dark:border-zinc-800 pt-4">
+      <button
+        type="button"
+        class="flex items-center justify-between w-full text-left text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 py-1 transition-colors"
+        on:click={() => (showAdvanced = !showAdvanced)}
+      >
+        <span class="flex items-center gap-2">
+          <Fa icon={showAdvanced ? faChevronDown : faChevronRight} class="text-xs" />
+          <span>Advanced: Custom Credentials & Directory Folders</span>
+        </span>
+        <span class="text-xs text-zinc-400 dark:text-zinc-500">
+          {customSources.length} custom {customSources.length === 1 ? 'source' : 'sources'}
+        </span>
+      </button>
+
+      {#if showAdvanced}
+        <div class="mt-3 flex flex-col gap-3">
+          <div class="flex items-center justify-between">
+            <p class="text-xs text-zinc-500 dark:text-zinc-400">
+              Configure your own OAuth Client IDs, master password encryption, or local folder
+              directory handles.
+            </p>
+            <Button size="sm" variant="secondary" on:click={() => modifyStorageSource()}>
+              <Fa icon={faPlus} class="mr-1.5" />
+              <span>Add Custom Source</span>
+            </Button>
+          </div>
+
+          {#if customSources.length === 0}
+            <div
+              class="py-4 text-center text-xs text-zinc-500 dark:text-zinc-400 bg-zinc-50 dark:bg-zinc-800/30 rounded-md border border-zinc-100 dark:border-zinc-800"
+            >
+              No custom storage sources configured. Using the default cloud integration.
+            </div>
+          {:else}
+            <List variant="bordered" divided={true}>
+              {#each customSources as storageSource (storageSource.name)}
+                {@const icon = getStorageIconData(storageSource.type)}
+                {@const isSourceSyncTarget = storageSource.name === $syncTarget$}
+                <ListItem
+                  headline={storageSource.name}
+                  description={storageSource.type === StorageKey.FS
+                    ? 'Filesystem directory'
+                    : `${storageSource.type === StorageKey.GDRIVE ? 'Custom Google Drive' : 'Custom OneDrive'}`}
+                >
+                  <div
+                    slot="prefix"
+                    class="w-8 h-8 rounded bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center shrink-0 text-zinc-700 dark:text-zinc-300"
+                  >
+                    <svg class="h-4 w-4 fill-current" viewBox={icon.viewBox}>
+                      <path d={icon.d} />
+                    </svg>
+                  </div>
+
+                  <div slot="suffix" class="flex items-center gap-1">
+                    <Tooltip content="Edit source credentials">
+                      <IconButton
+                        size="sm"
+                        variant="ghost"
+                        label="Edit source"
+                        on:click={() => modifyStorageSource(storageSource)}
+                      >
+                        <Fa icon={faPenToSquare} />
+                      </IconButton>
+                    </Tooltip>
+
+                    <Tooltip content="Delete source">
+                      <IconButton
+                        size="sm"
+                        variant="ghost"
+                        label="Delete source"
+                        class="hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30"
+                        on:click={() =>
+                          deleteStorageSource(
+                            storageSource,
+                            isSourceSyncTarget,
+                            isStorageSourceDefault(storageSource.name, storageSource.type)
+                          )}
+                      >
+                        <Fa icon={faTrash} />
+                      </IconButton>
+                    </Tooltip>
+                  </div>
+                </ListItem>
+              {/each}
+            </List>
+          {/if}
+        </div>
+      {/if}
     </div>
-  {/if}
+  </div>
 </ListSection>

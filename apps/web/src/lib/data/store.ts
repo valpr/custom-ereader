@@ -265,6 +265,8 @@ export const fsStorageSource$ = writableStringLocalStorageSubject()('fsStorageSo
 
 export const syncTarget$ = writableStringLocalStorageSubject()('syncTarget', '');
 
+export const lastSyncTimestamp$ = writableNumberLocalStorageSubject()('lastSyncTimestamp', 0);
+
 export const keepLocalStatisticsOnDeletion$ = writableBooleanLocalStorageSubject()(
   'keepLocalStatisticsOnDeletion',
   true
