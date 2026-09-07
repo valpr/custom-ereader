@@ -6,7 +6,7 @@
 
 import { expect, test } from '@playwright/test';
 
-test.describe('Reader Settings Astryx List Layout & Sticky Font Preview', () => {
+test.describe('Reader Settings Astryx List Layout', () => {
   test.describe('Desktop Viewport (1280x800)', () => {
     test.beforeEach(async ({ page }) => {
       await page.setViewportSize({ width: 1280, height: 800 });
@@ -14,14 +14,7 @@ test.describe('Reader Settings Astryx List Layout & Sticky Font Preview', () => 
       await expect(page.locator('text=Reader Profiles').first()).toBeVisible({ timeout: 10000 });
     });
 
-    test('renders sticky font preview card and Astryx list sidebar', async ({ page }) => {
-      const previewCard = page.getByTestId('reader-font-preview-card');
-      await expect(previewCard).toBeVisible();
-
-      // Check preview card contains live Japanese sample text
-      await expect(previewCard.locator('.live-font-preview')).toBeVisible();
-      await expect(previewCard.locator('text=Example Font Preview')).toBeVisible();
-
+    test('renders Astryx list sidebar', async ({ page }) => {
       // Check sidebar exists with list items
       const sidebar = page.getByTestId('reader-settings-sidebar');
       await expect(sidebar).toBeVisible();
@@ -83,38 +76,13 @@ test.describe('Reader Settings Astryx List Layout & Sticky Font Preview', () => 
       ).toBeVisible();
       await expect(contentPanel.getByRole('heading', { name: 'Typography & Fonts' })).toBeVisible();
     });
-
-    test('font preview remains reactive and sticky while adjusting typography controls', async ({
-      page
-    }) => {
-      const previewCard = page.getByTestId('reader-font-preview-card');
-      const initialSizeBadge = previewCard.locator('text=20px');
-      await expect(initialSizeBadge).toBeVisible();
-
-      // Change font size using the slider in the preview card
-      const sizeSlider = previewCard.locator('input[type="range"]').first();
-      await sizeSlider.focus();
-      await page.keyboard.press('ArrowRight');
-      await page.keyboard.press('ArrowRight');
-
-      // Font size badge should update
-      await expect(previewCard.locator('text=22px')).toBeVisible();
-
-      // Test writing mode toggle
-      const verticalButton = previewCard.getByRole('radio', { name: '縦書き' });
-      await verticalButton.click();
-      await expect(verticalButton).toHaveAttribute('aria-checked', 'true');
-
-      // Live font preview should have vertical-rl writing mode style
-      const livePreview = previewCard.locator('.live-font-preview');
-      await expect(livePreview).toHaveCSS('writing-mode', 'vertical-rl');
-    });
   });
 
   test.describe('Mobile Viewport (375x667)', () => {
     test.beforeEach(async ({ page }) => {
       await page.setViewportSize({ width: 375, height: 667 });
       await page.goto('/settings');
+      await page.waitForLoadState('networkidle');
       await expect(page.locator('text=Reader Profiles').first()).toBeVisible({ timeout: 10000 });
     });
 
@@ -128,10 +96,6 @@ test.describe('Reader Settings Astryx List Layout & Sticky Font Preview', () => 
       await expect(sidebar).toBeVisible();
       await expect(contentPanel).toBeHidden();
 
-      // Sticky font preview is visible at top
-      const previewCard = page.getByTestId('reader-font-preview-card');
-      await expect(previewCard).toBeVisible();
-
       // Tap "Theme & Appearance" in the list
       const appearanceItem = sidebar.locator('.astryx-list-item', {
         hasText: 'Theme & Appearance'
@@ -141,9 +105,6 @@ test.describe('Reader Settings Astryx List Layout & Sticky Font Preview', () => 
       // Now: sidebar is hidden, content panel is visible with section details
       await expect(sidebar).toBeHidden();
       await expect(contentPanel).toBeVisible();
-
-      // Sticky preview is still visible at the top during detail inspection
-      await expect(previewCard).toBeVisible();
 
       // Appearance controls are visible
       await expect(
@@ -158,29 +119,6 @@ test.describe('Reader Settings Astryx List Layout & Sticky Font Preview', () => 
       // Returns to list overview
       await expect(sidebar).toBeVisible();
       await expect(contentPanel).toBeHidden();
-    });
-
-    test('mobile collapsible preview toggle expands and collapses font preview', async ({
-      page
-    }) => {
-      const previewCard = page.getByTestId('reader-font-preview-card');
-      await expect(previewCard.locator('.live-font-preview')).toBeVisible();
-
-      // Click collapse button
-      const collapseButton = previewCard.getByRole('button', { name: /Collapse Preview/i });
-      await expect(collapseButton).toBeVisible();
-      await collapseButton.click();
-
-      // Live font preview body should now be collapsed/hidden
-      await expect(previewCard.locator('.live-font-preview')).not.toBeVisible();
-
-      // Click expand button to restore
-      const expandButton = previewCard.getByRole('button', { name: /Expand Preview/i });
-      await expect(expandButton).toBeVisible();
-      await expandButton.click();
-
-      // Live preview is visible again
-      await expect(previewCard.locator('.live-font-preview')).toBeVisible();
     });
   });
 });

@@ -28,7 +28,6 @@
   import SettingsDimensionPopover from '$lib/components/settings/settings-dimension-popover.svelte';
   import SettingsReadingGoals from '$lib/components/settings/settings-reading-goals.svelte';
   import SettingsReaderProfiles from '$lib/components/settings/settings-reader-profiles.svelte';
-  import SettingsReaderFontPreview from '$lib/components/settings/settings-reader-font-preview.svelte';
   import SettingsStorageSourceList from '$lib/components/settings/settings-storage-source-list.svelte';
   import SettingsUserFontDialog from '$lib/components/settings/settings-user-font-dialog.svelte';
   import {
@@ -723,18 +722,6 @@
 
 {#if visitedTabs.has('Reader')}
   <div class="flex flex-col gap-5 w-full mx-auto pb-16" class:hidden={activeSettings !== 'Reader'}>
-    <!-- Sticky Example Font Preview at top at all times -->
-    <SettingsReaderFontPreview
-      bind:fontSize
-      bind:lineHeight
-      {fontFamilyGroupOne}
-      {fontWeight}
-      {enableFontKerning}
-      {enableFontVPAL}
-      {writingMode}
-      {currentThemeOption}
-    />
-
     <!-- Reader Profiles (Universally accessible on both desktop and mobile) -->
     <SettingsReaderProfiles
       storageSources={$storageSources$}
