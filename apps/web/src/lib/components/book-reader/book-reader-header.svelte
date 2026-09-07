@@ -18,10 +18,12 @@
     faTriangleExclamation,
     type IconDefinition
   } from '@fortawesome/free-solid-svg-icons';
+  import { preloadCode } from '$app/navigation';
   import { readerImageGalleryPictures$ } from '$lib/components/book-reader/book-reader-image-gallery/book-reader-image-gallery';
   import { mergeEntries } from '$lib/components/merged-header-icon/merged-entries';
   import Popover from '$lib/components/popover/popover.svelte';
   import { IconButton, Tooltip, TopBar, OverflowList } from '@custom-ereader/ui';
+  import { pagePath } from '$lib/data/env';
   import { customReadingPointEnabled$, viewMode$ } from '$lib/data/store';
   import { ViewMode } from '$lib/data/view-mode';
   import { dummyFn, isMobile$, isOnOldUrl } from '$lib/functions/utils';
@@ -209,6 +211,8 @@
             label={mergeEntries.SETTINGS.title}
             size="md"
             variant="ghost"
+            on:mouseenter={() => preloadCode(`${pagePath}${mergeEntries.SETTINGS.routeId}`)}
+            on:pointerdown={() => preloadCode(`${pagePath}${mergeEntries.SETTINGS.routeId}`)}
             on:click={() => dispatch('settingsClick')}
           >
             <Fa icon={faCog} class="text-base" />
@@ -220,6 +224,8 @@
             label={mergeEntries.MANAGE.title}
             size="md"
             variant="ghost"
+            on:mouseenter={() => preloadCode(`${pagePath}${mergeEntries.MANAGE.routeId}`)}
+            on:pointerdown={() => preloadCode(`${pagePath}${mergeEntries.MANAGE.routeId}`)}
             on:click={() => dispatch('bookManagerClick')}
           >
             <Fa icon={faSignOutAlt} class="text-base" />
@@ -313,6 +319,8 @@
                 label={mergeEntries.STATISTICS.title}
                 size="md"
                 variant="ghost"
+                on:mouseenter={() => preloadCode(`${pagePath}${mergeEntries.STATISTICS.routeId}`)}
+                on:pointerdown={() => preloadCode(`${pagePath}${mergeEntries.STATISTICS.routeId}`)}
                 on:click={() => dispatch('statisticsClick')}
               >
                 <Fa icon={faChartLine} class="text-base" />
@@ -433,6 +441,10 @@
                       <button
                         type="button"
                         class="w-full flex items-center gap-2.5 px-3.5 py-2 text-sm text-left text-[var(--astryx-color-fg-primary)] hover:bg-[var(--astryx-color-surface-hover)] focus-visible:bg-[var(--astryx-color-surface-hover)] outline-none transition-colors cursor-pointer"
+                        on:mouseenter={() =>
+                          preloadCode(`${pagePath}${mergeEntries.STATISTICS.routeId}`)}
+                        on:pointerdown={() =>
+                          preloadCode(`${pagePath}${mergeEntries.STATISTICS.routeId}`)}
                         on:click={() => {
                           dispatch('statisticsClick');
                           overflowMenuElm?.toggleOpen();

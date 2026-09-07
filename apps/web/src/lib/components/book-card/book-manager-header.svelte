@@ -1,10 +1,12 @@
 <script lang="ts">
   import { browser, dev } from '$app/environment';
+  import { preloadCode } from '$app/navigation';
   import type { BookCardProps } from '$lib/components/book-card/book-card-props';
   import { mergeEntries } from '$lib/components/merged-header-icon/merged-entries';
   import MergedHeaderIcon from '$lib/components/merged-header-icon/merged-header-icon.svelte';
   import Popover from '$lib/components/popover/popover.svelte';
   import { Button, IconButton, Tooltip, TopBar } from '@custom-ereader/ui';
+  import { pagePath } from '$lib/data/env';
   import { SortDirection } from '$lib/data/sort-types';
   import { FilesystemStorageHandler } from '$lib/data/storage/handler/filesystem-handler';
   import { getStorageHandler } from '$lib/data/storage/storage-handler-factory';
@@ -268,6 +270,8 @@
               label="Back to Book"
               size="md"
               variant="ghost"
+              on:mouseenter={() => preloadCode(`${pagePath}/b`)}
+              on:pointerdown={() => preloadCode(`${pagePath}/b`)}
               on:click={() => dispatch('backToBookClick')}
             >
               <svg
