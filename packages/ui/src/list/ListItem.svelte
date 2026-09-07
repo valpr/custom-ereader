@@ -66,88 +66,28 @@
       on:click={handleClick}
       on:keydown={handleKeyDown}
     >
-      {#if layout === 'stacked'}
-        <div class="astryx-list-item-stacked-header">
-          {#if primaryText}
-            <div class="astryx-list-item-top">
-              {#if $$slots.prefix}
-                <div class="astryx-list-item-prefix" aria-hidden="true">
-                  <slot name="prefix" />
-                </div>
-              {/if}
-              <div class="astryx-list-item-headline">{primaryText}</div>
-            </div>
-          {/if}
-
-          {#if secondaryText || $$slots.suffix}
-            <div class="astryx-list-item-content-row">
-              {#if secondaryText}
-                <div class="astryx-list-item-description" class:is-wrapped={wrapDescription}>
-                  {secondaryText}
-                </div>
-              {/if}
-
-              {#if $$slots.suffix}
-                <div class="astryx-list-item-suffix">
-                  <slot name="suffix" />
-                </div>
-              {/if}
-            </div>
-          {/if}
+      {#if $$slots.prefix}
+        <div class="astryx-list-item-prefix" aria-hidden="true">
+          <slot name="prefix" />
         </div>
+      {/if}
 
-        {#if $$slots.default}
-          <div class="astryx-list-item-stacked-body">
-            <slot />
-          </div>
+      <div class="astryx-list-item-content">
+        {#if primaryText}
+          <div class="astryx-list-item-headline">{primaryText}</div>
         {/if}
-      {:else}
         {#if secondaryText}
-          <div class="astryx-list-item-card-layout">
-            <div class="astryx-list-item-top">
-              {#if $$slots.prefix}
-                <div class="astryx-list-item-prefix" aria-hidden="true">
-                  <slot name="prefix" />
-                </div>
-              {/if}
-              {#if primaryText}
-                <div class="astryx-list-item-headline">{primaryText}</div>
-              {/if}
-            </div>
-
-            <div class="astryx-list-item-content-row">
-              <div class="astryx-list-item-description" class:is-wrapped={wrapDescription}>
-                {secondaryText}
-              </div>
-              <slot />
-
-              {#if $$slots.suffix}
-                <div class="astryx-list-item-suffix">
-                  <slot name="suffix" />
-                </div>
-              {/if}
-            </div>
+          <div class="astryx-list-item-description" class:is-wrapped={wrapDescription}>
+            {secondaryText}
           </div>
-        {:else}
-          {#if $$slots.prefix}
-            <div class="astryx-list-item-prefix" aria-hidden="true">
-              <slot name="prefix" />
-            </div>
-          {/if}
-
-          <div class="astryx-list-item-content">
-            {#if primaryText}
-              <div class="astryx-list-item-headline">{primaryText}</div>
-            {/if}
-            <slot />
-          </div>
-
-          {#if $$slots.suffix}
-            <div class="astryx-list-item-suffix">
-              <slot name="suffix" />
-            </div>
-          {/if}
         {/if}
+        <slot />
+      </div>
+
+      {#if $$slots.suffix}
+        <div class="astryx-list-item-suffix">
+          <slot name="suffix" />
+        </div>
       {/if}
     </a>
   {:else if clickable}
@@ -159,69 +99,34 @@
       on:click={handleClick}
       on:keydown={handleKeyDown}
     >
-      {#if layout === 'stacked'}
-        <div class="astryx-list-item-stacked-header">
-          {#if primaryText}
-            <div class="astryx-list-item-top">
-              {#if $$slots.prefix}
-                <div class="astryx-list-item-prefix" aria-hidden="true">
-                  <slot name="prefix" />
-                </div>
-              {/if}
-              <div class="astryx-list-item-headline">{primaryText}</div>
-            </div>
-          {/if}
-
-          {#if secondaryText || $$slots.suffix}
-            <div class="astryx-list-item-content-row">
-              {#if secondaryText}
-                <div class="astryx-list-item-description" class:is-wrapped={wrapDescription}>
-                  {secondaryText}
-                </div>
-              {/if}
-
-              {#if $$slots.suffix}
-                <div class="astryx-list-item-suffix">
-                  <slot name="suffix" />
-                </div>
-              {/if}
-            </div>
-          {/if}
+      {#if $$slots.prefix}
+        <div class="astryx-list-item-prefix" aria-hidden="true">
+          <slot name="prefix" />
         </div>
+      {/if}
 
-        {#if $$slots.default}
-          <div class="astryx-list-item-stacked-body">
-            <slot />
+      <div class="astryx-list-item-content">
+        {#if primaryText}
+          <div class="astryx-list-item-headline">{primaryText}</div>
+        {/if}
+        {#if secondaryText}
+          <div class="astryx-list-item-description" class:is-wrapped={wrapDescription}>
+            {secondaryText}
           </div>
         {/if}
-      {:else}
-        {#if secondaryText}
-          <div class="astryx-list-item-card-layout">
-            <div class="astryx-list-item-top">
-              {#if $$slots.prefix}
-                <div class="astryx-list-item-prefix" aria-hidden="true">
-                  <slot name="prefix" />
-                </div>
-              {/if}
-              {#if primaryText}
-                <div class="astryx-list-item-headline">{primaryText}</div>
-              {/if}
-            </div>
+        <slot />
+      </div>
 
-            <div class="astryx-list-item-content-row">
-              <div class="astryx-list-item-description" class:is-wrapped={wrapDescription}>
-                {secondaryText}
-              </div>
-              <slot />
-
-              {#if $$slots.suffix}
-                <div class="astryx-list-item-suffix">
-                  <slot name="suffix" />
-                </div>
-              {/if}
-            </div>
-          </div>
-        {:else}
+      {#if $$slots.suffix}
+        <div class="astryx-list-item-suffix">
+          <slot name="suffix" />
+        </div>
+      {/if}
+    </button>
+  {:else}
+    <div class="astryx-list-item-inner" on:click={handleClick}>
+      {#if layout === 'stacked'}
+        <div class="astryx-list-item-stacked-header">
           {#if $$slots.prefix}
             <div class="astryx-list-item-prefix" aria-hidden="true">
               <slot name="prefix" />
@@ -232,45 +137,16 @@
             {#if primaryText}
               <div class="astryx-list-item-headline">{primaryText}</div>
             {/if}
-            <slot />
+            {#if secondaryText}
+              <div class="astryx-list-item-description" class:is-wrapped={wrapDescription}>
+                {secondaryText}
+              </div>
+            {/if}
           </div>
 
           {#if $$slots.suffix}
             <div class="astryx-list-item-suffix">
               <slot name="suffix" />
-            </div>
-          {/if}
-        {/if}
-      {/if}
-    </button>
-  {:else}
-    <div class="astryx-list-item-inner" on:click={handleClick}>
-      {#if layout === 'stacked'}
-        <div class="astryx-list-item-stacked-header">
-          {#if primaryText}
-            <div class="astryx-list-item-top">
-              {#if $$slots.prefix}
-                <div class="astryx-list-item-prefix" aria-hidden="true">
-                  <slot name="prefix" />
-                </div>
-              {/if}
-              <div class="astryx-list-item-headline">{primaryText}</div>
-            </div>
-          {/if}
-
-          {#if secondaryText || $$slots.suffix}
-            <div class="astryx-list-item-content-row">
-              {#if secondaryText}
-                <div class="astryx-list-item-description" class:is-wrapped={wrapDescription}>
-                  {secondaryText}
-                </div>
-              {/if}
-
-              {#if $$slots.suffix}
-                <div class="astryx-list-item-suffix">
-                  <slot name="suffix" />
-                </div>
-              {/if}
             </div>
           {/if}
         </div>
@@ -461,9 +337,9 @@
 
   .astryx-list-item-stacked-header {
     display: flex;
-    flex-direction: column;
+    align-items: center;
     width: 100%;
-    gap: var(--astryx-space-1, 4px);
+    gap: var(--astryx-space-3, 12px);
   }
 
   .astryx-list-item-stacked-body {
