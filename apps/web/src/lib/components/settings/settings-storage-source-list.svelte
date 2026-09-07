@@ -487,353 +487,355 @@
   title="Cloud & Storage Sync"
   description="Select your active cloud synchronization service to keep your books, reading progress, and statistics synchronized across devices."
 >
-  <div class="flex flex-col gap-4 mt-2">
-    <!-- Dropdown Selector -->
-    <div class="w-full">
-      <Select
-        id="cloud-storage-select"
-        label="Active Cloud Storage Source"
-        helperText="Choose a cloud provider or keep reading progress strictly on this device"
-        options={dropdownOptions}
-        value={$syncTarget$}
-        on:change={handleDropdownChange}
-      />
-    </div>
-
-    <!-- Active Provider Card -->
-    {#if !listLoading}
-      {#if activeSource}
-        <Card variant="surface" padding="md" class="border border-zinc-200 dark:border-zinc-800">
-          <div class="flex flex-col gap-3">
-            <!-- Header Row -->
-            <div class="flex items-center justify-between">
-              <div class="flex items-center gap-3">
-                <div
-                  class="w-10 h-10 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center shrink-0 text-zinc-700 dark:text-zinc-300"
-                >
-                  <svg class="h-5 w-5 fill-current" viewBox={activeIcon.viewBox}>
-                    <path d={activeIcon.d} />
-                  </svg>
-                </div>
-                <div>
-                  <h4
-                    class="text-base font-semibold text-zinc-900 dark:text-zinc-100 leading-tight"
-                  >
-                    {getProviderDisplayName(activeSource)}
-                  </h4>
-                  <div class="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
-                    {#if isCloudSource}
-                      {#if activeConnectionState === StorageConnectionState.CONNECTED}
-                        {activeEmail ? `Connected as ${activeEmail}` : 'Connected'}
-                      {:else if activeConnectionState === StorageConnectionState.NEEDS_RECONNECT}
-                        Session Expired — Reconnect required
-                      {:else}
-                        Not connected
-                      {/if}
-                    {:else}
-                      Local file system storage
-                    {/if}
-                  </div>
-                </div>
-              </div>
-
-              <!-- Status Badge -->
-              <div>
-                {#if isCloudSource}
-                  {#if activeConnectionState === StorageConnectionState.CONNECTED}
-                    <span
-                      class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400"
-                    >
-                      <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                      Connected
-                    </span>
-                  {:else if activeConnectionState === StorageConnectionState.NEEDS_RECONNECT}
-                    <span
-                      class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400"
-                    >
-                      <Fa icon={faTriangleExclamation} />
-                      Needs Reconnect
-                    </span>
-                  {:else}
-                    <span
-                      class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400"
-                    >
-                      Disconnected
-                    </span>
-                  {/if}
-                {:else}
-                  <span
-                    class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-400"
-                  >
-                    Local Filesystem
-                  </span>
-                {/if}
-              </div>
-            </div>
-
-            <!-- Sync Status Row -->
-            <div
-              class="flex flex-wrap items-center justify-between gap-2 py-2.5 px-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-100 dark:border-zinc-800"
-            >
-              <div class="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
-                {#if isSyncing}
-                  <Fa icon={faSpinner} spin class="text-sky-500" />
-                  <span class="font-medium">Syncing data with cloud...</span>
-                {:else}
-                  <Fa icon={faCloud} class="text-zinc-400 dark:text-zinc-500" />
-                  <span
-                    >Sync status: <strong class="font-medium text-zinc-900 dark:text-zinc-100"
-                      >{relativeSyncTime}</strong
-                    ></span
-                  >
-                {/if}
-              </div>
-
-              {#if isCloudSource && activeConnectionState === StorageConnectionState.CONNECTED}
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  disabled={isSyncing}
-                  on:click={() => triggerManualSync(activeSource?.name || '')}
-                >
-                  <Fa
-                    icon={isSyncing ? faSpinner : faArrowsRotate}
-                    spin={isSyncing}
-                    class="mr-1.5"
-                  />
-                  <span>Sync Now</span>
-                </Button>
-              {/if}
-            </div>
-
-            <!-- Disconnected State: Opt-In Switch & Connect Button -->
-            {#if isCloudSource && activeConnectionState !== StorageConnectionState.CONNECTED && activeConnectionState !== StorageConnectionState.NEEDS_RECONNECT}
-              <div
-                class="flex items-center justify-between p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200/80 dark:border-zinc-700/60 mt-1"
-              >
-                <div>
-                  <div class="text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                    Enable automatic background sync across devices (Recommended)
-                  </div>
-                  <div class="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
-                    Automatically keeps your reading progress, bookmarks, and statistics in sync as
-                    you read.
-                  </div>
-                </div>
-                <Switch bind:checked={enableAutoSyncOnConnect} />
-              </div>
-
-              <div class="flex justify-end mt-2">
-                <Button
-                  variant="primary"
-                  disabled={!!actionLoading[activeSource.name]}
-                  on:click={() => activeSource && connectAndInitialSync(activeSource)}
-                >
-                  {#if actionLoading[activeSource.name]}
-                    <Fa icon={faSpinner} spin class="mr-1.5" />
-                  {/if}
-                  <span>Connect {getProviderDisplayName(activeSource)}</span>
-                </Button>
-              </div>
-            {/if}
-
-            <!-- Connected State: Inline Auto-Sync & Session Actions -->
-            {#if isCloudSource && (activeConnectionState === StorageConnectionState.CONNECTED || activeConnectionState === StorageConnectionState.NEEDS_RECONNECT)}
-              <div
-                class="flex items-center justify-between py-2 border-t border-zinc-100 dark:border-zinc-800 mt-1"
-              >
-                <div>
-                  <div class="text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                    Automatic Background Sync
-                  </div>
-                  <div class="text-xs text-zinc-500 dark:text-zinc-400">
-                    {$autoReplication$ !== AutoReplicationType.Off
-                      ? 'Enabled (two-way background sync active while reading)'
-                      : 'Disabled (manual sync only via Sync Now)'}
-                  </div>
-                </div>
-                <Switch
-                  checked={$autoReplication$ !== AutoReplicationType.Off}
-                  on:change={(e) => {
-                    $autoReplication$ = e.detail
-                      ? AutoReplicationType.All
-                      : AutoReplicationType.Off;
-                  }}
-                />
-              </div>
-
-              <!-- Action buttons -->
-              <div
-                class="flex items-center justify-between border-t border-zinc-100 dark:border-zinc-800 pt-3 mt-1"
-              >
-                <div class="text-xs text-zinc-500 dark:text-zinc-400">
-                  {#if activeConnectionState === StorageConnectionState.NEEDS_RECONNECT}
-                    <span class="text-amber-500 font-medium"
-                      >Session has expired. Please reconnect to resume syncing.</span
-                    >
-                  {/if}
-                </div>
-                <div class="flex items-center gap-2">
-                  <Button
-                    size="sm"
-                    variant={activeConnectionState === StorageConnectionState.NEEDS_RECONNECT
-                      ? 'primary'
-                      : 'secondary'}
-                    disabled={!!actionLoading[activeSource.name]}
-                    on:click={() => activeSource && reconnectStorageSource(activeSource)}
-                  >
-                    <Fa
-                      icon={actionLoading[activeSource.name] ? faSpinner : faArrowsRotate}
-                      spin={!!actionLoading[activeSource.name]}
-                      class="mr-1.5"
-                    />
-                    <span
-                      >{activeConnectionState === StorageConnectionState.NEEDS_RECONNECT
-                        ? 'Reconnect Session'
-                        : 'Re-authenticate'}</span
-                    >
-                  </Button>
-
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    class="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
-                    disabled={!!actionLoading[activeSource.name]}
-                    on:click={() => activeSource && disconnectStorageSource(activeSource)}
-                  >
-                    <Fa icon={faRightFromBracket} class="mr-1.5" />
-                    <span>Disconnect</span>
-                  </Button>
-                </div>
-              </div>
-            {/if}
-          </div>
-        </Card>
-      {:else}
-        <!-- No Storage Source Selected (Local Only) -->
-        <Card variant="surface" padding="md" class="border border-zinc-200 dark:border-zinc-800">
-          <div class="flex items-start gap-3">
-            <div
-              class="w-10 h-10 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center shrink-0 text-zinc-600 dark:text-zinc-400"
-            >
-              <svg
-                class="h-5 w-5 fill-current"
-                viewBox={getStorageIconData(StorageKey.BROWSER).viewBox}
-              >
-                <path d={getStorageIconData(StorageKey.BROWSER).d} />
-              </svg>
-            </div>
-            <div>
-              <h4 class="text-base font-semibold text-zinc-900 dark:text-zinc-100">
-                Local Storage Only
-              </h4>
-              <p class="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
-                Your reading progress, statistics, and bookmarks are saved strictly on this device.
-                To enable automatic backups and cross-device sync, select <strong
-                  >Google Drive</strong
-                >
-                or <strong>OneDrive</strong> from the dropdown above.
-              </p>
-            </div>
-          </div>
-        </Card>
-      {/if}
-    {:else}
-      <div class="py-8 flex justify-center text-xl text-zinc-400">
-        <Fa icon={faSpinner} spin />
+  <ListItem layout="stacked">
+    <div class="flex flex-col gap-4 w-full">
+      <!-- Dropdown Selector -->
+      <div class="w-full">
+        <Select
+          id="cloud-storage-select"
+          label="Active Cloud Storage Source"
+          helperText="Choose a cloud provider or keep reading progress strictly on this device"
+          options={dropdownOptions}
+          value={$syncTarget$}
+          on:change={handleDropdownChange}
+        />
       </div>
-    {/if}
 
-    <!-- Advanced / Custom Credentials Collapsible -->
-    <div class="mt-4 border-t border-zinc-200 dark:border-zinc-800 pt-4">
-      <button
-        type="button"
-        class="flex items-center justify-between w-full text-left text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 py-1 transition-colors"
-        on:click={() => (showAdvanced = !showAdvanced)}
-      >
-        <span class="flex items-center gap-2">
-          <Fa icon={showAdvanced ? faChevronDown : faChevronRight} class="text-xs" />
-          <span>Advanced: Custom Credentials & Directory Folders</span>
-        </span>
-        <span class="text-xs text-zinc-400 dark:text-zinc-500">
-          {customSources.length} custom {customSources.length === 1 ? 'source' : 'sources'}
-        </span>
-      </button>
-
-      {#if showAdvanced}
-        <div class="mt-3 flex flex-col gap-3">
-          <div class="flex items-center justify-between">
-            <p class="text-xs text-zinc-500 dark:text-zinc-400">
-              Configure your own OAuth Client IDs, master password encryption, or local folder
-              directory handles.
-            </p>
-            <Button size="sm" variant="secondary" on:click={() => modifyStorageSource()}>
-              <Fa icon={faPlus} class="mr-1.5" />
-              <span>Add Custom Source</span>
-            </Button>
-          </div>
-
-          {#if customSources.length === 0}
-            <div
-              class="py-4 text-center text-xs text-zinc-500 dark:text-zinc-400 bg-zinc-50 dark:bg-zinc-800/30 rounded-md border border-zinc-100 dark:border-zinc-800"
-            >
-              No custom storage sources configured. Using the default cloud integration.
-            </div>
-          {:else}
-            <List variant="bordered" divided={true}>
-              {#each customSources as storageSource (storageSource.name)}
-                {@const icon = getStorageIconData(storageSource.type)}
-                {@const isSourceSyncTarget = storageSource.name === $syncTarget$}
-                <ListItem
-                  headline={storageSource.name}
-                  description={storageSource.type === StorageKey.FS
-                    ? 'Filesystem directory'
-                    : `${storageSource.type === StorageKey.GDRIVE ? 'Custom Google Drive' : 'Custom OneDrive'}`}
-                >
+      <!-- Active Provider Card -->
+      {#if !listLoading}
+        {#if activeSource}
+          <Card variant="surface" padding="md" class="border border-zinc-200 dark:border-zinc-800">
+            <div class="flex flex-col gap-3">
+              <!-- Header Row -->
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
                   <div
-                    slot="prefix"
-                    class="w-8 h-8 rounded bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center shrink-0 text-zinc-700 dark:text-zinc-300"
+                    class="w-10 h-10 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center shrink-0 text-zinc-700 dark:text-zinc-300"
                   >
-                    <svg class="h-4 w-4 fill-current" viewBox={icon.viewBox}>
-                      <path d={icon.d} />
+                    <svg class="h-5 w-5 fill-current" viewBox={activeIcon.viewBox}>
+                      <path d={activeIcon.d} />
                     </svg>
                   </div>
-
-                  <div slot="suffix" class="flex items-center gap-1">
-                    <Tooltip content="Edit source credentials">
-                      <IconButton
-                        size="sm"
-                        variant="ghost"
-                        label="Edit source"
-                        on:click={() => modifyStorageSource(storageSource)}
-                      >
-                        <Fa icon={faPenToSquare} />
-                      </IconButton>
-                    </Tooltip>
-
-                    <Tooltip content="Delete source">
-                      <IconButton
-                        size="sm"
-                        variant="ghost"
-                        label="Delete source"
-                        class="hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30"
-                        on:click={() =>
-                          deleteStorageSource(
-                            storageSource,
-                            isSourceSyncTarget,
-                            isStorageSourceDefault(storageSource.name, storageSource.type)
-                          )}
-                      >
-                        <Fa icon={faTrash} />
-                      </IconButton>
-                    </Tooltip>
+                  <div>
+                    <h4
+                      class="text-base font-semibold text-zinc-900 dark:text-zinc-100 leading-tight"
+                    >
+                      {getProviderDisplayName(activeSource)}
+                    </h4>
+                    <div class="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+                      {#if isCloudSource}
+                        {#if activeConnectionState === StorageConnectionState.CONNECTED}
+                          {activeEmail ? `Connected as ${activeEmail}` : 'Connected'}
+                        {:else if activeConnectionState === StorageConnectionState.NEEDS_RECONNECT}
+                          Session Expired — Reconnect required
+                        {:else}
+                          Not connected
+                        {/if}
+                      {:else}
+                        Local file system storage
+                      {/if}
+                    </div>
                   </div>
-                </ListItem>
-              {/each}
-            </List>
-          {/if}
+                </div>
+
+                <!-- Status Badge -->
+                <div>
+                  {#if isCloudSource}
+                    {#if activeConnectionState === StorageConnectionState.CONNECTED}
+                      <span
+                        class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400"
+                      >
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                        Connected
+                      </span>
+                    {:else if activeConnectionState === StorageConnectionState.NEEDS_RECONNECT}
+                      <span
+                        class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400"
+                      >
+                        <Fa icon={faTriangleExclamation} />
+                        Needs Reconnect
+                      </span>
+                    {:else}
+                      <span
+                        class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400"
+                      >
+                        Disconnected
+                      </span>
+                    {/if}
+                  {:else}
+                    <span
+                      class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-400"
+                    >
+                      Local Filesystem
+                    </span>
+                  {/if}
+                </div>
+              </div>
+
+              <!-- Sync Status Row -->
+              <div
+                class="flex flex-wrap items-center justify-between gap-2 py-2.5 px-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-100 dark:border-zinc-800"
+              >
+                <div class="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
+                  {#if isSyncing}
+                    <Fa icon={faSpinner} spin class="text-sky-500" />
+                    <span class="font-medium">Syncing data with cloud...</span>
+                  {:else}
+                    <Fa icon={faCloud} class="text-zinc-400 dark:text-zinc-500" />
+                    <span
+                      >Sync status: <strong class="font-medium text-zinc-900 dark:text-zinc-100"
+                        >{relativeSyncTime}</strong
+                      ></span
+                    >
+                  {/if}
+                </div>
+
+                {#if isCloudSource && activeConnectionState === StorageConnectionState.CONNECTED}
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    disabled={isSyncing}
+                    on:click={() => triggerManualSync(activeSource?.name || '')}
+                  >
+                    <Fa
+                      icon={isSyncing ? faSpinner : faArrowsRotate}
+                      spin={isSyncing}
+                      class="mr-1.5"
+                    />
+                    <span>Sync Now</span>
+                  </Button>
+                {/if}
+              </div>
+
+              <!-- Disconnected State: Opt-In Switch & Connect Button -->
+              {#if isCloudSource && activeConnectionState !== StorageConnectionState.CONNECTED && activeConnectionState !== StorageConnectionState.NEEDS_RECONNECT}
+                <div
+                  class="flex items-center justify-between p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200/80 dark:border-zinc-700/60 mt-1"
+                >
+                  <div>
+                    <div class="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                      Enable automatic background sync across devices (Recommended)
+                    </div>
+                    <div class="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+                      Automatically keeps your reading progress, bookmarks, and statistics in sync
+                      as you read.
+                    </div>
+                  </div>
+                  <Switch bind:checked={enableAutoSyncOnConnect} />
+                </div>
+
+                <div class="flex justify-end mt-2">
+                  <Button
+                    variant="primary"
+                    disabled={!!actionLoading[activeSource.name]}
+                    on:click={() => activeSource && connectAndInitialSync(activeSource)}
+                  >
+                    {#if actionLoading[activeSource.name]}
+                      <Fa icon={faSpinner} spin class="mr-1.5" />
+                    {/if}
+                    <span>Connect {getProviderDisplayName(activeSource)}</span>
+                  </Button>
+                </div>
+              {/if}
+
+              <!-- Connected State: Inline Auto-Sync & Session Actions -->
+              {#if isCloudSource && (activeConnectionState === StorageConnectionState.CONNECTED || activeConnectionState === StorageConnectionState.NEEDS_RECONNECT)}
+                <div
+                  class="flex items-center justify-between py-2 border-t border-zinc-100 dark:border-zinc-800 mt-1"
+                >
+                  <div>
+                    <div class="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                      Automatic Background Sync
+                    </div>
+                    <div class="text-xs text-zinc-500 dark:text-zinc-400">
+                      {$autoReplication$ !== AutoReplicationType.Off
+                        ? 'Enabled (two-way background sync active while reading)'
+                        : 'Disabled (manual sync only via Sync Now)'}
+                    </div>
+                  </div>
+                  <Switch
+                    checked={$autoReplication$ !== AutoReplicationType.Off}
+                    on:change={(e) => {
+                      $autoReplication$ = e.detail
+                        ? AutoReplicationType.All
+                        : AutoReplicationType.Off;
+                    }}
+                  />
+                </div>
+
+                <!-- Action buttons -->
+                <div
+                  class="flex items-center justify-between border-t border-zinc-100 dark:border-zinc-800 pt-3 mt-1"
+                >
+                  <div class="text-xs text-zinc-500 dark:text-zinc-400">
+                    {#if activeConnectionState === StorageConnectionState.NEEDS_RECONNECT}
+                      <span class="text-amber-500 font-medium"
+                        >Session has expired. Please reconnect to resume syncing.</span
+                      >
+                    {/if}
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant={activeConnectionState === StorageConnectionState.NEEDS_RECONNECT
+                        ? 'primary'
+                        : 'secondary'}
+                      disabled={!!actionLoading[activeSource.name]}
+                      on:click={() => activeSource && reconnectStorageSource(activeSource)}
+                    >
+                      <Fa
+                        icon={actionLoading[activeSource.name] ? faSpinner : faArrowsRotate}
+                        spin={!!actionLoading[activeSource.name]}
+                        class="mr-1.5"
+                      />
+                      <span
+                        >{activeConnectionState === StorageConnectionState.NEEDS_RECONNECT
+                          ? 'Reconnect Session'
+                          : 'Re-authenticate'}</span
+                      >
+                    </Button>
+
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      class="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
+                      disabled={!!actionLoading[activeSource.name]}
+                      on:click={() => activeSource && disconnectStorageSource(activeSource)}
+                    >
+                      <Fa icon={faRightFromBracket} class="mr-1.5" />
+                      <span>Disconnect</span>
+                    </Button>
+                  </div>
+                </div>
+              {/if}
+            </div>
+          </Card>
+        {:else}
+          <!-- No Storage Source Selected (Local Only) -->
+          <Card variant="surface" padding="md" class="border border-zinc-200 dark:border-zinc-800">
+            <div class="flex items-start gap-3">
+              <div
+                class="w-10 h-10 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center shrink-0 text-zinc-600 dark:text-zinc-400"
+              >
+                <svg
+                  class="h-5 w-5 fill-current"
+                  viewBox={getStorageIconData(StorageKey.BROWSER).viewBox}
+                >
+                  <path d={getStorageIconData(StorageKey.BROWSER).d} />
+                </svg>
+              </div>
+              <div>
+                <h4 class="text-base font-semibold text-zinc-900 dark:text-zinc-100">
+                  Local Storage Only
+                </h4>
+                <p class="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
+                  Your reading progress, statistics, and bookmarks are saved strictly on this
+                  device. To enable automatic backups and cross-device sync, select <strong
+                    >Google Drive</strong
+                  >
+                  or <strong>OneDrive</strong> from the dropdown above.
+                </p>
+              </div>
+            </div>
+          </Card>
+        {/if}
+      {:else}
+        <div class="py-8 flex justify-center text-xl text-zinc-400">
+          <Fa icon={faSpinner} spin />
         </div>
       {/if}
-    </div>
-  </div>
+
+      <!-- Advanced / Custom Credentials Collapsible -->
+      <div class="mt-4 border-t border-zinc-200 dark:border-zinc-800 pt-4">
+        <button
+          type="button"
+          class="flex items-center justify-between w-full text-left text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 py-1 transition-colors"
+          on:click={() => (showAdvanced = !showAdvanced)}
+        >
+          <span class="flex items-center gap-2">
+            <Fa icon={showAdvanced ? faChevronDown : faChevronRight} class="text-xs" />
+            <span>Advanced: Custom Credentials & Directory Folders</span>
+          </span>
+          <span class="text-xs text-zinc-400 dark:text-zinc-500">
+            {customSources.length} custom {customSources.length === 1 ? 'source' : 'sources'}
+          </span>
+        </button>
+
+        {#if showAdvanced}
+          <div class="mt-3 flex flex-col gap-3">
+            <div class="flex items-center justify-between">
+              <p class="text-xs text-zinc-500 dark:text-zinc-400">
+                Configure your own OAuth Client IDs, master password encryption, or local folder
+                directory handles.
+              </p>
+              <Button size="sm" variant="secondary" on:click={() => modifyStorageSource()}>
+                <Fa icon={faPlus} class="mr-1.5" />
+                <span>Add Custom Source</span>
+              </Button>
+            </div>
+
+            {#if customSources.length === 0}
+              <div
+                class="py-4 text-center text-xs text-zinc-500 dark:text-zinc-400 bg-zinc-50 dark:bg-zinc-800/30 rounded-md border border-zinc-100 dark:border-zinc-800"
+              >
+                No custom storage sources configured. Using the default cloud integration.
+              </div>
+            {:else}
+              <List variant="bordered" divided={true}>
+                {#each customSources as storageSource (storageSource.name)}
+                  {@const icon = getStorageIconData(storageSource.type)}
+                  {@const isSourceSyncTarget = storageSource.name === $syncTarget$}
+                  <ListItem
+                    headline={storageSource.name}
+                    description={storageSource.type === StorageKey.FS
+                      ? 'Filesystem directory'
+                      : `${storageSource.type === StorageKey.GDRIVE ? 'Custom Google Drive' : 'Custom OneDrive'}`}
+                  >
+                    <div
+                      slot="prefix"
+                      class="w-8 h-8 rounded bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center shrink-0 text-zinc-700 dark:text-zinc-300"
+                    >
+                      <svg class="h-4 w-4 fill-current" viewBox={icon.viewBox}>
+                        <path d={icon.d} />
+                      </svg>
+                    </div>
+
+                    <div slot="suffix" class="flex items-center gap-1">
+                      <Tooltip content="Edit source credentials">
+                        <IconButton
+                          size="sm"
+                          variant="ghost"
+                          label="Edit source"
+                          on:click={() => modifyStorageSource(storageSource)}
+                        >
+                          <Fa icon={faPenToSquare} />
+                        </IconButton>
+                      </Tooltip>
+
+                      <Tooltip content="Delete source">
+                        <IconButton
+                          size="sm"
+                          variant="ghost"
+                          label="Delete source"
+                          class="hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30"
+                          on:click={() =>
+                            deleteStorageSource(
+                              storageSource,
+                              isSourceSyncTarget,
+                              isStorageSourceDefault(storageSource.name, storageSource.type)
+                            )}
+                        >
+                          <Fa icon={faTrash} />
+                        </IconButton>
+                      </Tooltip>
+                    </div>
+                  </ListItem>
+                {/each}
+              </List>
+            {/if}
+          </div>
+        {/if}
+      </div>
+    </div></ListItem
+  >
 </ListSection>

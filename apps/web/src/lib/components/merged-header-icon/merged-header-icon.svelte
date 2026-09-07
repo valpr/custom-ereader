@@ -96,8 +96,8 @@
   {/if}
   <div class="flex sm:hidden items-center">
     <Popover
-      placement="bottom"
-      fallbackPlacements={['bottom-end', 'bottom-start']}
+      placement="bottom-end"
+      fallbackPlacements={['bottom-start', 'bottom']}
       yOffset={4}
       bind:this={menuElm}
     >

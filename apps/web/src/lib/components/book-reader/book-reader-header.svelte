@@ -271,8 +271,8 @@
         {:else if item.id === 'customPoint'}
           {#if $customReadingPointEnabled$ || $viewMode$ === ViewMode.Paginated}
             <Popover
-              placement="bottom"
-              fallbackPlacements={['bottom-end', 'bottom-start']}
+              placement="bottom-end"
+              fallbackPlacements={['bottom-start', 'bottom']}
               yOffset={4}
               bind:this={customReadingPointMenuElm}
             >
@@ -359,8 +359,8 @@
         <svelte:fragment slot="overflow" let:overflowItems>
           <div>
             <Popover
-              placement="bottom"
-              fallbackPlacements={['bottom-end', 'bottom-start']}
+              placement="bottom-end"
+              fallbackPlacements={['bottom-start', 'bottom']}
               yOffset={4}
               bind:this={overflowMenuElm}
             >
