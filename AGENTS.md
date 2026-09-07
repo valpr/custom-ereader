@@ -8,6 +8,7 @@ Welcome to **custom-ereader** (an enhanced e-book reader based on ッツ Reader)
 
 - **Never commit or push directly to `main`**:
   - All work must be conducted on a dedicated feature, fix, or chore branch.
+  - All branches target `main` as their merge destination (open PRs against `main`).
   - Branch naming convention:
     - `feat/<feature-name>` (e.g., `feat/cloud-reconnect`)
     - `fix/<bug-name>` (e.g., `fix/bookmark-jump`)
