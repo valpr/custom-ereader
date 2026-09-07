@@ -21,5 +21,6 @@ export { default as ListSection } from './list/ListSection.svelte';
 export { default as Select } from './select/Select.svelte';
 export { default as Tabs } from './tabs/Tabs.svelte';
 export { default as TopBar } from './top-bar/TopBar.svelte';
+export { default as OverflowList } from './overflow-list/OverflowList.svelte';
 
 export * from './types';
