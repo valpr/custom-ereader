@@ -5,7 +5,7 @@
 [![Deploy to GitHub Pages](https://github.com/valpr/custom-ereader/actions/workflows/pages.yml/badge.svg)](https://github.com/valpr/custom-ereader/actions/workflows/pages.yml)
 [![License: BSD-3-Clause](https://img.shields.io/badge/License-BSD--3--Clause-blue.svg)](LICENSE)
 
-**Live Reader:** [https://valpr.github.io/custom-ereader/](https://valpr.github.io/custom-ereader/)
+**Live Reader:** [https://valpr.github.io/reader/](https://valpr.github.io/reader/)
 
 This repository is a personalized fork of the excellent [ttu-ttu/ebook-reader](https://github.com/ttu-ttu/ebook-reader).
 
@@ -92,7 +92,7 @@ _The reader UI has been fully migrated to the custom `@custom-ereader/ui` Astryx
 
 The reader is automatically built and deployed to GitHub Pages on every push to `main`:
 
-**URL:** [https://valpr.github.io/custom-ereader/](https://valpr.github.io/custom-ereader/)
+**URL:** [https://valpr.github.io/reader/](https://valpr.github.io/reader/)
 
 ---
 
