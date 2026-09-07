@@ -23,7 +23,9 @@ test.describe('Reader Profiles System', () => {
     await expect(activeBadge).toBeVisible();
   });
 
-  test('switches profile and updates reading settings values', async ({ page }) => {
+  test('switches profile without triggering unsaved changes warning and updates reading settings values', async ({
+    page
+  }) => {
     // Initial desktop font size should be 20px
     const fontSizeDisplay = page.locator('text=20px').first();
     await expect(fontSizeDisplay).toBeVisible();
@@ -34,12 +36,23 @@ test.describe('Reader Profiles System', () => {
     // Font size should update to 17px for mobile profile
     await expect(page.locator('text=17px').first()).toBeVisible();
 
+    // The unsaved changes banner should NOT appear on profile switch
+    await expect(page.getByTestId('unsaved-changes-banner')).not.toBeVisible();
+
+    // Switch to Tablet / E-Reader
+    await page.locator('[role="button"]:has-text("Tablet / E-Reader")').click();
+    await expect(page.locator('text=22px').first()).toBeVisible();
+    await expect(page.getByTestId('unsaved-changes-banner')).not.toBeVisible();
+
     // Switch back to PC / Desktop
     await page.locator('[role="button"]:has-text("PC / Desktop")').click();
     await expect(page.locator('text=20px').first()).toBeVisible();
+    await expect(page.getByTestId('unsaved-changes-banner')).not.toBeVisible();
   });
 
-  test('detects modifications and allows reverting', async ({ page }) => {
+  test('detects modifications, auto-saves to active profile locally, and allows reverting', async ({
+    page
+  }) => {
     // Modify font size slider by triggering an input change or pressing arrow key
     const slider = page.locator('input[type="range"]').first();
     await slider.focus();
@@ -50,12 +63,30 @@ test.describe('Reader Profiles System', () => {
     await expect(page.getByTestId('unsaved-changes-banner')).toBeVisible();
     await expect(page.locator('button:has-text("Revert")').first()).toBeVisible();
 
+    // Active profile in localStorage should reflect the updated font size (auto-saved locally)
+    const activeFontSize = await page.evaluate(() => {
+      const profiles = JSON.parse(localStorage.getItem('readerProfiles') || '[]');
+      const activeId = localStorage.getItem('activeProfileId') || 'default-desktop';
+      const active = profiles.find((p: any) => p.id === activeId);
+      return active?.settings?.fontSize;
+    });
+    expect(activeFontSize).toBe(22);
+
     // Click Revert
     await page.locator('button:has-text("Revert")').first().click();
 
     // Unsaved changes banner should disappear and font size returns to 20px
     await expect(page.getByTestId('unsaved-changes-banner')).not.toBeVisible();
     await expect(page.locator('text=20px').first()).toBeVisible();
+
+    // Active profile in localStorage should also be reverted to 20px
+    const revertedFontSize = await page.evaluate(() => {
+      const profiles = JSON.parse(localStorage.getItem('readerProfiles') || '[]');
+      const activeId = localStorage.getItem('activeProfileId') || 'default-desktop';
+      const active = profiles.find((p: any) => p.id === activeId);
+      return active?.settings?.fontSize;
+    });
+    expect(revertedFontSize).toBe(20);
   });
 
   test('creates a new custom profile via modal', async ({ page }) => {
@@ -74,5 +105,46 @@ test.describe('Reader Profiles System', () => {
 
     // New profile should appear in the list and be active
     await expect(page.locator('text=OLED Night Reader')).toBeVisible();
+  });
+
+  test('mobile responsive layout does not crush description into vertical line or truncate banner', async ({
+    page
+  }) => {
+    // Resize viewport to mobile screen (iPhone SE: 375x667)
+    await page.setViewportSize({ width: 375, height: 667 });
+
+    // Verify "Profile Cloud Sync & Backup" description is rendered with wide text width (not crushed)
+    const backupDescription = page.locator(
+      'text=Sync reader profiles with connected cloud storage'
+    );
+    await expect(backupDescription).toBeVisible();
+
+    const descBox = await backupDescription.boundingBox();
+    expect(descBox).not.toBeNull();
+    // In mobile stacked layout, description should be wide (> 250px), not a narrow column
+    expect(descBox!.width).toBeGreaterThan(250);
+
+    // On mobile viewports, drill into the Typography section to access settings sliders
+    await page.locator('button.astryx-list-item-inner:has-text("Typography & Fonts")').click();
+
+    // Trigger modifications banner by changing font size slider
+    const slider = page.locator('input[type="range"]').first();
+    await slider.scrollIntoViewIfNeeded();
+    await slider.focus();
+    await page.keyboard.press('ArrowRight');
+
+    const banner = page.getByTestId('unsaved-changes-banner');
+    await expect(banner).toBeVisible();
+
+    // Verify banner does not horizontally overflow the container
+    const isOverflowing = await banner.evaluate((el) => {
+      return el.scrollWidth > el.clientWidth + 2;
+    });
+    expect(isOverflowing).toBe(false);
+
+    // Verify all 3 action buttons are visible and not clipped
+    await expect(page.locator('button:has-text("Revert")').first()).toBeVisible();
+    await expect(page.locator('button:has-text("Save as New...")').first()).toBeVisible();
+    await expect(page.locator('button:has-text("Update Profile")').first()).toBeVisible();
   });
 });

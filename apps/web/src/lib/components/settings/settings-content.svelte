@@ -560,7 +560,7 @@
     prioritizeReaderStyles = s.prioritizeReaderStyles;
     enableTextJustification = s.enableTextJustification;
     enableTextWrapPretty = s.enableTextWrapPretty;
-    enableVerticalFontKerning = s.enableVerticalFontKerning;
+    enableFontKerning = s.enableVerticalFontKerning;
     enableFontVPAL = s.enableFontVPAL;
     verticalTextOrientation = s.verticalTextOrientation;
     swipeThreshold = s.swipeThreshold;

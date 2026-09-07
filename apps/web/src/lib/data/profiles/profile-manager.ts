@@ -11,13 +11,16 @@ import {
   autoBookmark$,
   autoBookmarkTime$,
   autoPositionOnResize$,
+  autoReplication$,
   autosaveHistoryEnabled$,
   autosaveHistoryInterval$,
   autosaveHistoryMaxCount$,
   avoidPageBreak$,
+  cacheStorageData$,
   confirmClose$,
   customReadingPointEnabled$,
   customThemes$,
+  database,
   disableWheelNavigation$,
   enableFontVPAL$,
   enableReaderWakeLock$,
@@ -34,6 +37,7 @@ import {
   hideFurigana$,
   hideSpoilerImage$,
   hideSpoilerImageMode$,
+  isOnline$,
   lastProfilesModified$,
   lineHeight$,
   manualBookmark$,
@@ -41,13 +45,17 @@ import {
   pauseTrackerOnCustomPointChange$,
   prioritizeReaderStyles$,
   readerProfiles$,
+  readingGoalsMergeMode$,
+  replicationSaveBehavior$,
   secondDimensionMaxValue$,
   selectionToBookmarkEnabled$,
   showCharacterCounter$,
   showFooterChapterCharacterCounter$,
   showFooterChapterPercentage$,
   showPercentage$,
+  statisticsMergeMode$,
   swipeThreshold$,
+  syncTarget$,
   textIndentation$,
   textMarginMode$,
   textMarginValue$,
@@ -56,6 +64,11 @@ import {
   viewMode$,
   writingMode$
 } from '$lib/data/store';
+import { AutoReplicationType } from '$lib/functions/replication/replication-options';
+import { getStorageHandler } from '$lib/data/storage/storage-handler-factory';
+import { StorageDataType, StorageKey, StorageSourceDefault } from '$lib/data/storage/storage-types';
+import { replicateData } from '$lib/functions/replication/replicator';
+import { logger } from '$lib/data/logger';
 import {
   defaultDesktopSettings,
   defaultReaderProfiles,
@@ -422,5 +435,80 @@ export function importProfilesFromJson(jsonString: string): {
     return { success: true, count: data.profiles.length };
   } catch (err: any) {
     return { success: false, count: 0, error: err?.message || 'Failed to parse JSON' };
+  }
+}
+
+export async function syncProfilesToCloudTarget(): Promise<string | undefined> {
+  if (!browser) return undefined;
+  const syncTarget = syncTarget$.getValue();
+  if (!syncTarget || !isOnline$.getValue()) return undefined;
+  if (autoReplication$.getValue() === AutoReplicationType.Off) return undefined;
+
+  try {
+    let externalStorageHandler: any;
+
+    if (syncTarget === StorageSourceDefault.GDRIVE_DEFAULT) {
+      externalStorageHandler = getStorageHandler(
+        window,
+        StorageKey.GDRIVE,
+        syncTarget,
+        true,
+        cacheStorageData$.getValue(),
+        replicationSaveBehavior$.getValue(),
+        statisticsMergeMode$.getValue(),
+        readingGoalsMergeMode$.getValue()
+      );
+    } else if (syncTarget === StorageSourceDefault.ONEDRIVE_DEFAULT) {
+      externalStorageHandler = getStorageHandler(
+        window,
+        StorageKey.ONEDRIVE,
+        syncTarget,
+        true,
+        cacheStorageData$.getValue(),
+        replicationSaveBehavior$.getValue(),
+        statisticsMergeMode$.getValue(),
+        readingGoalsMergeMode$.getValue()
+      );
+    } else {
+      const db = await database.db;
+      const storageSource = await db.get('storageSource', syncTarget);
+      if (storageSource) {
+        if (storageSource.type !== StorageKey.FS && !isOnline$.getValue()) return undefined;
+        externalStorageHandler = getStorageHandler(
+          window,
+          storageSource.type,
+          syncTarget,
+          true,
+          cacheStorageData$.getValue(),
+          replicationSaveBehavior$.getValue(),
+          statisticsMergeMode$.getValue(),
+          readingGoalsMergeMode$.getValue()
+        );
+      }
+    }
+
+    if (!externalStorageHandler) return undefined;
+
+    const localStorageHandler = getStorageHandler(
+      window,
+      StorageKey.BROWSER,
+      '',
+      true,
+      cacheStorageData$.getValue(),
+      replicationSaveBehavior$.getValue(),
+      statisticsMergeMode$.getValue(),
+      readingGoalsMergeMode$.getValue()
+    );
+
+    return await replicateData(
+      localStorageHandler,
+      externalStorageHandler,
+      false,
+      [],
+      [StorageDataType.PROFILES]
+    );
+  } catch (err: any) {
+    logger.error(`Error auto-syncing profiles to cloud: ${err?.message || err}`);
+    return err?.message || String(err);
   }
 }
