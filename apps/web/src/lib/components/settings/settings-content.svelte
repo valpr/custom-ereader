@@ -1,6 +1,21 @@
 <script lang="ts">
   import { browser } from '$app/environment';
-  import { faComputer, faPlus, faSpinner } from '@fortawesome/free-solid-svg-icons';
+  import {
+    faArrowsLeftRight,
+    faBookmark,
+    faBookOpen,
+    faChevronLeft,
+    faChevronRight,
+    faComputer,
+    faFont,
+    faHandPointer,
+    faLanguage,
+    faListUl,
+    faPalette,
+    faPlus,
+    faSliders,
+    faSpinner
+  } from '@fortawesome/free-solid-svg-icons';
   import {
     TrackerAutoPause,
     TrackerSkipThresholdAction
@@ -13,12 +28,14 @@
   import SettingsDimensionPopover from '$lib/components/settings/settings-dimension-popover.svelte';
   import SettingsReadingGoals from '$lib/components/settings/settings-reading-goals.svelte';
   import SettingsReaderProfiles from '$lib/components/settings/settings-reader-profiles.svelte';
+  import SettingsReaderFontPreview from '$lib/components/settings/settings-reader-font-preview.svelte';
   import SettingsStorageSourceList from '$lib/components/settings/settings-storage-source-list.svelte';
   import SettingsUserFontDialog from '$lib/components/settings/settings-user-font-dialog.svelte';
   import {
     Button,
     IconButton,
     Input,
+    List,
     ListItem,
     ListSection,
     SegmentedControl,
@@ -463,24 +480,110 @@
     label: o.text
   }));
 
-  const sampleJapanese =
-    '吾輩は猫である。名前はまだ無い。どこで生れたかとんと見当がつかぬ。何でも薄暗いじめじめした所でニャーニャー泣いていた事だけは記憶している。';
-  const sampleDialogue =
-    '「本当に行くのかい？」「ええ、もう決めたの」風が木々を揺らし、二人の間に微かな沈黙が流れた。夜空には満天の星が瞬いていた。';
-  const sampleEnglish =
-    'The quick brown fox jumps over the lazy dog. Reading is to the mind what exercise is to the body. Books are a uniquely portable magic.';
-
-  const segmentsForPreviewWritingMode = [
-    { value: 'horizontal-tb', label: '横書き' },
-    { value: 'vertical-rl', label: '縦書き' }
+  const readerSections = [
+    {
+      id: 'all',
+      headline: 'All Settings',
+      description: 'View all reader settings continuously',
+      icon: faListUl
+    },
+    {
+      id: 'appearance',
+      headline: 'Theme & Appearance',
+      description: 'Interface theme, reading palettes, spoiler blur',
+      icon: faPalette
+    },
+    {
+      id: 'layout',
+      headline: 'Layout & Reading Modes',
+      description: 'Pagination, writing direction, columns, wake lock',
+      icon: faBookOpen
+    },
+    {
+      id: 'typography',
+      headline: 'Typography & Fonts',
+      description: 'Serif/Sans typefaces, font scales, line height, margins',
+      icon: faFont
+    },
+    {
+      id: 'margins',
+      headline: 'Margins & Viewport',
+      description: 'Viewport margins, column max-width & max-height',
+      icon: faArrowsLeftRight
+    },
+    {
+      id: 'rendering',
+      headline: 'Text Rendering & Furigana',
+      description: 'Furigana visibility, justification, VPAL, kerning',
+      icon: faLanguage
+    },
+    {
+      id: 'navigation',
+      headline: 'Navigation & Gestures',
+      description: 'Swipe threshold, edge tap, custom reading point',
+      icon: faHandPointer
+    },
+    {
+      id: 'progress',
+      headline: 'Bookmarks & Autosaves',
+      description: 'Auto-bookmarks, rolling autosaves, reading counters',
+      icon: faBookmark
+    }
   ];
 
-  let previewText = sampleJapanese;
-  let previewWritingMode: WritingMode = writingMode;
-  let previousWritingMode: WritingMode = writingMode;
-  $: if (writingMode !== previousWritingMode) {
-    previewWritingMode = writingMode;
-    previousWritingMode = writingMode;
+  let selectedReaderSection = 'all';
+  let mobileSelectedSection: string | null = null;
+  $: currentActiveSection =
+    mobileSelectedSection !== null ? mobileSelectedSection : selectedReaderSection;
+
+  function handleProfileChange(e: CustomEvent<{ settings: any }>) {
+    const s = e.detail?.settings;
+    if (!s) return;
+    appThemeMode = s.appThemeMode;
+    selectedTheme = s.theme;
+    fontSize = s.fontSize;
+    lineHeight = s.lineHeight;
+    fontFamilyGroupOne = s.fontFamilyGroupOne;
+    fontFamilyGroupTwo = s.fontFamilyGroupTwo;
+    fontWeight = s.fontWeight;
+    viewMode = s.viewMode;
+    writingMode = s.writingMode;
+    pageColumns = s.pageColumns;
+    firstDimensionMargin = s.firstDimensionMargin;
+    secondDimensionMaxValue = s.secondDimensionMaxValue;
+    textIndentation = s.textIndentation;
+    textMarginMode = s.textMarginMode;
+    textMarginValue = s.textMarginValue;
+    blurImage = s.blurImage;
+    blurImageMode = s.blurImageMode;
+    hideFurigana = s.hideFurigana;
+    furiganaStyle = s.furiganaStyle;
+    prioritizeReaderStyles = s.prioritizeReaderStyles;
+    enableTextJustification = s.enableTextJustification;
+    enableTextWrapPretty = s.enableTextWrapPretty;
+    enableVerticalFontKerning = s.enableVerticalFontKerning;
+    enableFontVPAL = s.enableFontVPAL;
+    verticalTextOrientation = s.verticalTextOrientation;
+    swipeThreshold = s.swipeThreshold;
+    enableTapEdgeToFlip = s.enableTapEdgeToFlip;
+    avoidPageBreak = s.avoidPageBreak;
+    selectionToBookmarkEnabled = s.selectionToBookmarkEnabled;
+    autoPositionOnResize = s.autoPositionOnResize;
+    customReadingPointEnabled = s.customReadingPointEnabled;
+    pauseTrackerOnCustomPointChange = s.pauseTrackerOnCustomPointChange;
+    disableWheelNavigation = s.disableWheelNavigation;
+    confirmClose = s.confirmClose;
+    manualBookmark = s.manualBookmark;
+    autoBookmark = s.autoBookmark;
+    autoBookmarkTime = s.autoBookmarkTime;
+    autosaveHistoryEnabled = s.autosaveHistoryEnabled;
+    autosaveHistoryInterval = s.autosaveHistoryInterval;
+    autosaveHistoryMaxCount = s.autosaveHistoryMaxCount;
+    showCharacterCounter = s.showCharacterCounter;
+    showPercentage = s.showPercentage;
+    showFooterChapterCharacterCounter = s.showFooterChapterCharacterCounter;
+    showFooterChapterPercentage = s.showFooterChapterPercentage;
+    enableReaderWakeLock = s.enableReaderWakeLock;
   }
 
   const storageSources$ = database.storageSourcesChanged$.pipe(
@@ -619,795 +722,777 @@
 </script>
 
 {#if visitedTabs.has('Reader')}
-  <div
-    class="flex flex-col gap-6 max-w-3xl mx-auto pb-16"
-    class:hidden={activeSettings !== 'Reader'}
-  >
+  <div class="flex flex-col gap-5 w-full mx-auto pb-16" class:hidden={activeSettings !== 'Reader'}>
+    <!-- Sticky Example Font Preview at top at all times -->
+    <SettingsReaderFontPreview
+      bind:fontSize
+      bind:lineHeight
+      {fontFamilyGroupOne}
+      {fontWeight}
+      {enableFontKerning}
+      {enableFontVPAL}
+      {writingMode}
+      {currentThemeOption}
+    />
+
+    <!-- Reader Profiles (Universally accessible on both desktop and mobile) -->
     <SettingsReaderProfiles
       storageSources={$storageSources$}
       on:spinner={({ detail }) => (showSpinner = detail)}
-      on:profileChange={({ detail }) => {
-        const s = detail.settings;
-        if (!s) return;
-        appThemeMode = s.appThemeMode;
-        selectedTheme = s.theme;
-        fontSize = s.fontSize;
-        lineHeight = s.lineHeight;
-        fontFamilyGroupOne = s.fontFamilyGroupOne;
-        fontFamilyGroupTwo = s.fontFamilyGroupTwo;
-        fontWeight = s.fontWeight;
-        viewMode = s.viewMode;
-        writingMode = s.writingMode;
-        pageColumns = s.pageColumns;
-        firstDimensionMargin = s.firstDimensionMargin;
-        secondDimensionMaxValue = s.secondDimensionMaxValue;
-        textIndentation = s.textIndentation;
-        textMarginMode = s.textMarginMode;
-        textMarginValue = s.textMarginValue;
-        blurImage = s.blurImage;
-        blurImageMode = s.blurImageMode;
-        hideFurigana = s.hideFurigana;
-        furiganaStyle = s.furiganaStyle;
-        prioritizeReaderStyles = s.prioritizeReaderStyles;
-        enableTextJustification = s.enableTextJustification;
-        enableTextWrapPretty = s.enableTextWrapPretty;
-        enableVerticalFontKerning = s.enableVerticalFontKerning;
-        enableFontVPAL = s.enableFontVPAL;
-        verticalTextOrientation = s.verticalTextOrientation;
-        swipeThreshold = s.swipeThreshold;
-        enableTapEdgeToFlip = s.enableTapEdgeToFlip;
-        avoidPageBreak = s.avoidPageBreak;
-        selectionToBookmarkEnabled = s.selectionToBookmarkEnabled;
-        autoPositionOnResize = s.autoPositionOnResize;
-        customReadingPointEnabled = s.customReadingPointEnabled;
-        pauseTrackerOnCustomPointChange = s.pauseTrackerOnCustomPointChange;
-        disableWheelNavigation = s.disableWheelNavigation;
-        confirmClose = s.confirmClose;
-        manualBookmark = s.manualBookmark;
-        autoBookmark = s.autoBookmark;
-        autoBookmarkTime = s.autoBookmarkTime;
-        autosaveHistoryEnabled = s.autosaveHistoryEnabled;
-        autosaveHistoryInterval = s.autosaveHistoryInterval;
-        autosaveHistoryMaxCount = s.autosaveHistoryMaxCount;
-        showCharacterCounter = s.showCharacterCounter;
-        showPercentage = s.showPercentage;
-        showFooterChapterCharacterCounter = s.showFooterChapterCharacterCounter;
-        showFooterChapterPercentage = s.showFooterChapterPercentage;
-        enableReaderWakeLock = s.enableReaderWakeLock;
-      }}
+      on:profileChange={handleProfileChange}
     />
 
-    <!-- Section 1: Appearance & Theme -->
-    <ListSection
-      title="Appearance & Themes"
-      description="Customize interface theme, reading color palettes, and spoiler image blur"
-    >
-      <ListItem
-        layout="stacked"
-        headline="App Theme"
-        description="Select the interface theme for collections, settings, and menus, or track system preference"
+    <!-- Main Settings Area: Left Astryx List (Desktop) & Drill-down (Mobile) -->
+    <div class="flex flex-col md:flex-row gap-6 items-start w-full">
+      <!-- Left Navigation Sidebar: Astryx List -->
+      <aside
+        data-testid="reader-settings-sidebar"
+        class="w-full md:w-64 lg:w-72 shrink-0 md:sticky md:top-28 xl:md:top-24"
+        class:max-md:hidden={mobileSelectedSection !== null}
       >
-        <SegmentedControl
-          fullWidth
-          size="sm"
-          options={segmentsForAppTheme}
-          bind:value={appThemeMode}
-        />
-      </ListItem>
-
-      <ListItem
-        layout="stacked"
-        headline="Reader Palette"
-        description="Select an active reading view color palette or create and customize new themes"
-      >
-        <ButtonToggleGroup
-          options={optionsForTheme}
-          bind:selectedOptionId={selectedTheme}
-          on:edit={({ detail }) =>
-            dialogManager.dialogs$.next([
-              {
-                component: SettingsCustomTheme,
-                props: { selectedTheme: detail, existingThemes: optionsForTheme }
-              }
-            ])}
-          on:delete={({ detail }) => {
-            $theme$ = optionsForTheme[optionsForTheme.length - 2]?.id || 'light-theme';
-            delete $customThemes$[detail];
-            $customThemes$ = { ...$customThemes$ };
-          }}
-        >
-          {#if browser}
-            <button
-              type="button"
-              title="Create new custom theme"
-              aria-label="Create new custom theme"
-              class="inline-flex items-center justify-center h-[38px] px-3.5 rounded-md border border-dashed transition-opacity cursor-pointer text-sm hover:opacity-80"
-              style="color: var(--astryx-color-fg-primary, inherit); border-color: var(--astryx-color-border-strong, #71717a); background-color: var(--astryx-color-surface-subtle, transparent);"
-              on:click={() =>
-                dialogManager.dialogs$.next([
-                  {
-                    component: SettingsCustomTheme,
-                    props: { existingThemes: optionsForTheme }
-                  }
-                ])}
-            >
-              <Fa icon={faPlus} class="mx-1" />
-              <Ripple />
-            </button>
-          {/if}
-        </ButtonToggleGroup>
-      </ListItem>
-
-      <ListItem
-        headline="Blur Spoiler Images"
-        description="Blurs book illustrations and covers to avoid spoilers while reading"
-      >
-        <Switch slot="suffix" bind:checked={blurImage} />
-      </ListItem>
-
-      {#if blurImage}
-        <ListItem
-          layout="stacked"
-          headline="Blur Scope"
-          description="Determines whether to blur all images or only those appearing after the Table of Contents"
-        >
-          <SegmentedControl
-            fullWidth
-            size="sm"
-            options={segmentsForBlurMode}
-            bind:value={blurImageMode}
-          />
-        </ListItem>
-      {/if}
-    </ListSection>
-
-    <!-- Section 2: Layout & Direction -->
-    <ListSection
-      title="Layout & Reading Modes"
-      description="Configure page progression flow, Japanese orientation, and column layouts"
-    >
-      <ListItem
-        layout="stacked"
-        headline="Page Progression Mode"
-        description="Switch between continuous vertical scrolling and column-based pagination"
-      >
-        <SegmentedControl fullWidth size="sm" options={segmentsForViewMode} bind:value={viewMode} />
-      </ListItem>
-
-      <ListItem
-        layout="stacked"
-        headline="Writing Direction"
-        description="Toggle between vertical (縦書き) and horizontal (横書き) text orientation"
-      >
-        <SegmentedControl
-          fullWidth
-          size="sm"
-          options={segmentsForWritingMode}
-          bind:value={writingMode}
-        />
-      </ListItem>
-
-      {#if !verticalMode && viewMode === ViewMode.Paginated}
-        <ListItem
-          headline="Page Columns"
-          description="Number of text columns rendered in horizontal paginated view (0 = automatic)"
-        >
-          <div slot="suffix" class="w-28">
-            <Input type="number" size="sm" min="0" step="1" bind:value={pageColumns}>
-              <span slot="suffix" class="text-xs text-zinc-500">cols</span>
-            </Input>
-          </div>
-        </ListItem>
-      {/if}
-
-      {#if wakeLockSupported}
-        <ListItem
-          headline="Prevent Screen Sleep (Wake Lock)"
-          description="Requests a device wake lock to prevent the screen from dimming while reading"
-        >
-          <Switch slot="suffix" bind:checked={enableReaderWakeLock} />
-        </ListItem>
-      {/if}
-    </ListSection>
-
-    <!-- Section 3: Typography & Fonts -->
-    <ListSection
-      title="Typography & Fonts"
-      description="Choose reading typefaces, font scales, line heights, and paragraph spacing"
-    >
-      <ListItem
-        layout="stacked"
-        headline="Primary Font Family (Mincho / Serif)"
-        description="Default Japanese serif typeface for book text. Select preset or enter custom font"
-      >
-        <div slot="suffix" class="flex items-center gap-1">
-          {#if fontCacheSupported}
-            <Tooltip text="Manage Installed Web Fonts">
-              <IconButton
-                variant="ghost"
-                size="sm"
-                label="Manage Installed Web Fonts"
-                on:click={() =>
-                  dialogManager.dialogs$.next([
-                    {
-                      component: SettingsUserFontDialog,
-                      props: { fontFamily: fontFamilyGroupOne$ }
-                    }
-                  ])}
-              >
-                <Fa icon={faComputer} />
-              </IconButton>
-            </Tooltip>
-          {/if}
-        </div>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full">
-          <Select size="sm" options={selectGroupOneOptions} bind:value={fontFamilyGroupOne} />
-          <Input
-            size="sm"
-            placeholder="Custom font name (e.g. Noto Serif JP)"
-            bind:value={fontFamilyGroupOne}
-          />
-        </div>
-      </ListItem>
-
-      <ListItem
-        layout="stacked"
-        headline="Secondary Font Family (Gothic / Sans-Serif)"
-        description="Secondary Japanese sans-serif typeface for interface, sidebars, and annotations"
-      >
-        <div slot="suffix" class="flex items-center gap-1">
-          {#if fontCacheSupported}
-            <Tooltip text="Manage Installed Web Fonts">
-              <IconButton
-                variant="ghost"
-                size="sm"
-                label="Manage Installed Web Fonts"
-                on:click={() =>
-                  dialogManager.dialogs$.next([
-                    {
-                      component: SettingsUserFontDialog,
-                      props: { fontFamily: fontFamilyGroupTwo$ }
-                    }
-                  ])}
-              >
-                <Fa icon={faComputer} />
-              </IconButton>
-            </Tooltip>
-          {/if}
-        </div>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full">
-          <Select size="sm" options={selectGroupTwoOptions} bind:value={fontFamilyGroupTwo} />
-          <Input
-            size="sm"
-            placeholder="Custom font name (e.g. Noto Sans JP)"
-            bind:value={fontFamilyGroupTwo}
-          />
-        </div>
-      </ListItem>
-
-      <ListItem
-        layout="stacked"
-        headline="Font Size"
-        description="Base reading font size across all text"
-      >
-        <span
-          slot="suffix"
-          class="text-xs font-semibold px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700 tabular-nums"
-        >
-          {fontSize}px
-        </span>
-        <Slider min={10} max={48} step={1} bind:value={fontSize} showValue={false} />
-      </ListItem>
-
-      <ListItem
-        layout="stacked"
-        headline="Line Height"
-        description="Vertical spacing multiplier between lines of text"
-      >
-        <span
-          slot="suffix"
-          class="text-xs font-semibold px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700 tabular-nums"
-        >
-          {Number(lineHeight).toFixed(2)}x
-        </span>
-        <Slider min={1.0} max={2.5} step={0.05} bind:value={lineHeight} showValue={false} />
-      </ListItem>
-
-      <ListItem
-        layout="stacked"
-        headline="Example Text Preview"
-        description="Live preview reflecting current font size, line height, typeface, and weight"
-      >
-        <div slot="suffix" class="flex items-center gap-1.5">
-          <SegmentedControl
-            size="sm"
-            options={segmentsForPreviewWritingMode}
-            bind:value={previewWritingMode}
-          />
-        </div>
-
-        <div class="mt-2 flex flex-col gap-2 w-full">
-          <div
-            contenteditable="true"
-            role="textbox"
-            tabindex="0"
-            aria-multiline="true"
-            aria-label="Editable font preview text"
-            bind:textContent={previewText}
-            class="live-font-preview w-full rounded-lg border border-dashed border-zinc-300 dark:border-zinc-700 p-4 transition-[font-size,line-height] outline-none focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-600 select-text cursor-text box-border"
-            style:font-size={`${fontSize}px`}
-            style:line-height={`${lineHeight}`}
-            style:font-family={fontFamilyGroupOne ? `"${fontFamilyGroupOne}", serif` : 'serif'}
-            style:font-weight={fontWeight ? `${fontWeight}` : 'inherit'}
-            style:font-kerning={enableFontKerning ? 'normal' : 'none'}
-            style:font-feature-settings={enableFontVPAL ? '"vpal"' : 'normal'}
-            style:writing-mode={previewWritingMode}
-            style:height={previewWritingMode === 'vertical-rl' ? '210px' : 'auto'}
-            style:min-height={previewWritingMode === 'vertical-rl' ? '210px' : '84px'}
-            style:max-height={previewWritingMode === 'vertical-rl' ? '240px' : '300px'}
-            style:overflow-x={previewWritingMode === 'vertical-rl' ? 'auto' : 'hidden'}
-            style:overflow-y={previewWritingMode === 'vertical-rl' ? 'hidden' : 'auto'}
-            style:background-color={currentThemeOption?.backgroundColor ??
-              'var(--astryx-color-surface-subtle, rgba(0, 0, 0, 0.03))'}
-            style:color={currentThemeOption?.fontColor ?? 'var(--astryx-color-fg-primary, inherit)'}
-          />
-
-          <div
-            class="flex flex-wrap items-center justify-between gap-2 text-xs text-zinc-500 dark:text-zinc-400 px-0.5"
-          >
-            <span>Click text above to test custom words or kanji</span>
-            <div class="flex items-center gap-1.5">
-              <button
-                type="button"
-                class="hover:underline hover:text-zinc-800 dark:hover:text-zinc-200 transition-colors"
-                on:click={() => (previewText = sampleJapanese)}
-              >
-                吾輩は猫 (JA)
-              </button>
-              <span>•</span>
-              <button
-                type="button"
-                class="hover:underline hover:text-zinc-800 dark:hover:text-zinc-200 transition-colors"
-                on:click={() => (previewText = sampleDialogue)}
-              >
-                Dialogue
-              </button>
-              <span>•</span>
-              <button
-                type="button"
-                class="hover:underline hover:text-zinc-800 dark:hover:text-zinc-200 transition-colors"
-                on:click={() => (previewText = sampleEnglish)}
-              >
-                English
-              </button>
-            </div>
-          </div>
-        </div>
-      </ListItem>
-
-      <ListItem
-        headline="Font Weight"
-        description="Custom font weight override (100–1000). Leave empty for font default"
-      >
-        <div slot="suffix" class="w-32">
-          <Input
-            type="number"
-            size="sm"
-            placeholder="Default"
-            step={100}
-            min={100}
-            max={1000}
-            bind:value={fontWeight}
-            on:change={() => {
-              if (fontWeight === null) return;
-              if (fontWeight < 100) fontWeight = 100;
-              else if (fontWeight > 1000) fontWeight = 1000;
-            }}
-          />
-        </div>
-      </ListItem>
-
-      <ListItem
-        headline="Paragraph Indentation"
-        description="Indentation added to the first line of paragraphs in rem units"
-      >
-        <div slot="suffix" class="w-28">
-          <Input
-            type="number"
-            size="sm"
-            step={0.5}
-            min={0}
-            bind:value={textIndentation}
-            on:blur={() => {
-              const newValue = Number.parseFloat(`${textIndentation ?? 0}`);
-              if (isNaN(newValue) || newValue < 0) textIndentation = 0;
-            }}
-          >
-            <span slot="suffix" class="text-xs text-zinc-500">rem</span>
-          </Input>
-        </div>
-      </ListItem>
-
-      <ListItem
-        layout="stacked"
-        headline="Paragraph Margin Mode"
-        description="Whether to use automated margin spacing or custom manual spacing"
-      >
-        <SegmentedControl
-          fullWidth
-          size="sm"
-          options={segmentsForTextMarginMode}
-          bind:value={textMarginMode}
-        />
-      </ListItem>
-
-      {#if textMarginMode === 'manual'}
-        <ListItem
-          headline="Paragraph Margins"
-          description="Additional margin space added between paragraphs in rem units"
-        >
-          <div slot="suffix" class="w-28">
-            <Input
-              type="number"
-              size="sm"
-              step={0.5}
-              min={0}
-              bind:value={textMarginValue}
-              on:blur={() => {
-                const newValue = Number.parseFloat(`${textMarginValue ?? 0}`);
-                if (isNaN(newValue) || newValue < 0) textMarginValue = 0;
+        <List variant="card" divided={true} density="normal">
+          {#each readerSections as section (section.id)}
+            <ListItem
+              headline={section.headline}
+              description={section.description}
+              clickable={true}
+              selected={selectedReaderSection === section.id}
+              on:click={() => {
+                selectedReaderSection = section.id;
+                mobileSelectedSection = section.id;
               }}
             >
-              <span slot="suffix" class="text-xs text-zinc-500">rem</span>
-            </Input>
-          </div>
-        </ListItem>
-      {/if}
-    </ListSection>
+              <svelte:fragment slot="prefix">
+                <div class="w-5 text-center text-zinc-500 dark:text-zinc-400">
+                  <Fa icon={section.icon} />
+                </div>
+              </svelte:fragment>
+              <svelte:fragment slot="suffix">
+                <span class="md:hidden">
+                  <Fa icon={faChevronRight} class="text-xs opacity-50" />
+                </span>
+              </svelte:fragment>
+            </ListItem>
+          {/each}
+        </List>
+      </aside>
 
-    <!-- Section 4: Reader Margins & Boundaries -->
-    <ListSection
-      title="Reader Margins & Viewport Boundaries"
-      description="Configure reading column boundaries and viewport clearance"
-    >
-      <ListItem
-        headline={verticalMode ? 'Reader Left / Right Margin' : 'Reader Top / Bottom Margin'}
-        description="Padding distance from viewport edges in pixels"
+      <!-- Right Main Content Panel -->
+      <main
+        data-testid="reader-settings-content-panel"
+        class="flex-1 min-w-0 w-full flex flex-col gap-6"
+        class:max-md:hidden={mobileSelectedSection === null}
       >
-        <div slot="suffix" class="flex items-center gap-2">
-          <SettingsDimensionPopover
-            isFirstDimension
-            isVertical={verticalMode}
-            bind:dimensionValue={firstDimensionMargin}
-          />
-          <div class="w-28">
-            <Input type="number" size="sm" step={1} min={0} bind:value={firstDimensionMargin}>
-              <span slot="suffix" class="text-xs text-zinc-500">px</span>
-            </Input>
-          </div>
-        </div>
-      </ListItem>
-
-      <ListItem
-        headline={verticalMode ? 'Reader Max Height' : 'Reader Max Width'}
-        description="Maximum reading dimension boundary before constraining text flow"
-      >
-        <div slot="suffix" class="flex items-center gap-2">
-          <SettingsDimensionPopover
-            isVertical={verticalMode}
-            bind:dimensionValue={secondDimensionMaxValue}
-          />
-          <div class="w-28">
-            <Input type="number" size="sm" step={1} min={0} bind:value={secondDimensionMaxValue}>
-              <span slot="suffix" class="text-xs text-zinc-500">px</span>
-            </Input>
-          </div>
-        </div>
-      </ListItem>
-    </ListSection>
-
-    <!-- Section 5: Text Rendering & Furigana -->
-    <ListSection
-      title="Text Rendering & Furigana"
-      description="Japanese typography rules, spacing adjustments, and ruby annotations"
-    >
-      <ListItem
-        headline="Prioritize Reader Styles"
-        description="Applies '!important' to user font and margin styles to override conflicting book styles"
-      >
-        <Switch slot="suffix" bind:checked={prioritizeReaderStyles} />
-      </ListItem>
-
-      <ListItem
-        headline="Enable Text Justification"
-        description="Justifies paragraph text content for clean alignment across reading columns"
-      >
-        <Switch slot="suffix" bind:checked={enableTextJustification} />
-      </ListItem>
-
-      <ListItem
-        headline="Enable Pretty Text Wrap"
-        description="Applies pretty text wrap algorithm to prevent orphan words on supported browsers"
-      >
-        <Switch slot="suffix" bind:checked={enableTextWrapPretty} />
-      </ListItem>
-
-      {#if verticalMode}
-        <ListItem
-          headline="Enable Vertical Font Kerning"
-          description="Improves vertical glyph spacing balance if supported by the font and browser"
+        <!-- Mobile Back Header -->
+        <div
+          class="md:hidden flex items-center justify-between pb-3 border-b border-[var(--astryx-color-border-subtle,#f4f4f5)]"
         >
-          <Switch slot="suffix" bind:checked={enableFontKerning} />
-        </ListItem>
-
-        <ListItem
-          headline="Enable VPAL (Vertical Proportional Spacing)"
-          description="Provides natural proportional spacing for vertical Japanese text layout"
-        >
-          <Switch slot="suffix" bind:checked={enableFontVPAL} />
-        </ListItem>
-
-        <ListItem
-          layout="stacked"
-          headline="Vertical Text Orientation"
-          description={verticalTextOrientationTooltip}
-        >
-          <SegmentedControl
-            fullWidth
-            size="sm"
-            options={segmentsForVerticalTextOrientation}
-            bind:value={verticalTextOrientation}
-          />
-        </ListItem>
-      {/if}
-
-      <ListItem
-        headline="Hide Furigana"
-        description="Hides Japanese ruby pronunciation glosses above kanji characters"
-      >
-        <Switch slot="suffix" bind:checked={hideFurigana} />
-      </ListItem>
-
-      {#if hideFurigana}
-        <ListItem
-          layout="stacked"
-          headline="Furigana Interaction Style"
-          description={furiganaStyleTooltip}
-        >
-          <SegmentedControl
-            fullWidth
-            size="sm"
-            options={segmentsForFuriganaStyle}
-            bind:value={furiganaStyle}
-          />
-        </ListItem>
-      {/if}
-    </ListSection>
-
-    <!-- Section 6: Navigation, Gestures & Page Turns -->
-    <ListSection
-      title="Navigation, Gestures & Page Turns"
-      description="Touch gestures, keyboard/mouse controls, and navigation safety"
-    >
-      <ListItem
-        headline="Swipe Navigation Threshold"
-        description="Minimum swipe distance in pixels required to trigger a page turn"
-      >
-        <div slot="suffix" class="w-28">
-          <Input
-            type="number"
-            size="sm"
-            step={1}
-            min={10}
-            bind:value={swipeThreshold}
-            on:blur={() => {
-              if (swipeThreshold < 10 || typeof swipeThreshold !== 'number') {
-                swipeThreshold = 10;
-              }
-            }}
+          <Button variant="ghost" size="sm" on:click={() => (mobileSelectedSection = null)}>
+            <Fa icon={faChevronLeft} class="mr-1.5" /> All Settings
+          </Button>
+          <span
+            class="text-xs font-semibold text-[var(--astryx-color-fg-secondary,#71717a)] truncate max-w-[180px]"
           >
-            <span slot="suffix" class="text-xs text-zinc-500">px</span>
-          </Input>
+            {readerSections.find((s) => s.id === (mobileSelectedSection || selectedReaderSection))
+              ?.headline ?? ''}
+          </span>
         </div>
-      </ListItem>
 
-      {#if viewMode === ViewMode.Paginated}
-        <ListItem
-          headline="Tap Edge to Flip"
-          description="Reserves small margin zones on the left and right edges for quick page flipping"
-        >
-          <Switch slot="suffix" bind:checked={enableTapEdgeToFlip} />
-        </ListItem>
-
-        <ListItem headline="Avoid Mid-Sentence Page Breaks" description={avoidPageBreakTooltip}>
-          <Switch slot="suffix" bind:checked={avoidPageBreak} />
-        </ListItem>
-
-        <ListItem
-          headline="Selection to Bookmark"
-          description="Places bookmarks at the nearest selected text paragraph instead of the page top"
-        >
-          <Switch slot="suffix" bind:checked={selectionToBookmarkEnabled} />
-        </ListItem>
-      {:else}
-        <ListItem
-          headline="Auto Reposition on Resize"
-          description="Automatically preserves current reading position when the window is resized"
-        >
-          <Switch slot="suffix" bind:checked={autoPositionOnResize} />
-        </ListItem>
-
-        <ListItem
-          headline="Custom Reading Anchor Point"
-          description="Calculates progress and bookmarks from a persistent viewport anchor line"
-        >
-          <div slot="suffix" class="flex items-center gap-3">
-            {#if customReadingPointEnabled}
-              <Button
-                variant="ghost"
+        <!-- Section 1: Appearance & Theme -->
+        {#if currentActiveSection === 'all' || currentActiveSection === 'appearance'}
+          <ListSection
+            title="Appearance & Themes"
+            description="Customize interface theme, reading color palettes, and spoiler image blur"
+          >
+            <ListItem
+              layout="stacked"
+              headline="App Theme"
+              description="Select the interface theme for collections, settings, and menus, or track system preference"
+            >
+              <SegmentedControl
+                fullWidth
                 size="sm"
-                on:click={() => {
-                  verticalCustomReadingPosition$.next(100);
-                  horizontalCustomReadingPosition$.next(0);
+                options={segmentsForAppTheme}
+                bind:value={appThemeMode}
+              />
+            </ListItem>
+
+            <ListItem
+              layout="stacked"
+              headline="Reader Palette"
+              description="Select an active reading view color palette or create and customize new themes"
+            >
+              <ButtonToggleGroup
+                options={optionsForTheme}
+                bind:selectedOptionId={selectedTheme}
+                on:edit={({ detail }) =>
+                  dialogManager.dialogs$.next([
+                    {
+                      component: SettingsCustomTheme,
+                      props: { selectedTheme: detail, existingThemes: optionsForTheme }
+                    }
+                  ])}
+                on:delete={({ detail }) => {
+                  $theme$ = optionsForTheme[optionsForTheme.length - 2]?.id || 'light-theme';
+                  delete $customThemes$[detail];
+                  $customThemes$ = { ...$customThemes$ };
                 }}
               >
-                Reset Points
-              </Button>
+                {#if browser}
+                  <button
+                    type="button"
+                    title="Create new custom theme"
+                    aria-label="Create new custom theme"
+                    class="inline-flex items-center justify-center h-[38px] px-3.5 rounded-md border border-dashed transition-opacity cursor-pointer text-sm hover:opacity-80"
+                    style="color: var(--astryx-color-fg-primary, inherit); border-color: var(--astryx-color-border-strong, #71717a); background-color: var(--astryx-color-surface-subtle, transparent);"
+                    on:click={() =>
+                      dialogManager.dialogs$.next([
+                        {
+                          component: SettingsCustomTheme,
+                          props: { existingThemes: optionsForTheme }
+                        }
+                      ])}
+                  >
+                    <Fa icon={faPlus} class="mx-1" />
+                    <Ripple />
+                  </button>
+                {/if}
+              </ButtonToggleGroup>
+            </ListItem>
+
+            <ListItem
+              headline="Blur Spoiler Images"
+              description="Blurs book illustrations and covers to avoid spoilers while reading"
+            >
+              <Switch slot="suffix" bind:checked={blurImage} />
+            </ListItem>
+
+            {#if blurImage}
+              <ListItem
+                layout="stacked"
+                headline="Blur Scope"
+                description="Determines whether to blur all images or only those appearing after the Table of Contents"
+              >
+                <SegmentedControl
+                  fullWidth
+                  size="sm"
+                  options={segmentsForBlurMode}
+                  bind:value={blurImageMode}
+                />
+              </ListItem>
             {/if}
-            <Switch bind:checked={customReadingPointEnabled} />
-          </div>
-        </ListItem>
-
-        {#if statisticsEnabled}
-          <ListItem
-            headline="Pause Tracker While Setting Anchor"
-            description="Auto-pauses the reading statistics timer while dragging the custom anchor point"
-          >
-            <Switch slot="suffix" bind:checked={pauseTrackerOnCustomPointChange} />
-          </ListItem>
+          </ListSection>
         {/if}
-      {/if}
 
-      <ListItem
-        headline="Disable Mouse Wheel Navigation"
-        description="Prevents flipping pages using the mouse scroll wheel"
-      >
-        <Switch slot="suffix" bind:checked={disableWheelNavigation} />
-      </ListItem>
-
-      <ListItem
-        headline="Confirm Before Leaving Tab"
-        description="Prompts for confirmation when closing or refreshing reader tab if unsaved changes were detected"
-      >
-        <Switch slot="suffix" bind:checked={confirmClose} />
-      </ListItem>
-    </ListSection>
-
-    <!-- Section 7: Bookmarks, Autosave & Progress -->
-    <ListSection
-      title="Bookmarks, Autosaves & Progress"
-      description="Position checkpoints, rolling autosaves, and reader indicators"
-    >
-      <ListItem
-        headline="Manual Bookmark Only"
-        description="Prevents automatically updating bookmark position when leaving the reader via menu"
-      >
-        <Switch slot="suffix" bind:checked={manualBookmark} />
-      </ListItem>
-
-      <ListItem headline="Auto-Bookmark Position" description={autoBookmarkTooltip}>
-        <Switch slot="suffix" bind:checked={autoBookmark} />
-      </ListItem>
-
-      {#if autoBookmark}
-        <ListItem
-          headline="Auto-Bookmark Delay"
-          description="Seconds idle on a page before saving an automatic bookmark"
-        >
-          <div slot="suffix" class="w-28">
-            <Input
-              type="number"
-              size="sm"
-              step={1}
-              min={1}
-              bind:value={autoBookmarkTime}
-              on:blur={() => {
-                if (autoBookmarkTime < 1 || typeof autoBookmarkTime !== 'number') {
-                  autoBookmarkTime = 3;
-                }
-              }}
+        <!-- Section 2: Layout & Reading Modes -->
+        {#if currentActiveSection === 'all' || currentActiveSection === 'layout'}
+          <ListSection
+            title="Layout & Reading Modes"
+            description="Configure page progression flow, Japanese orientation, and column layouts"
+          >
+            <ListItem
+              layout="stacked"
+              headline="Page Progression Mode"
+              description="Switch between continuous vertical scrolling and column-based pagination"
             >
-              <span slot="suffix" class="text-xs text-zinc-500">s</span>
-            </Input>
-          </div>
-        </ListItem>
-      {/if}
+              <SegmentedControl
+                fullWidth
+                size="sm"
+                options={segmentsForViewMode}
+                bind:value={viewMode}
+              />
+            </ListItem>
 
-      <ListItem
-        headline="Rolling Autosave History"
-        description="Preserves rolling position checkpoints while reading so you can recover your place after accidental rapid scrolling"
-      >
-        <Switch slot="suffix" bind:checked={autosaveHistoryEnabled} />
-      </ListItem>
-
-      {#if autosaveHistoryEnabled}
-        <ListItem
-          headline="Autosave Pause Delay"
-          description="Seconds stopped on a page without scrolling before saving a rolling checkpoint (1–30s)"
-        >
-          <div slot="suffix" class="w-28">
-            <Input
-              type="number"
-              size="sm"
-              step={1}
-              min={1}
-              max={30}
-              bind:value={autosaveHistoryInterval}
-              on:blur={() => {
-                if (autosaveHistoryInterval < 1 || typeof autosaveHistoryInterval !== 'number') {
-                  autosaveHistoryInterval = 3;
-                }
-              }}
+            <ListItem
+              layout="stacked"
+              headline="Writing Direction"
+              description="Toggle between vertical (縦書き) and horizontal (横書き) text orientation"
             >
-              <span slot="suffix" class="text-xs text-zinc-500">s</span>
-            </Input>
-          </div>
-        </ListItem>
+              <SegmentedControl
+                fullWidth
+                size="sm"
+                options={segmentsForWritingMode}
+                bind:value={writingMode}
+              />
+            </ListItem>
 
-        <ListItem
-          headline="Max Autosaves to Retain"
-          description="Number of rolling autosave checkpoints to preserve before pruning older entries (2–20)"
-        >
-          <div slot="suffix" class="w-28">
-            <Input
-              type="number"
-              size="sm"
-              step={1}
-              min={2}
-              max={20}
-              bind:value={autosaveHistoryMaxCount}
-              on:blur={() => {
-                if (autosaveHistoryMaxCount < 2 || typeof autosaveHistoryMaxCount !== 'number') {
-                  autosaveHistoryMaxCount = 10;
-                } else if (autosaveHistoryMaxCount > 20) {
-                  autosaveHistoryMaxCount = 20;
-                }
-              }}
+            {#if !verticalMode && viewMode === ViewMode.Paginated}
+              <ListItem
+                headline="Page Columns"
+                description="Number of text columns rendered in horizontal paginated view (0 = automatic)"
+              >
+                <div slot="suffix" class="w-28">
+                  <Input type="number" size="sm" min="0" step="1" bind:value={pageColumns}>
+                    <span slot="suffix" class="text-xs text-zinc-500">cols</span>
+                  </Input>
+                </div>
+              </ListItem>
+            {/if}
+
+            {#if wakeLockSupported}
+              <ListItem
+                headline="Prevent Screen Sleep (Wake Lock)"
+                description="Requests a device wake lock to prevent the screen from dimming while reading"
+              >
+                <Switch slot="suffix" bind:checked={enableReaderWakeLock} />
+              </ListItem>
+            {/if}
+          </ListSection>
+        {/if}
+
+        <!-- Section 3: Typography & Fonts -->
+        {#if currentActiveSection === 'all' || currentActiveSection === 'typography'}
+          <ListSection
+            title="Typography & Fonts"
+            description="Choose reading typefaces, font scales, line heights, and paragraph spacing"
+          >
+            <ListItem
+              layout="stacked"
+              headline="Primary Font Family (Mincho / Serif)"
+              description="Default Japanese serif typeface for book text. Select preset or enter custom font"
             >
-              <span slot="suffix" class="text-xs text-zinc-500">items</span>
-            </Input>
-          </div>
-        </ListItem>
-      {/if}
+              <div slot="suffix" class="flex items-center gap-1">
+                {#if fontCacheSupported}
+                  <Tooltip text="Manage Installed Web Fonts">
+                    <IconButton
+                      variant="ghost"
+                      size="sm"
+                      label="Manage Installed Web Fonts"
+                      on:click={() =>
+                        dialogManager.dialogs$.next([
+                          {
+                            component: SettingsUserFontDialog,
+                            props: { fontFamily: fontFamilyGroupOne$ }
+                          }
+                        ])}
+                    >
+                      <Fa icon={faComputer} />
+                    </IconButton>
+                  </Tooltip>
+                {/if}
+              </div>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full">
+                <Select size="sm" options={selectGroupOneOptions} bind:value={fontFamilyGroupOne} />
+                <Input
+                  size="sm"
+                  placeholder="Custom font name (e.g. Noto Serif JP)"
+                  bind:value={fontFamilyGroupOne}
+                />
+              </div>
+            </ListItem>
 
-      <ListItem
-        headline="Show Character Counter"
-        description="Displays current character position and total character count in reader header/footer"
-      >
-        <Switch slot="suffix" bind:checked={showCharacterCounter} />
-      </ListItem>
+            <ListItem
+              layout="stacked"
+              headline="Secondary Font Family (Gothic / Sans-Serif)"
+              description="Secondary Japanese sans-serif typeface for interface, sidebars, and annotations"
+            >
+              <div slot="suffix" class="flex items-center gap-1">
+                {#if fontCacheSupported}
+                  <Tooltip text="Manage Installed Web Fonts">
+                    <IconButton
+                      variant="ghost"
+                      size="sm"
+                      label="Manage Installed Web Fonts"
+                      on:click={() =>
+                        dialogManager.dialogs$.next([
+                          {
+                            component: SettingsUserFontDialog,
+                            props: { fontFamily: fontFamilyGroupTwo$ }
+                          }
+                        ])}
+                    >
+                      <Fa icon={faComputer} />
+                    </IconButton>
+                  </Tooltip>
+                {/if}
+              </div>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full">
+                <Select size="sm" options={selectGroupTwoOptions} bind:value={fontFamilyGroupTwo} />
+                <Input
+                  size="sm"
+                  placeholder="Custom font name (e.g. Noto Sans JP)"
+                  bind:value={fontFamilyGroupTwo}
+                />
+              </div>
+            </ListItem>
 
-      <ListItem
-        headline="Show Book Percentage"
-        description="Displays overall book completion percentage"
-      >
-        <Switch slot="suffix" bind:checked={showPercentage} />
-      </ListItem>
+            <ListItem
+              layout="stacked"
+              headline="Font Size"
+              description="Base reading font size across all text"
+            >
+              <span
+                slot="suffix"
+                class="text-xs font-semibold px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700 tabular-nums"
+              >
+                {fontSize}px
+              </span>
+              <Slider min={10} max={48} step={1} bind:value={fontSize} showValue={false} />
+            </ListItem>
 
-      <ListItem
-        headline="Show Footer Chapter Characters"
-        description="Displays characters read within the current chapter in reader footer"
-      >
-        <Switch slot="suffix" bind:checked={showFooterChapterCharacterCounter} />
-      </ListItem>
+            <ListItem
+              layout="stacked"
+              headline="Line Height"
+              description="Vertical spacing multiplier between lines of text"
+            >
+              <span
+                slot="suffix"
+                class="text-xs font-semibold px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700 tabular-nums"
+              >
+                {Number(lineHeight).toFixed(2)}x
+              </span>
+              <Slider min={1.0} max={2.5} step={0.05} bind:value={lineHeight} showValue={false} />
+            </ListItem>
 
-      <ListItem
-        headline="Show Footer Chapter Percentage"
-        description="Displays progress percentage within current chapter in reader footer"
-      >
-        <Switch slot="suffix" bind:checked={showFooterChapterPercentage} />
-      </ListItem>
-    </ListSection>
+            <ListItem
+              headline="Font Weight"
+              description="Custom font weight override (100–1000). Leave empty for font default"
+            >
+              <div slot="suffix" class="w-32">
+                <Input
+                  type="number"
+                  size="sm"
+                  placeholder="Default"
+                  step={100}
+                  min={100}
+                  max={1000}
+                  bind:value={fontWeight}
+                  on:change={() => {
+                    if (fontWeight === null) return;
+                    if (fontWeight < 100) fontWeight = 100;
+                    else if (fontWeight > 1000) fontWeight = 1000;
+                  }}
+                />
+              </div>
+            </ListItem>
+
+            <ListItem
+              headline="Paragraph Indentation"
+              description="Indentation added to the first line of paragraphs in rem units"
+            >
+              <div slot="suffix" class="w-28">
+                <Input
+                  type="number"
+                  size="sm"
+                  step={0.5}
+                  min={0}
+                  bind:value={textIndentation}
+                  on:blur={() => {
+                    const newValue = Number.parseFloat(`${textIndentation ?? 0}`);
+                    if (isNaN(newValue) || newValue < 0) textIndentation = 0;
+                  }}
+                >
+                  <span slot="suffix" class="text-xs text-zinc-500">rem</span>
+                </Input>
+              </div>
+            </ListItem>
+
+            <ListItem
+              layout="stacked"
+              headline="Paragraph Margin Mode"
+              description="Whether to use automated margin spacing or custom manual spacing"
+            >
+              <SegmentedControl
+                fullWidth
+                size="sm"
+                options={segmentsForTextMarginMode}
+                bind:value={textMarginMode}
+              />
+            </ListItem>
+
+            {#if textMarginMode === 'manual'}
+              <ListItem
+                headline="Paragraph Margins"
+                description="Additional margin space added between paragraphs in rem units"
+              >
+                <div slot="suffix" class="w-28">
+                  <Input
+                    type="number"
+                    size="sm"
+                    step={0.5}
+                    min={0}
+                    bind:value={textMarginValue}
+                    on:blur={() => {
+                      const newValue = Number.parseFloat(`${textMarginValue ?? 0}`);
+                      if (isNaN(newValue) || newValue < 0) textMarginValue = 0;
+                    }}
+                  >
+                    <span slot="suffix" class="text-xs text-zinc-500">rem</span>
+                  </Input>
+                </div>
+              </ListItem>
+            {/if}
+          </ListSection>
+        {/if}
+
+        <!-- Section 4: Reader Margins & Boundaries -->
+        {#if currentActiveSection === 'all' || currentActiveSection === 'margins'}
+          <ListSection
+            title="Reader Margins & Viewport Boundaries"
+            description="Configure reading column boundaries and viewport clearance"
+          >
+            <ListItem
+              headline={verticalMode ? 'Reader Left / Right Margin' : 'Reader Top / Bottom Margin'}
+              description="Padding distance from viewport edges in pixels"
+            >
+              <div slot="suffix" class="flex items-center gap-2">
+                <SettingsDimensionPopover
+                  isFirstDimension
+                  isVertical={verticalMode}
+                  bind:dimensionValue={firstDimensionMargin}
+                />
+                <div class="w-28">
+                  <Input type="number" size="sm" step={1} min={0} bind:value={firstDimensionMargin}>
+                    <span slot="suffix" class="text-xs text-zinc-500">px</span>
+                  </Input>
+                </div>
+              </div>
+            </ListItem>
+
+            <ListItem
+              headline={verticalMode ? 'Reader Max Height' : 'Reader Max Width'}
+              description="Maximum reading dimension boundary before constraining text flow"
+            >
+              <div slot="suffix" class="flex items-center gap-2">
+                <SettingsDimensionPopover
+                  isVertical={verticalMode}
+                  bind:dimensionValue={secondDimensionMaxValue}
+                />
+                <div class="w-28">
+                  <Input
+                    type="number"
+                    size="sm"
+                    step={1}
+                    min={0}
+                    bind:value={secondDimensionMaxValue}
+                  >
+                    <span slot="suffix" class="text-xs text-zinc-500">px</span>
+                  </Input>
+                </div>
+              </div>
+            </ListItem>
+          </ListSection>
+        {/if}
+
+        <!-- Section 5: Text Rendering & Furigana -->
+        {#if currentActiveSection === 'all' || currentActiveSection === 'rendering'}
+          <ListSection
+            title="Text Rendering & Furigana"
+            description="Japanese typography rules, spacing adjustments, and ruby annotations"
+          >
+            <ListItem
+              headline="Prioritize Reader Styles"
+              description="Applies '!important' to user font and margin styles to override conflicting book styles"
+            >
+              <Switch slot="suffix" bind:checked={prioritizeReaderStyles} />
+            </ListItem>
+
+            <ListItem
+              headline="Enable Text Justification"
+              description="Justifies paragraph text content for clean alignment across reading columns"
+            >
+              <Switch slot="suffix" bind:checked={enableTextJustification} />
+            </ListItem>
+
+            <ListItem
+              headline="Enable Pretty Text Wrap"
+              description="Applies pretty text wrap algorithm to prevent orphan words on supported browsers"
+            >
+              <Switch slot="suffix" bind:checked={enableTextWrapPretty} />
+            </ListItem>
+
+            {#if verticalMode}
+              <ListItem
+                headline="Enable Vertical Font Kerning"
+                description="Improves vertical glyph spacing balance if supported by the font and browser"
+              >
+                <Switch slot="suffix" bind:checked={enableFontKerning} />
+              </ListItem>
+
+              <ListItem
+                headline="Enable VPAL (Vertical Proportional Spacing)"
+                description="Provides natural proportional spacing for vertical Japanese text layout"
+              >
+                <Switch slot="suffix" bind:checked={enableFontVPAL} />
+              </ListItem>
+
+              <ListItem
+                layout="stacked"
+                headline="Vertical Text Orientation"
+                description={verticalTextOrientationTooltip}
+              >
+                <SegmentedControl
+                  fullWidth
+                  size="sm"
+                  options={segmentsForVerticalTextOrientation}
+                  bind:value={verticalTextOrientation}
+                />
+              </ListItem>
+            {/if}
+
+            <ListItem
+              headline="Hide Furigana"
+              description="Hides Japanese ruby pronunciation glosses above kanji characters"
+            >
+              <Switch slot="suffix" bind:checked={hideFurigana} />
+            </ListItem>
+
+            {#if hideFurigana}
+              <ListItem
+                layout="stacked"
+                headline="Furigana Interaction Style"
+                description={furiganaStyleTooltip}
+              >
+                <SegmentedControl
+                  fullWidth
+                  size="sm"
+                  options={segmentsForFuriganaStyle}
+                  bind:value={furiganaStyle}
+                />
+              </ListItem>
+            {/if}
+          </ListSection>
+        {/if}
+
+        <!-- Section 6: Navigation, Gestures & Page Turns -->
+        {#if currentActiveSection === 'all' || currentActiveSection === 'navigation'}
+          <ListSection
+            title="Navigation, Gestures & Page Turns"
+            description="Touch gestures, keyboard/mouse controls, and navigation safety"
+          >
+            <ListItem
+              headline="Swipe Navigation Threshold"
+              description="Minimum swipe distance in pixels required to trigger a page turn"
+            >
+              <div slot="suffix" class="w-28">
+                <Input
+                  type="number"
+                  size="sm"
+                  step={1}
+                  min={10}
+                  bind:value={swipeThreshold}
+                  on:blur={() => {
+                    if (swipeThreshold < 10 || typeof swipeThreshold !== 'number') {
+                      swipeThreshold = 10;
+                    }
+                  }}
+                >
+                  <span slot="suffix" class="text-xs text-zinc-500">px</span>
+                </Input>
+              </div>
+            </ListItem>
+
+            {#if viewMode === ViewMode.Paginated}
+              <ListItem
+                headline="Tap Edge to Flip"
+                description="Reserves small margin zones on the left and right edges for quick page flipping"
+              >
+                <Switch slot="suffix" bind:checked={enableTapEdgeToFlip} />
+              </ListItem>
+
+              <ListItem
+                headline="Avoid Mid-Sentence Page Breaks"
+                description={avoidPageBreakTooltip}
+              >
+                <Switch slot="suffix" bind:checked={avoidPageBreak} />
+              </ListItem>
+
+              <ListItem
+                headline="Selection to Bookmark"
+                description="Places bookmarks at the nearest selected text paragraph instead of the page top"
+              >
+                <Switch slot="suffix" bind:checked={selectionToBookmarkEnabled} />
+              </ListItem>
+            {:else}
+              <ListItem
+                headline="Auto Reposition on Resize"
+                description="Automatically preserves current reading position when the window is resized"
+              >
+                <Switch slot="suffix" bind:checked={autoPositionOnResize} />
+              </ListItem>
+
+              <ListItem
+                headline="Custom Reading Anchor Point"
+                description="Calculates progress and bookmarks from a persistent viewport anchor line"
+              >
+                <div slot="suffix" class="flex items-center gap-3">
+                  {#if customReadingPointEnabled}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      on:click={() => {
+                        verticalCustomReadingPosition$.next(100);
+                        horizontalCustomReadingPosition$.next(0);
+                      }}
+                    >
+                      Reset Points
+                    </Button>
+                  {/if}
+                  <Switch bind:checked={customReadingPointEnabled} />
+                </div>
+              </ListItem>
+
+              {#if statisticsEnabled}
+                <ListItem
+                  headline="Pause Tracker While Setting Anchor"
+                  description="Auto-pauses the reading statistics timer while dragging the custom anchor point"
+                >
+                  <Switch slot="suffix" bind:checked={pauseTrackerOnCustomPointChange} />
+                </ListItem>
+              {/if}
+            {/if}
+
+            <ListItem
+              headline="Disable Mouse Wheel Navigation"
+              description="Prevents flipping pages using the mouse scroll wheel"
+            >
+              <Switch slot="suffix" bind:checked={disableWheelNavigation} />
+            </ListItem>
+
+            <ListItem
+              headline="Confirm Before Leaving Tab"
+              description="Prompts for confirmation when closing or refreshing reader tab if unsaved changes were detected"
+            >
+              <Switch slot="suffix" bind:checked={confirmClose} />
+            </ListItem>
+          </ListSection>
+        {/if}
+
+        <!-- Section 7: Bookmarks, Autosaves & Progress -->
+        {#if currentActiveSection === 'all' || currentActiveSection === 'progress'}
+          <ListSection
+            title="Bookmarks, Autosaves & Progress"
+            description="Position checkpoints, rolling autosaves, and reader indicators"
+          >
+            <ListItem
+              headline="Manual Bookmark Only"
+              description="Prevents automatically updating bookmark position when leaving the reader via menu"
+            >
+              <Switch slot="suffix" bind:checked={manualBookmark} />
+            </ListItem>
+
+            <ListItem headline="Auto-Bookmark Position" description={autoBookmarkTooltip}>
+              <Switch slot="suffix" bind:checked={autoBookmark} />
+            </ListItem>
+
+            {#if autoBookmark}
+              <ListItem
+                headline="Auto-Bookmark Delay"
+                description="Seconds idle on a page before saving an automatic bookmark"
+              >
+                <div slot="suffix" class="w-28">
+                  <Input
+                    type="number"
+                    size="sm"
+                    step={1}
+                    min={1}
+                    bind:value={autoBookmarkTime}
+                    on:blur={() => {
+                      if (autoBookmarkTime < 1 || typeof autoBookmarkTime !== 'number') {
+                        autoBookmarkTime = 3;
+                      }
+                    }}
+                  >
+                    <span slot="suffix" class="text-xs text-zinc-500">s</span>
+                  </Input>
+                </div>
+              </ListItem>
+            {/if}
+
+            <ListItem
+              headline="Rolling Autosave History"
+              description="Preserves rolling position checkpoints while reading so you can recover your place after accidental rapid scrolling"
+            >
+              <Switch slot="suffix" bind:checked={autosaveHistoryEnabled} />
+            </ListItem>
+
+            {#if autosaveHistoryEnabled}
+              <ListItem
+                headline="Autosave Pause Delay"
+                description="Seconds stopped on a page without scrolling before saving a rolling checkpoint (1–30s)"
+              >
+                <div slot="suffix" class="w-28">
+                  <Input
+                    type="number"
+                    size="sm"
+                    step={1}
+                    min={1}
+                    max={30}
+                    bind:value={autosaveHistoryInterval}
+                    on:blur={() => {
+                      if (
+                        autosaveHistoryInterval < 1 ||
+                        typeof autosaveHistoryInterval !== 'number'
+                      ) {
+                        autosaveHistoryInterval = 3;
+                      }
+                    }}
+                  >
+                    <span slot="suffix" class="text-xs text-zinc-500">s</span>
+                  </Input>
+                </div>
+              </ListItem>
+
+              <ListItem
+                headline="Max Autosaves to Retain"
+                description="Number of rolling autosave checkpoints to preserve before pruning older entries (2–20)"
+              >
+                <div slot="suffix" class="w-28">
+                  <Input
+                    type="number"
+                    size="sm"
+                    step={1}
+                    min={2}
+                    max={20}
+                    bind:value={autosaveHistoryMaxCount}
+                    on:blur={() => {
+                      if (
+                        autosaveHistoryMaxCount < 2 ||
+                        typeof autosaveHistoryMaxCount !== 'number'
+                      ) {
+                        autosaveHistoryMaxCount = 10;
+                      } else if (autosaveHistoryMaxCount > 20) {
+                        autosaveHistoryMaxCount = 20;
+                      }
+                    }}
+                  >
+                    <span slot="suffix" class="text-xs text-zinc-500">items</span>
+                  </Input>
+                </div>
+              </ListItem>
+            {/if}
+
+            <ListItem
+              headline="Show Character Counter"
+              description="Displays current character position and total character count in reader header/footer"
+            >
+              <Switch slot="suffix" bind:checked={showCharacterCounter} />
+            </ListItem>
+
+            <ListItem
+              headline="Show Book Percentage"
+              description="Displays overall book completion percentage"
+            >
+              <Switch slot="suffix" bind:checked={showPercentage} />
+            </ListItem>
+
+            <ListItem
+              headline="Show Footer Chapter Characters"
+              description="Displays characters read within the current chapter in reader footer"
+            >
+              <Switch slot="suffix" bind:checked={showFooterChapterCharacterCounter} />
+            </ListItem>
+
+            <ListItem
+              headline="Show Footer Chapter Percentage"
+              description="Displays progress percentage within current chapter in reader footer"
+            >
+              <Switch slot="suffix" bind:checked={showFooterChapterPercentage} />
+            </ListItem>
+          </ListSection>
+        {/if}
+      </main>
+    </div>
   </div>
 {/if}
 
