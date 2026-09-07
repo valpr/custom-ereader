@@ -418,7 +418,6 @@
 
   const segmentsForAppTheme = [
     { value: 'system', label: 'Auto (System)' },
-    { value: 'neutral', label: 'Neutral' },
     { value: 'stone', label: 'Stone' },
     { value: 'gothic', label: 'Gothic' }
   ];
