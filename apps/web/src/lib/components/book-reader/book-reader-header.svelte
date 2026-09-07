@@ -196,54 +196,52 @@
 
   <!-- Right / End Actions -->
   <div slot="end" class="flex items-center gap-0.5 sm:gap-1">
-    <!-- Desktop Navigation Hub (Settings, Manager, Statistics as left-most icons on the right side) -->
-    <div class="hidden sm:flex items-center gap-0.5 sm:gap-1">
-      <Tooltip text={mergeEntries.SETTINGS.title}>
+    <!-- Navigation Hub (Settings, Manager, Statistics as left-most icons on the right side) -->
+    <Tooltip text={mergeEntries.SETTINGS.title}>
+      <IconButton
+        label={mergeEntries.SETTINGS.title}
+        size="md"
+        variant="ghost"
+        on:click={() => dispatch('settingsClick')}
+      >
+        <Fa icon={faCog} class="text-base" />
+      </IconButton>
+    </Tooltip>
+
+    <Tooltip text={mergeEntries.MANAGE.title}>
+      <IconButton
+        label={mergeEntries.MANAGE.title}
+        size="md"
+        variant="ghost"
+        on:click={() => dispatch('bookManagerClick')}
+      >
+        <Fa icon={faSignOutAlt} class="text-base" />
+      </IconButton>
+    </Tooltip>
+
+    {#if isOldUrl}
+      <Tooltip text={mergeEntries.DOMAIN_HINT.title}>
         <IconButton
-          label={mergeEntries.SETTINGS.title}
+          label={mergeEntries.DOMAIN_HINT.title}
           size="md"
           variant="ghost"
-          on:click={() => dispatch('settingsClick')}
+          on:click={() => dispatch('domainHintClick')}
         >
-          <Fa icon={faCog} class="text-base" />
+          <Fa icon={faTriangleExclamation} class="text-base" />
         </IconButton>
       </Tooltip>
-
-      <Tooltip text={mergeEntries.MANAGE.title}>
+    {:else}
+      <Tooltip text={mergeEntries.STATISTICS.title}>
         <IconButton
-          label={mergeEntries.MANAGE.title}
+          label={mergeEntries.STATISTICS.title}
           size="md"
           variant="ghost"
-          on:click={() => dispatch('bookManagerClick')}
+          on:click={() => dispatch('statisticsClick')}
         >
-          <Fa icon={faSignOutAlt} class="text-base" />
+          <Fa icon={faChartLine} class="text-base" />
         </IconButton>
       </Tooltip>
-
-      {#if isOldUrl}
-        <Tooltip text={mergeEntries.DOMAIN_HINT.title}>
-          <IconButton
-            label={mergeEntries.DOMAIN_HINT.title}
-            size="md"
-            variant="ghost"
-            on:click={() => dispatch('domainHintClick')}
-          >
-            <Fa icon={faTriangleExclamation} class="text-base" />
-          </IconButton>
-        </Tooltip>
-      {:else}
-        <Tooltip text={mergeEntries.STATISTICS.title}>
-          <IconButton
-            label={mergeEntries.STATISTICS.title}
-            size="md"
-            variant="ghost"
-            on:click={() => dispatch('statisticsClick')}
-          >
-            <Fa icon={faChartLine} class="text-base" />
-          </IconButton>
-        </Tooltip>
-      {/if}
-    </div>
+    {/if}
 
     <Tooltip text="Complete Book">
       <IconButton
