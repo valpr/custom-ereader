@@ -1,16 +1,18 @@
 # Agent Instructions & Codebase Guidelines
 
-Guidelines and architectural constraints for working in **custom-ereader** (based on ッツ Reader).
+Guidelines and architectural constraints for working in **reader** (based on ッツ Reader).
 
 ---
 
 ## 1. Git Workflow
+
 - **Never push directly to `main`**: Open PRs from dedicated branches (`feat/*`, `fix/*`, `chore/*`, `refactor/*`).
 - **Commits**: Follow Conventional Commits (enforced by Husky and commitlint).
 
 ---
 
 ## 2. UI Component Library (`@custom-ereader/ui`)
+
 - Check `packages/ui/src/index.ts` for existing Astryx components before building ad-hoc UI or Tailwind controls.
 - If a missing design-system element is needed, implement and export it in `packages/ui` first, then import into `apps/web`.
 - Use semantic theme tokens (`var(--astryx-...)` / `data-astryx-theme`) rather than arbitrary hex values.
@@ -18,6 +20,7 @@ Guidelines and architectural constraints for working in **custom-ereader** (base
 ---
 
 ## 3. Architecture & State Pitfalls
+
 - **Svelte 5 Legacy Mode**: Run-time is Svelte 5, but the codebase uses Svelte 4 legacy syntax. **Never use Svelte 5 runes** (`$state`, `$derived`, `$props`, `$effect`, snippets).
 - **RxJS Stores**: Global state lives in `apps/web/src/lib/data/store.ts` using `$` suffixed `BehaviorSubject` stores.
   - Svelte templates: auto-subscribe via `$storeName$`.
@@ -29,7 +32,9 @@ Guidelines and architectural constraints for working in **custom-ereader** (base
 ---
 
 ## 4. Verification & Testing
+
 Run these quality gates before finishing any task:
+
 - **Typecheck & Build**: `pnpm -F web check` and `pnpm -F web build`.
 - **Formatting/Linting**: `pnpm -F web lint` (or ensure Prettier/ESLint pass).
 - **E2E Tests**: `pnpm -F web exec playwright test` (runs against port 5174).

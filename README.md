@@ -2,7 +2,7 @@
 
 > A customized, browser-based e-book reader optimized for Japanese language reading, EPUBs, and popup dictionary extensions (Yomitan, etc.).
 
-[![Deploy to GitHub Pages](https://github.com/valpr/custom-ereader/actions/workflows/pages.yml/badge.svg)](https://github.com/valpr/custom-ereader/actions/workflows/pages.yml)
+[![Deploy to GitHub Pages](https://github.com/valpr/reader/actions/workflows/pages.yml/badge.svg)](https://github.com/valpr/reader/actions/workflows/pages.yml)
 [![License: BSD-3-Clause](https://img.shields.io/badge/License-BSD--3--Clause-blue.svg)](LICENSE)
 
 **Live Reader:** [https://valpr.github.io/reader/](https://valpr.github.io/reader/)
@@ -108,8 +108,8 @@ The reader is automatically built and deployed to GitHub Pages on every push to 
 1. **Clone the repository:**
 
    ```bash
-   git clone https://github.com/valpr/custom-ereader.git
-   cd custom-ereader
+   git clone https://github.com/valpr/reader.git
+   cd reader
    ```
 
 2. **Install dependencies:**

@@ -32,5 +32,5 @@ export const oneDriveDiscoveryEndpoint =
 export const oneDriveScope = import.meta.env.VITE_ONEDRIVE_SCOPE || 'files.readwrite';
 export const oneDriveClientId = import.meta.env.VITE_ONEDRIVE_CLIENT_ID || '';
 export const oneDriveClientSecret = import.meta.env.VITE_ONEDRIVE_CLIENT_SECRET || '';
-export const repoUrl = import.meta.env.VITE_REPO_URL || 'https://github.com/valpr/custom-ereader';
+export const repoUrl = import.meta.env.VITE_REPO_URL || 'https://github.com/valpr/reader';
 export const issuesUrl = import.meta.env.VITE_ISSUES_URL || `${repoUrl}/issues`;
