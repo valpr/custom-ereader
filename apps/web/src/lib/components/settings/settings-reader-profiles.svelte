@@ -54,9 +54,11 @@
   import {
     defaultDesktopSettings,
     defaultMobileSettings,
+    defaultReaderProfiles,
     defaultTabletSettings,
     type ProfileIconType,
-    type ReaderProfile
+    type ReaderProfile,
+    type ReaderProfileSettings
   } from '$lib/data/profiles/profile-types';
   import { getStorageHandler } from '$lib/data/storage/storage-handler-factory';
   import { StorageDataType, StorageKey } from '$lib/data/storage/storage-types';
@@ -142,12 +144,16 @@
   let fileInputElement: HTMLInputElement;
 
   // Reactively track changes between current settings and the active profile
-  $: activeProfile = getActiveProfile();
   $: profiles = $readerProfiles$ || [];
   $: currentActiveId = $activeProfileId$;
+  $: activeProfile =
+    profiles.find((p) => p.id === currentActiveId) || profiles[0] || defaultReaderProfiles[0];
 
-  // Reactively track if current slider/switch values differ from the active profile
+  let baselineSettings: ReaderProfileSettings | null = null;
+  let lastTrackedProfileId = '';
   let isModified = false;
+
+  // Reactively track if current slider/switch values differ from the session baseline
   $: {
     // Reference any store to trigger reactivity when settings change
     $fontSize$;
@@ -198,7 +204,26 @@
     $activeProfileId$;
 
     if (activeProfile) {
-      isModified = hasUnsavedChanges(activeProfile);
+      if (lastTrackedProfileId !== currentActiveId) {
+        lastTrackedProfileId = currentActiveId;
+        baselineSettings = activeProfile.settings ? { ...activeProfile.settings } : null;
+        isModified = false;
+      } else if (baselineSettings) {
+        const current = getCurrentReaderSettings();
+        let hasDiff = false;
+        for (const key of Object.keys(current) as (keyof ReaderProfileSettings)[]) {
+          if (current[key] !== baselineSettings[key]) {
+            hasDiff = true;
+            break;
+          }
+        }
+        isModified = hasDiff;
+
+        // Auto-save setting changes to the active profile locally
+        if (hasDiff) {
+          saveCurrentToActiveProfile();
+        }
+      }
     } else {
       isModified = false;
     }
@@ -223,6 +248,12 @@
 
   function handleSelectProfile(id: string) {
     if (id === currentActiveId) return;
+    const target = profiles.find((p) => p.id === id);
+    if (target) {
+      lastTrackedProfileId = id;
+      baselineSettings = target.settings ? { ...target.settings } : null;
+      isModified = false;
+    }
     const success = applyProfileById(id);
     if (success) {
       const updated = getActiveProfile();
@@ -232,12 +263,24 @@
 
   function handleSaveCurrent() {
     saveCurrentToActiveProfile();
+    const updated = getActiveProfile();
+    if (updated?.settings) {
+      baselineSettings = { ...updated.settings };
+    }
     isModified = false;
   }
 
   function handleRevert() {
-    revertActiveProfile();
-    isModified = false;
+    if (baselineSettings && activeProfile) {
+      applyProfile({ ...activeProfile, settings: baselineSettings });
+      saveCurrentToActiveProfile();
+      isModified = false;
+      const updated = getActiveProfile();
+      dispatch('profileChange', updated);
+    } else {
+      revertActiveProfile();
+      isModified = false;
+    }
   }
 
   function handleOpenCreate(fromCurrent = false) {
@@ -264,6 +307,9 @@
       templateSettings
     );
 
+    lastTrackedProfileId = created.id;
+    baselineSettings = created.settings ? { ...created.settings } : null;
+    isModified = false;
     showCreateModal = false;
     dispatch('profileChange', created);
   }
@@ -287,6 +333,9 @@
   function handleDuplicate(profile: ReaderProfile) {
     const cloned = duplicateProfile(profile.id);
     if (cloned) {
+      lastTrackedProfileId = cloned.id;
+      baselineSettings = cloned.settings ? { ...cloned.settings } : null;
+      isModified = false;
       dispatch('profileChange', cloned);
     }
   }
@@ -574,67 +623,83 @@
   <!-- Unsaved Modifications Warning Bar -->
   {#if isModified}
     <ListItem layout="stacked">
-      <div
+      <Card
         data-testid="unsaved-changes-banner"
-        class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3 w-full rounded-lg border border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200"
+        variant="surface"
+        padding="sm"
+        radius="md"
+        class="w-full border border-amber-300 dark:border-amber-800 bg-amber-50/80 dark:bg-amber-950/40 text-amber-950 dark:text-amber-100"
       >
-        <div class="flex items-center gap-2.5">
-          <Fa
-            icon={faTriangleExclamation}
-            class="text-amber-600 dark:text-amber-400 shrink-0 text-base"
-          />
-          <div class="text-xs sm:text-sm">
-            <span class="font-semibold">Unsaved Changes:</span> Current reader settings differ from
-            saved profile
-            <span class="font-semibold underline">"{activeProfile?.name}"</span>.
+        <div
+          class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 w-full"
+        >
+          <div class="flex items-start sm:items-center gap-2.5 min-w-0 flex-1">
+            <Fa
+              icon={faTriangleExclamation}
+              class="text-amber-600 dark:text-amber-400 shrink-0 text-base mt-0.5 sm:mt-0"
+            />
+            <div class="text-xs sm:text-sm min-w-0 break-words leading-snug">
+              <span class="font-semibold">Unsaved Changes:</span> Current reader settings differ
+              from saved profile
+              <span class="font-semibold underline">"{activeProfile?.name}"</span>.
+            </div>
+          </div>
+
+          <div class="w-full sm:w-auto shrink-0 flex justify-end">
+            <ButtonGroup
+              size="sm"
+              attached={false}
+              class="flex-wrap gap-2 w-full sm:w-auto justify-end"
+            >
+              <Button variant="ghost" size="sm" on:click={handleRevert}>
+                <Fa icon={faRotate} class="mr-1 text-xs" />
+                Revert
+              </Button>
+
+              <Button variant="ghost" size="sm" on:click={() => handleOpenCreate(true)}>
+                Save as New...
+              </Button>
+
+              <Button variant="primary" size="sm" on:click={handleSaveCurrent}>
+                <Fa icon={faSave} class="mr-1 text-xs" />
+                Update Profile
+              </Button>
+            </ButtonGroup>
           </div>
         </div>
-
-        <div class="flex items-center gap-2 shrink-0 self-end sm:self-auto">
-          <Button variant="ghost" size="sm" on:click={handleRevert}>
-            <Fa icon={faRotate} class="mr-1 text-xs" />
-            Revert
-          </Button>
-
-          <Button variant="ghost" size="sm" on:click={() => handleOpenCreate(true)}>
-            Save as New...
-          </Button>
-
-          <Button variant="primary" size="sm" on:click={handleSaveCurrent}>
-            <Fa icon={faSave} class="mr-1 text-xs" />
-            Update Profile
-          </Button>
-        </div>
-      </div>
+      </Card>
     </ListItem>
   {/if}
 
   <!-- Cloud Sync & JSON Backup Bar -->
   <ListItem
+    layout="stacked"
     headline="Profile Cloud Sync & Backup"
     description="Sync reader profiles with connected cloud storage (Google Drive, OneDrive, or ZIP) or transfer via file"
   >
-    <div slot="suffix" class="flex flex-wrap items-center gap-2">
-      <Tooltip text="Sync profiles across cloud storage">
-        <Button variant="outline" size="sm" on:click={handleCloudSync}>
-          <Fa icon={faCloud} class="mr-1.5 text-xs text-blue-500" />
-          Sync Profiles
-        </Button>
-      </Tooltip>
+    <div slot="suffix">
+      <ButtonGroup size="sm" attached={false} class="flex-wrap gap-2">
+        <Tooltip text="Sync profiles across cloud storage">
+          <Button variant="outline" size="sm" on:click={handleCloudSync}>
+            <Fa icon={faCloud} class="mr-1.5 text-xs text-blue-500" />
+            Sync Profiles
+          </Button>
+        </Tooltip>
 
-      <Tooltip text="Export profiles as a JSON file">
-        <Button variant="ghost" size="sm" on:click={handleExportFile}>
-          <Fa icon={faFileExport} class="mr-1.5 text-xs" />
-          Export
-        </Button>
-      </Tooltip>
+        <Tooltip text="Export profiles as a JSON file">
+          <Button variant="ghost" size="sm" on:click={handleExportFile}>
+            <Fa icon={faFileExport} class="mr-1.5 text-xs" />
+            Export
+          </Button>
+        </Tooltip>
 
-      <Tooltip text="Import profiles from JSON file">
-        <Button variant="ghost" size="sm" on:click={handleTriggerImport}>
-          <Fa icon={faFileImport} class="mr-1.5 text-xs" />
-          Import
-        </Button>
-      </Tooltip>
+        <Tooltip text="Import profiles from JSON file">
+          <Button variant="ghost" size="sm" on:click={handleTriggerImport}>
+            <Fa icon={faFileImport} class="mr-1.5 text-xs" />
+            Import
+          </Button>
+        </Tooltip>
+      </ButtonGroup>
     </div>
   </ListItem>
 </ListSection>

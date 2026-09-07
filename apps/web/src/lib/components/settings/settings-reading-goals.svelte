@@ -436,141 +436,145 @@
     {/if}
   </div>
 
-  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 py-2">
-    <div>
-      <label
-        for="reading-goal-time"
-        class="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1.5"
-      >
-        Time Goal (Minutes)
-      </label>
-      <Input
-        id="reading-goal-time"
-        type="number"
-        min={0}
-        disabled={!isInEditMode}
-        value={currentTimeGoalInMin}
-        on:blur={(event) => handleReadingGoalChange(event, true)}
-      >
-        <span slot="suffix" class="text-xs text-zinc-500">min</span>
-      </Input>
-    </div>
-
-    <div>
-      <label
-        for="reading-goal-chars"
-        class="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1.5"
-      >
-        Character Goal
-      </label>
-      <Input
-        id="reading-goal-chars"
-        type="number"
-        min={0}
-        disabled={!isInEditMode}
-        value={currentCharacterGoal}
-        on:blur={(event) => handleReadingGoalChange(event, false)}
-      >
-        <span slot="suffix" class="text-xs text-zinc-500">chars</span>
-      </Input>
-    </div>
-
-    <div>
-      <label
-        for="reading-goal-frequency"
-        class="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1.5"
-      >
-        Goal Frequency
-      </label>
-      <Select
-        id="reading-goal-frequency"
-        disabled={!isInEditMode}
-        options={readingGoalFrequencies}
-        bind:value={currentReadingGoalFrequency}
-      />
-    </div>
-
-    <div>
-      <label
-        for="reading-goal-start"
-        class="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1.5"
-      >
-        Start Date
-      </label>
-      <Input
-        id="reading-goal-start"
-        type="date"
-        disabled={!isInEditMode}
-        bind:value={currentReadingGoalStartDate}
-      />
-    </div>
-  </div>
-
-  <details class="mt-4 border-t border-zinc-200 dark:border-zinc-800 pt-3 group">
-    <summary
-      class="text-xs font-medium text-zinc-500 dark:text-zinc-400 cursor-pointer hover:text-zinc-900 dark:hover:text-zinc-200 select-none flex items-center justify-between"
-    >
-      <span>Reading Goal History ({pluralize(readingGoals.length, 'Item')})</span>
-    </summary>
-    {#if readingGoals.length}
-      <div class="mt-3">
-        <List variant="bordered" divided={true}>
-          {#each historyReadingGoals as historyGoal (historyGoal.goalStartDate)}
-            {@const dateRangeLabel = getDateRangeLabel(
-              historyGoal.goalStartDate,
-              historyGoal.goalEndDate
-            )}
-            <ListItem
-              headline={dateRangeLabel}
-              description={`${secondsToMinutes(historyGoal.timeGoal)} min • ${historyGoal.characterGoal} characters • ${historyGoal.goalFrequency}`}
-            >
-              <div slot="suffix">
-                <Tooltip content="Delete Reading Goal">
-                  <IconButton
-                    size="sm"
-                    variant="ghost"
-                    label="Delete Reading Goal"
-                    class="hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30"
-                    on:click={() => deleteReadingGoals(historyGoal, dateRangeLabel)}
-                  >
-                    <Fa icon={faTrash} />
-                  </IconButton>
-                </Tooltip>
-              </div>
-            </ListItem>
-          {/each}
-        </List>
-        <div class="mt-3 flex items-center justify-between px-1">
-          <IconButton
-            size="sm"
-            variant="secondary"
-            label="Previous Page"
-            disabled={currentHistoryIndex === 0}
-            on:click={() => (historyIndex -= 1)}
+  <ListItem layout="stacked">
+    <div class="w-full flex flex-col">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 py-2">
+        <div>
+          <label
+            for="reading-goal-time"
+            class="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1.5"
           >
-            <Fa icon={faChevronLeft} />
-          </IconButton>
-          <span class="text-xs text-zinc-500">
-            Page {historyIndex + 1} of {Math.max(
-              1,
-              Math.ceil(sortedReadingGoals.length / itemsPerPage)
-            )}
-          </span>
-          <IconButton
-            size="sm"
-            variant="secondary"
-            label="Next Page"
-            disabled={!hasNextHistoryPage}
-            on:click={() => (historyIndex += 1)}
+            Time Goal (Minutes)
+          </label>
+          <Input
+            id="reading-goal-time"
+            type="number"
+            min={0}
+            disabled={!isInEditMode}
+            value={currentTimeGoalInMin}
+            on:blur={(event) => handleReadingGoalChange(event, true)}
           >
-            <Fa icon={faChevronRight} />
-          </IconButton>
+            <span slot="suffix" class="text-xs text-zinc-500">min</span>
+          </Input>
+        </div>
+
+        <div>
+          <label
+            for="reading-goal-chars"
+            class="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1.5"
+          >
+            Character Goal
+          </label>
+          <Input
+            id="reading-goal-chars"
+            type="number"
+            min={0}
+            disabled={!isInEditMode}
+            value={currentCharacterGoal}
+            on:blur={(event) => handleReadingGoalChange(event, false)}
+          >
+            <span slot="suffix" class="text-xs text-zinc-500">chars</span>
+          </Input>
+        </div>
+
+        <div>
+          <label
+            for="reading-goal-frequency"
+            class="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1.5"
+          >
+            Goal Frequency
+          </label>
+          <Select
+            id="reading-goal-frequency"
+            disabled={!isInEditMode}
+            options={readingGoalFrequencies}
+            bind:value={currentReadingGoalFrequency}
+          />
+        </div>
+
+        <div>
+          <label
+            for="reading-goal-start"
+            class="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1.5"
+          >
+            Start Date
+          </label>
+          <Input
+            id="reading-goal-start"
+            type="date"
+            disabled={!isInEditMode}
+            bind:value={currentReadingGoalStartDate}
+          />
         </div>
       </div>
-    {:else}
-      <div class="py-4 text-xs text-zinc-500 dark:text-zinc-400">
-        You have no archived Reading Goals yet.
-      </div>
-    {/if}
-  </details>
+
+      <details class="mt-4 border-t border-zinc-200 dark:border-zinc-800 pt-3 group">
+        <summary
+          class="text-xs font-medium text-zinc-500 dark:text-zinc-400 cursor-pointer hover:text-zinc-900 dark:hover:text-zinc-200 select-none flex items-center justify-between"
+        >
+          <span>Reading Goal History ({pluralize(readingGoals.length, 'Item')})</span>
+        </summary>
+        {#if readingGoals.length}
+          <div class="mt-3">
+            <List variant="bordered" divided={true}>
+              {#each historyReadingGoals as historyGoal (historyGoal.goalStartDate)}
+                {@const dateRangeLabel = getDateRangeLabel(
+                  historyGoal.goalStartDate,
+                  historyGoal.goalEndDate
+                )}
+                <ListItem
+                  headline={dateRangeLabel}
+                  description={`${secondsToMinutes(historyGoal.timeGoal)} min • ${historyGoal.characterGoal} characters • ${historyGoal.goalFrequency}`}
+                >
+                  <div slot="suffix">
+                    <Tooltip content="Delete Reading Goal">
+                      <IconButton
+                        size="sm"
+                        variant="ghost"
+                        label="Delete Reading Goal"
+                        class="hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30"
+                        on:click={() => deleteReadingGoals(historyGoal, dateRangeLabel)}
+                      >
+                        <Fa icon={faTrash} />
+                      </IconButton>
+                    </Tooltip>
+                  </div>
+                </ListItem>
+              {/each}
+            </List>
+            <div class="mt-3 flex items-center justify-between px-1">
+              <IconButton
+                size="sm"
+                variant="secondary"
+                label="Previous Page"
+                disabled={currentHistoryIndex === 0}
+                on:click={() => (historyIndex -= 1)}
+              >
+                <Fa icon={faChevronLeft} />
+              </IconButton>
+              <span class="text-xs text-zinc-500">
+                Page {historyIndex + 1} of {Math.max(
+                  1,
+                  Math.ceil(sortedReadingGoals.length / itemsPerPage)
+                )}
+              </span>
+              <IconButton
+                size="sm"
+                variant="secondary"
+                label="Next Page"
+                disabled={!hasNextHistoryPage}
+                on:click={() => (historyIndex += 1)}
+              >
+                <Fa icon={faChevronRight} />
+              </IconButton>
+            </div>
+          </div>
+        {:else}
+          <div class="py-4 text-xs text-zinc-500 dark:text-zinc-400">
+            You have no archived Reading Goals yet.
+          </div>
+        {/if}
+      </details>
+    </div>
+  </ListItem>
 </ListSection>

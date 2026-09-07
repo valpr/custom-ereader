@@ -1,6 +1,6 @@
 # @custom-ereader/ui
 
-Astryx-inspired component library designed for [custom-ereader](https://github.com/valpr/custom-ereader), based on [Meta Astryx Design System](https://astryx.atmeta.com/docs/getting-started).
+Astryx-inspired component library designed for [reader](https://github.com/valpr/reader), based on [Meta Astryx Design System](https://astryx.atmeta.com/docs/getting-started).
 
 ## ✨ Features
 

@@ -6,6 +6,7 @@
   import type { Instance, Placement } from '@popperjs/core';
   import flip from '@popperjs/core/lib/modifiers/flip';
   import offset from '@popperjs/core/lib/modifiers/offset';
+  import preventOverflow from '@popperjs/core/lib/modifiers/preventOverflow';
   import { createPopper } from '@popperjs/core/lib/popper-lite';
   import { createEventDispatcher, tick } from 'svelte';
 
@@ -65,6 +66,14 @@
             name: 'flip',
             options: {
               fallbackPlacements
+            }
+          },
+          preventOverflow,
+          {
+            name: 'preventOverflow',
+            options: {
+              padding: 8,
+              altAxis: true
             }
           },
           offset,

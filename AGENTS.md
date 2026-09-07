@@ -1,6 +1,6 @@
 # Agent Instructions & Codebase Guidelines
 
-Guidelines and architectural constraints for working in **custom-ereader** (based on ッツ Reader).
+Guidelines and architectural constraints for working in **reader** (based on ッツ Reader).
 
 ---
 
