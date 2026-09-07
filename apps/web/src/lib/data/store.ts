@@ -65,13 +65,6 @@ import { writableStringLocalStorageSubject } from './internal/writable-string-lo
 export type AppTheme = 'neutral' | 'stone' | 'gothic';
 export type AppThemeMode = 'system' | AppTheme;
 
-export function getSystemAppTheme(): AppTheme {
-  if (typeof window !== 'undefined' && window.matchMedia) {
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'gothic' : 'neutral';
-  }
-  return 'neutral';
-}
-
 export const appThemeMode$ = writableStringLocalStorageSubject<AppThemeMode>()(
   'appTheme',
   'system'
