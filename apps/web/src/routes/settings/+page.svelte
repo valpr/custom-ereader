@@ -144,12 +144,12 @@
   <title>{formatPageTitle('Settings')}</title>
 </svelte:head>
 
-<div class="elevation-4 fixed inset-x-0 top-0 z-10">
+<div class="elevation-4 fixed inset-x-0 top-0 z-30">
   <SettingsHeader leavePageLink={prevPage} bind:activeSettings />
 </div>
 
 <div class="{pxScreen} h-full pt-16 xl:pt-14">
-  <div class="max-w-5xl">
+  <div class="w-full max-w-6xl mx-auto">
     <SettingsContent
       {activeSettings}
       {storageQuota}
