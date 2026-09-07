@@ -13,20 +13,20 @@ This repository is a personalized fork of the excellent [ttu-ttu/ebook-reader](h
 
 ## Why Does This Exist?
 
-1. **Keep Improving ttu-reader**: While the original [ttu-reader](https://github.com/ttu-ttu/ebook-reader) is an outstanding reading platform, upstream updates have slowed down. This fork is my wish list of features that I wanted.
+1. **Keep Improving ttu-reader**: While the original [ttu-reader](https://github.com/ttu-ttu/ebook-reader) is an outstanding reading platform, upstream updates have slowed down.
 2. **Open to the Community**: Kept completely open so anyone can benefit from these enhancements, borrow features, or fork and adapt it for their own workflows.
-3. **Better Daily Reading Experience**: Built to solve problems that I've had during my immersion experience and gripes about UI
+3. **Better Daily Reading Experience**: Building my personal wish list and fixing other problems/glitches that I've had during my reading experience.
 
 ---
 
 ## Changelog: Changes from Base ttu-reader
 
 - **Multi-Bookmark Support**: Create and manage unlimited bookmarks per book without overwriting your current reading position.
-- **Smart Auto-Naming & Notes**: Automatically suggests bookmark titles with the chapter name and progress percentage (e.g., `Chapter 3 (42%)`), with full support for custom labels and personal notes.
+- **Smart Auto-Naming & Notes**: Automatically suggests bookmark titles with the chapter name and progress percentage (e.g., `Chapter 3 (42%)`), with full support for custom labels and personal notes per bookmark.
 - **Color Tags & Margin Indicators**: Categorize bookmarks with 6 distinct color tags and view interactive ribbon markers directly in the margin across both horizontal and vertical layouts.
 - **Slide-Out Bookmark Drawer**: Dedicated panel matching the Table of Contents drawer to view, edit, sort, and jump between bookmarks, with keyboard navigation support (`Shift+B` to create, `Shift+R` to open, `Shift+N`/`Shift+P` to cycle).
-- **Glitch Recovery & Rolling Autosaves**: Automatically logs position checkpoints and guards against abnormal scroll jumps, allowing you to instantly restore your place after accidental gestures or trackpad flings with one-click bookmark promotion.
-- **Opinonated Sync**: Simplified syncing pattern that allows settings/books to be automatically synced across platforms.
+- **Glitch Recovery & Rolling Auto saves**: Automatically logs position checkpoints and guards against abnormal scroll jumps, allowing you to instantly restore your place after accidental gestures or trackpad flings with one-click bookmark promotion.
+- **Opinionated Sync**: Simplified syncing pattern that allows settings/books to be automatically synced across platforms.
 - **Responsive Reader Header**: Icon toolbar progressively collapses lower-priority controls into an overflow menu (`⋯`) on narrow screens, keeping essential controls reachable on mobile.
 - **Refreshed UI & Settings**: Modernized layout featuring tabbed configuration panels, live typography sample previews, and new theme styling.
 
