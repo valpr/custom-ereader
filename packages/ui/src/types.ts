@@ -59,3 +59,8 @@ export interface TabItem {
 }
 export type TabVariant = 'pill' | 'underline' | 'bar';
 export type TabSize = 'sm' | 'md' | 'lg';
+
+export interface OverflowListItem {
+  id: string;
+  [key: string]: any;
+}

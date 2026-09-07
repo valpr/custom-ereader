@@ -8,6 +8,7 @@ import {
   faBug,
   faChartLine,
   faCog,
+  faEllipsis,
   faFileArrowUp,
   faFileZipper,
   faFolderPlus,
@@ -19,6 +20,12 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 
 export const mergeEntries = {
+  OVERFLOW: {
+    routeId: '',
+    label: 'More Actions',
+    icon: faEllipsis,
+    title: 'More Actions'
+  },
   MANAGE: { routeId: '/manage', label: 'Manager', icon: faSignOutAlt, title: 'Go to Book Manager' },
   UI_SHOWCASE: {
     routeId: '/ui-showcase',
