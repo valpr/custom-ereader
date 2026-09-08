@@ -798,8 +798,6 @@ export class StorageOAuthManager {
 
       setConnectionState(storageSourceName, StorageConnectionState.CONNECTED);
 
-      await StorageOAuthManager.disconnectOtherCloudSources(storageSourceName);
-
       const db = await database.db;
       const updatedSources = await db.getAll('storageSource');
       database.storageSourcesChanged$.next(updatedSources);
@@ -993,6 +991,11 @@ export function getConnectionState(
     }
 
     return StorageConnectionState.DISCONNECTED;
+  }
+
+  const defaultToken = storageOAuthTokens.get(storageSourceName);
+  if (defaultToken && defaultToken.expiration > Date.now()) {
+    return StorageConnectionState.CONNECTED;
   }
 
   return StorageConnectionState.DISCONNECTED;

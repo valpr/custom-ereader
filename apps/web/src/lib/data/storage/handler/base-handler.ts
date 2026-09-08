@@ -65,6 +65,8 @@ export abstract class BaseStorageHandler {
 
   abstract getBookList(): Promise<BookCardProps[]>;
 
+  abstract checkHasData(): Promise<{ connected: boolean; hasData: boolean }>;
+
   abstract clearData(clearAll?: boolean): void;
 
   abstract prepareBookForReading(): Promise<number>;

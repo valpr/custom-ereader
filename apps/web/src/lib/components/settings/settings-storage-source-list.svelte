@@ -12,6 +12,7 @@
     faTrash,
     faTriangleExclamation
   } from '@fortawesome/free-solid-svg-icons';
+  import ConfirmDialog from '$lib/components/confirm-dialog.svelte';
   import MessageDialog from '$lib/components/message-dialog.svelte';
   import SettingsStorageSource from '$lib/components/settings/settings-storage-source.svelte';
   import {
@@ -167,20 +168,66 @@
 
   $: customSources = storageSources?.filter((s) => !isAppDefault(s.name)) || [];
 
-  function handleDropdownChange(e: CustomEvent<{ value: string | number }>) {
+  async function handleDropdownChange(e: CustomEvent<{ value: string | number }>) {
     const val = `${e.detail.value}`;
-    $syncTarget$ = val;
-    if (val) {
-      const found =
-        storageSources?.find((s) => s.name === val) ||
-        (val === StorageSourceDefault.GDRIVE_DEFAULT
-          ? { type: StorageKey.GDRIVE }
-          : val === StorageSourceDefault.ONEDRIVE_DEFAULT
-            ? { type: StorageKey.ONEDRIVE }
-            : null);
-      if (found) {
-        setStorageSourceDefault(val, found.type);
+    if (!val) {
+      $syncTarget$ = '';
+      return;
+    }
+
+    const found =
+      storageSources?.find((s) => s.name === val) ||
+      (val === StorageSourceDefault.GDRIVE_DEFAULT
+        ? {
+            name: StorageSourceDefault.GDRIVE_DEFAULT,
+            type: StorageKey.GDRIVE,
+            storedInManager: false,
+            encryptionDisabled: false,
+            data: new ArrayBuffer(0),
+            lastSourceModified: 0
+          }
+        : val === StorageSourceDefault.ONEDRIVE_DEFAULT
+          ? {
+              name: StorageSourceDefault.ONEDRIVE_DEFAULT,
+              type: StorageKey.ONEDRIVE,
+              storedInManager: false,
+              encryptionDisabled: false,
+              data: new ArrayBuffer(0),
+              lastSourceModified: 0
+            }
+          : null);
+
+    if (!found) return;
+
+    const connState = getConnectionState(val, found as BooksDbStorageSource);
+    const isAlreadyConnected = connState === StorageConnectionState.CONNECTED;
+
+    if (isAlreadyConnected && $syncTarget$ && $syncTarget$ !== val) {
+      const confirmed = await new Promise<boolean>((resolve) => {
+        dialogManager.dialogs$.next([
+          {
+            component: ConfirmDialog,
+            props: {
+              dialogHeader: 'Switch Sync Target',
+              dialogMessage: `Switch active sync target to "${getProviderDisplayName(found as BooksDbStorageSource)}"?\n\nYour local reading progress, statistics, and settings will now synchronize with this provider.`,
+              contentStyles: 'white-space: pre-line;',
+              resolver: resolve
+            },
+            disableCloseOnClick: true
+          }
+        ]);
+      });
+
+      if (!confirmed) {
+        return;
       }
+    }
+
+    $syncTarget$ = val;
+
+    if (isAlreadyConnected) {
+      setStorageSourceDefault(val, found.type);
+      await triggerManualSync(val);
     }
   }
 
@@ -504,6 +551,12 @@
           value={$syncTarget$}
           on:change={handleDropdownChange}
         />
+        {#if $syncTarget$}
+          <p class="text-xs text-zinc-500 dark:text-zinc-400 mt-1.5">
+            Tip: To continue reading seamlessly across devices, select the same Sync Target on both
+            your phone and computer.
+          </p>
+        {/if}
       </div>
 
       <!-- Active Provider Card -->

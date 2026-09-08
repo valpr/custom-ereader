@@ -38,6 +38,7 @@
     faCloudArrowUp,
     faSortDown,
     faSortUp,
+    faSpinner,
     faTimes,
     faTrash
   } from '@fortawesome/free-solid-svg-icons';
@@ -68,9 +69,12 @@
   }>();
 
   let importMenuItems = [mergeEntries.FILE_IMPORT];
-  const storageSourceMenuItems = [
+  let storageSourceMenuItems = [
     { label: 'Browser', key: StorageKey.BROWSER, requiresConnectivity: false }
   ];
+  let isCheckingSources = false;
+  let gDriveVerifiedHasData = false;
+  let oneDriveVerifiedHasData = false;
 
   let fileImportElm: HTMLElement;
   let folderImportElm: HTMLElement;
@@ -81,6 +85,68 @@
   let sortOptionsElm: Popover;
   let isOldUrl = false;
   let showLoadCount = false;
+
+  function updateStorageSourceMenuItems() {
+    if (!browser) return;
+    const items = [{ label: 'Browser', key: StorageKey.BROWSER, requiresConnectivity: false }];
+
+    if (gDriveVerifiedHasData || $storageSource$ === StorageKey.GDRIVE) {
+      items.push({
+        label: 'GDrive',
+        key: StorageKey.GDRIVE,
+        requiresConnectivity: true
+      });
+    }
+
+    if (oneDriveVerifiedHasData || $storageSource$ === StorageKey.ONEDRIVE) {
+      items.push({
+        label: 'OneDrive',
+        key: StorageKey.ONEDRIVE,
+        requiresConnectivity: true
+      });
+    }
+
+    if (isStorageSourceAvailable(StorageKey.FS, $fsStorageSource$, window)) {
+      items.push({
+        label: 'Filesystem',
+        key: StorageKey.FS,
+        requiresConnectivity: false
+      });
+    }
+
+    storageSourceMenuItems = items;
+  }
+
+  async function checkCloudSources() {
+    if (!browser || isCheckingSources) return;
+
+    isCheckingSources = true;
+    try {
+      const gDriveHandler = getStorageHandler(window, StorageKey.GDRIVE, $gDriveStorageSource$);
+      const oneDriveHandler = getStorageHandler(
+        window,
+        StorageKey.ONEDRIVE,
+        $oneDriveStorageSource$
+      );
+
+      const [gDriveResult, oneDriveResult] = await Promise.all([
+        isStorageSourceAvailable(StorageKey.GDRIVE, $gDriveStorageSource$, window)
+          ? gDriveHandler.checkHasData()
+          : Promise.resolve({ connected: false, hasData: false }),
+        isStorageSourceAvailable(StorageKey.ONEDRIVE, $oneDriveStorageSource$, window)
+          ? oneDriveHandler.checkHasData()
+          : Promise.resolve({ connected: false, hasData: false })
+      ]);
+
+      gDriveVerifiedHasData = gDriveResult.connected && gDriveResult.hasData;
+      oneDriveVerifiedHasData = oneDriveResult.connected && oneDriveResult.hasData;
+      updateStorageSourceMenuItems();
+    } catch {
+      // Ignore background check errors
+    } finally {
+      isCheckingSources = false;
+    }
+  }
 
   $: if (browser) {
     isOldUrl = isOnOldUrl(window);
@@ -93,36 +159,7 @@
         : [mergeEntries.FOLDER_IMPORT, mergeEntries.BACKUP_IMPORT])
     ];
 
-    storageSourceMenuItems.length = 1;
-    storageSourceMenuItems.push(
-      ...(isStorageSourceAvailable(StorageKey.GDRIVE, $gDriveStorageSource$, window)
-        ? [
-            {
-              label: 'GDrive',
-              key: StorageKey.GDRIVE,
-              requiresConnectivity: true
-            }
-          ]
-        : []),
-      ...(isStorageSourceAvailable(StorageKey.ONEDRIVE, $oneDriveStorageSource$, window)
-        ? [
-            {
-              label: 'OneDrive',
-              key: StorageKey.ONEDRIVE,
-              requiresConnectivity: true
-            }
-          ]
-        : []),
-      ...(isStorageSourceAvailable(StorageKey.FS, $fsStorageSource$, window)
-        ? [
-            {
-              label: 'Filesystem',
-              key: StorageKey.FS,
-              requiresConnectivity: false
-            }
-          ]
-        : [])
-    );
+    updateStorageSourceMenuItems();
   }
 
   $: sortMenuItems = [
@@ -353,11 +390,15 @@
           fallbackPlacements={['bottom-end', 'bottom-start']}
           yOffset={4}
           bind:this={storageSourceElm}
+          on:open={checkCloudSources}
         >
           <div
             slot="icon"
+            role="button"
+            tabindex="0"
             class="flex h-9 w-9 cursor-pointer items-center justify-center rounded-[var(--astryx-radius-md,6px)] text-[var(--astryx-color-fg-muted)] transition-colors hover:bg-[var(--astryx-color-surface-hover)] hover:text-[var(--astryx-color-fg-primary)]"
             title="Select Storage Source"
+            aria-label="Select Storage Source"
           >
             {#key $storageIcon$}
               <svg
@@ -400,6 +441,14 @@
                 {sourceMenuItem.label}
               </div>
             {/each}
+            {#if isCheckingSources}
+              <div
+                class="flex items-center gap-2 px-4 py-1.5 text-xs text-[var(--astryx-color-fg-muted)] border-t border-[var(--astryx-color-border-subtle)] mt-1"
+              >
+                <Fa icon={faSpinner} spin class="text-xs" />
+                <span>Checking...</span>
+              </div>
+            {/if}
           </div>
         </Popover>
 
