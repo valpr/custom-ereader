@@ -357,8 +357,18 @@
       ]);
     });
 
-    if (wasCanceled) {
-      return;
+    if (wasCanceled) return;
+
+    const wasActive = profile.id === currentActiveId;
+    deleteProfile(profile.id);
+    if (wasActive) {
+      const updated = getActiveProfile();
+      if (updated) {
+        lastTrackedProfileId = updated.id;
+        baselineSettings = updated.settings ? { ...updated.settings } : null;
+        isModified = false;
+        dispatch('profileChange', updated);
+      }
     }
 
     deleteProfile(profile.id);
