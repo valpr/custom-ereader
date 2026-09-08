@@ -69,4 +69,16 @@ test.describe('Privacy Policy & Terms of Service', () => {
     await expect(termsLink).toBeVisible();
     await expect(termsLink).toHaveAttribute('href', /\/terms/);
   });
+
+  test('manage page displays Valpr Reader branding and privacy policy link', async ({ page }) => {
+    await page.goto('/manage');
+
+    // Branding in empty state or header
+    await expect(page.getByRole('heading', { name: 'Valpr Reader' })).toBeVisible();
+
+    // Footer privacy policy link
+    const footerPrivacyLink = page.locator('footer a[href*="/privacy"]');
+    await expect(footerPrivacyLink).toBeVisible();
+    await expect(footerPrivacyLink).toHaveText('Privacy Policy');
+  });
 });
