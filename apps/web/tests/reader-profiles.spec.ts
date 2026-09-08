@@ -107,6 +107,41 @@ test.describe('Reader Profiles System', () => {
     await expect(page.locator('text=OLED Night Reader')).toBeVisible();
   });
 
+  test('deletes a profile after confirmation dialog', async ({ page }) => {
+    // Create a new profile to delete
+    await page.locator('button:has-text("New Profile")').click();
+    await expect(page.locator('text=Create Reader Profile')).toBeVisible();
+    await page.locator('#new-profile-name').fill('Profile To Delete');
+    await page.locator('button:has-text("Create Profile")').last().click();
+    await expect(page.locator('text=Profile To Delete')).toBeVisible();
+
+    // Find the profile card for "Profile To Delete"
+    const profileCard = page.locator('div[role="button"]').filter({ hasText: 'Profile To Delete' });
+    const deleteButton = profileCard.getByRole('button', { name: 'Delete profile' });
+    await expect(deleteButton).toBeVisible();
+
+    // Click delete button - confirmation dialog should appear
+    await deleteButton.click();
+    await expect(page.locator('text=Delete Profile')).toBeVisible();
+    await expect(
+      page.locator('text=Are you sure you want to delete the profile "Profile To Delete"?')
+    ).toBeVisible();
+
+    // Click Cancel: profile should NOT be deleted
+    await page.locator('button:has-text("Cancel")').click();
+    await expect(page.locator('text=Delete Profile')).not.toBeVisible();
+    await expect(page.locator('text=Profile To Delete')).toBeVisible();
+
+    // Click delete button again and confirm
+    await deleteButton.click();
+    await expect(page.locator('text=Delete Profile')).toBeVisible();
+    await page.locator('button:has-text("Confirm")').click();
+
+    // Confirmation dialog closes and profile is removed
+    await expect(page.locator('text=Delete Profile')).not.toBeVisible();
+    await expect(page.locator('text=Profile To Delete')).not.toBeVisible();
+  });
+
   test('mobile responsive layout does not crush description into vertical line or truncate banner', async ({
     page
   }) => {
