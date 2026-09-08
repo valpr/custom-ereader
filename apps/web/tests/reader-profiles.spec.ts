@@ -9,8 +9,9 @@ import { expect, test } from '@playwright/test';
 test.describe('Reader Profiles System', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/settings');
-    // Ensure we are on the Reader tab
+    // Ensure we are on the Reader tab and Svelte has mounted
     await expect(page.locator('text=Reader Profiles').first()).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('text=Active').first()).toBeVisible({ timeout: 10000 });
   });
 
   test('displays default reader profiles and active indicator', async ({ page }) => {
@@ -91,10 +92,12 @@ test.describe('Reader Profiles System', () => {
 
   test('creates a new custom profile via modal', async ({ page }) => {
     // Click "New Profile" button
-    await page.locator('button:has-text("New Profile")').click();
+    const newProfileBtn = page.locator('button:has-text("New Profile")');
+    await expect(newProfileBtn).toBeVisible();
+    await newProfileBtn.click();
 
     // Modal should be visible
-    await expect(page.locator('text=Create Reader Profile')).toBeVisible();
+    await expect(page.locator('text=Create Reader Profile')).toBeVisible({ timeout: 10000 });
 
     // Fill in profile name
     const nameInput = page.locator('#new-profile-name');
@@ -112,6 +115,8 @@ test.describe('Reader Profiles System', () => {
   }) => {
     // Resize viewport to mobile screen (iPhone SE: 375x667)
     await page.setViewportSize({ width: 375, height: 667 });
+    await page.goto('/settings');
+    await page.waitForLoadState('networkidle');
 
     // Verify "Profile Cloud Sync & Backup" description is rendered with wide text width (not crushed)
     const backupDescription = page.locator(

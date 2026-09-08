@@ -398,6 +398,40 @@
       return;
     }
 
+    const titlesToDelete = $bookCards$
+      .filter((card) => bookIds.includes(card.id))
+      .map((card) => card.title);
+
+    if (!titlesToDelete.length) {
+      return;
+    }
+
+    const wasCanceled = await new Promise<boolean>((resolver) => {
+      dialogManager.dialogs$.next([
+        {
+          component: ConfirmDialog,
+          props: {
+            dialogHeader: `Delete ${pluralize(titlesToDelete.length, 'Book', false)}`,
+            dialogMessage:
+              titlesToDelete.length === 1
+                ? `Are you sure you want to delete "${titlesToDelete[0]}"? This action cannot be undone.`
+                : `Are you sure you want to delete the selected ${titlesToDelete.length} books? This action cannot be undone.`,
+            contentStyles: 'white-space: pre-line; word-break: break-word;',
+            resolver
+          },
+          disableCloseOnClick: true
+        }
+      ]);
+    });
+
+    if (wasCanceled) {
+      return;
+    }
+
+    if (!operationAllowed()) {
+      return;
+    }
+
     cancelTooltip = `Cancels the Deletion\nAlready deleted data will not be restored`;
 
     initializeReplicationProgressData();
@@ -405,12 +439,7 @@
     const currentBookCount = $bookCards$.length;
     const handler = getStorageHandler(window, $storageSource$, '');
     const { error, deleted } = await handler.deleteBookData(
-      $bookCards$.reduce((toDelete, card) => {
-        if (bookIds.includes(card.id)) {
-          toDelete.push(card.title);
-        }
-        return toDelete;
-      }, [] as string[]),
+      titlesToDelete,
       cancelSignal,
       $keepLocalStatisticsOnDeletion$
     );
