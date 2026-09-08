@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Terms of Service | Valpr Reader</title>
+    <meta
+      name="description"
+      content="Terms of Service for Valpr Reader governing usage, user responsibilities, third-party services, and open-source licensing."
+    />
+    <link rel="icon" type="image/png" sizes="32x32" href="../icons/regular-icon@32x32.png" />
+    <style>
+      :root {
+        --bg: #ffffff;
+        --card-bg: #fdfdfd;
+        --text: #18181b;
+        --text-secondary: #52525b;
+        --text-muted: #71717a;
+        --border: #e4e4e7;
+        --primary: #6366f1;
+        --primary-subtle: rgba(99, 102, 241, 0.1);
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #121214;
+          --card-bg: #18181b;
+          --text: #f4f4f5;
+          --text-secondary: #a1a1aa;
+          --text-muted: #71717a;
+          --border: #27272a;
+          --primary: #818cf8;
+          --primary-subtle: rgba(129, 140, 248, 0.15);
+        }
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        background-color: var(--bg);
+        color: var(--text);
+        line-height: 1.65;
+        padding: 0;
+      }
+      header.navbar {
+        border-bottom: 1px solid var(--border);
+        padding: 0.85rem 1.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        position: sticky;
+        top: 0;
+        background-color: var(--bg);
+        z-index: 10;
+      }
+      .brand {
+        font-weight: 700;
+        font-size: 1.1rem;
+        color: var(--text);
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+      .nav-links {
+        display: flex;
+        gap: 1rem;
+        font-size: 0.9rem;
+      }
+      .nav-links a {
+        color: var(--text-secondary);
+        text-decoration: none;
+        transition: color 0.15s;
+      }
+      .nav-links a:hover {
+        color: var(--primary);
+      }
+      .container {
+        max-width: 840px;
+        margin: 0 auto;
+        padding: 2.5rem 1.5rem 5rem 1.5rem;
+      }
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        background-color: var(--primary-subtle);
+        color: var(--primary);
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+      }
+      h1 {
+        font-size: 2.25rem;
+        font-weight: 800;
+        line-height: 1.25;
+        margin-bottom: 0.5rem;
+        letter-spacing: -0.025em;
+      }
+      .last-updated {
+        color: var(--text-muted);
+        font-size: 0.875rem;
+        margin-bottom: 2rem;
+      }
+      section {
+        margin-bottom: 2.5rem;
+      }
+      h2.section-title {
+        font-size: 1.35rem;
+        font-weight: 700;
+        margin-bottom: 0.85rem;
+        color: var(--text);
+        letter-spacing: -0.015em;
+      }
+      p {
+        color: var(--text-secondary);
+        font-size: 0.95rem;
+        margin-bottom: 0.85rem;
+      }
+      ul {
+        color: var(--text-secondary);
+        font-size: 0.95rem;
+        margin-left: 1.25rem;
+        margin-bottom: 1rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+      }
+      a {
+        color: var(--primary);
+        text-decoration: underline;
+      }
+      footer {
+        border-top: 1px solid var(--border);
+        padding: 2rem 1.5rem;
+        text-align: center;
+        color: var(--text-muted);
+        font-size: 0.85rem;
+      }
+    </style>
+  </head>
+  <body>
+    <header class="navbar">
+      <a href="/" class="brand">
+        <span>📖</span>
+        <span>Valpr Reader</span>
+      </a>
+      <div class="nav-links">
+        <a href="/privacy/">Privacy Policy</a>
+        <a href="/reader/">Open Reader</a>
+        <a href="https://github.com/valpr/reader" target="_blank" rel="noopener noreferrer"
+          >GitHub</a
+        >
+      </div>
+    </header>
+
+    <main class="container">
+      <div class="badge">Legal Terms</div>
+      <h1>Valpr Reader Terms of Service</h1>
+      <div class="last-updated">
+        Last Updated: September 8, 2026 &bull; Effective Date: September 8, 2026
+      </div>
+
+      <section>
+        <h2 class="section-title">1. Acceptance of Terms</h2>
+        <p>
+          By using <strong>Valpr Reader</strong> (hosted at <code>https://valpr.github.io/</code> or
+          <code>https://valpr.github.io/reader</code>), you agree to be bound by these Terms of
+          Service. If you do not agree, please do not use the application.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title">2. Description of the Service</h2>
+        <p>
+          Valpr Reader is a free, open-source web e-book reader optimized for Japanese text
+          immersion and learning. It features client-side e-book parsing (EPUB, HTMLZ, TXT), popup
+          dictionary extensions (e.g., Yomitan), reading progress tracking, personal reading
+          statistics, and optional synchronization through third-party cloud storage (Google Drive,
+          Microsoft OneDrive).
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title">3. User Responsibilities &amp; Content Ownership</h2>
+        <ul>
+          <li>
+            <strong>Content Ownership:</strong> You retain complete ownership and intellectual
+            property rights in any books, text, images, or documents you load into Valpr Reader.
+          </li>
+          <li>
+            <strong>Legal Compliance:</strong> You are solely responsible for ensuring that
+            materials you import or synchronize comply with applicable copyright laws and
+            intellectual property regulations in your jurisdiction.
+          </li>
+          <li>
+            <strong>Local Data:</strong> Valpr Reader stores books and progress in your browser's
+            IndexedDB. You are responsible for exporting backups.
+          </li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="section-title">4. Third-Party Services</h2>
+        <p>
+          Optional integrations with Google Drive and Microsoft OneDrive are governed by their
+          respective terms of service and our Privacy Policy.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title">5. Open Source License</h2>
+        <p>
+          Valpr Reader is open-source software licensed under the
+          <strong>BSD 3-Clause License</strong>. The source code is available on
+          <a href="https://github.com/valpr/reader" target="_blank" rel="noopener noreferrer"
+            >GitHub</a
+          >.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title">6. Disclaimer of Warranties &amp; Limitation of Liability</h2>
+        <p>
+          Valpr Reader is provided free of charge "as is" and "as available", without warranties of
+          any kind. Under no circumstances will the authors or contributors be liable for any
+          indirect, incidental, or consequential damages resulting from the use of the service.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title">7. Contact Information</h2>
+        <p>
+          For inquiries regarding these terms, visit our repository at
+          <a href="https://github.com/valpr/reader" target="_blank" rel="noopener noreferrer"
+            >https://github.com/valpr/reader</a
+          >.
+        </p>
+      </section>
+    </main>
+
+    <footer>
+      <p>&copy; 2026 Valpr Reader. Open-source under BSD-3-Clause. Hosted on GitHub Pages.</p>
+    </footer>
+  </body>
+</html>

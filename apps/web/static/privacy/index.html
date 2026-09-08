@@ -1,0 +1,470 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Privacy Policy | Valpr Reader</title>
+    <meta
+      name="description"
+      content="Privacy Policy for Valpr Reader detailing local-first data processing, Google Drive integration, and user deletion rights."
+    />
+    <link rel="icon" type="image/png" sizes="32x32" href="../icons/regular-icon@32x32.png" />
+    <style>
+      :root {
+        --bg: #ffffff;
+        --card-bg: #fdfdfd;
+        --text: #18181b;
+        --text-secondary: #52525b;
+        --text-muted: #71717a;
+        --border: #e4e4e7;
+        --primary: #6366f1;
+        --primary-subtle: rgba(99, 102, 241, 0.1);
+        --danger: #ef4444;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #121214;
+          --card-bg: #18181b;
+          --text: #f4f4f5;
+          --text-secondary: #a1a1aa;
+          --text-muted: #71717a;
+          --border: #27272a;
+          --primary: #818cf8;
+          --primary-subtle: rgba(129, 140, 248, 0.15);
+          --danger: #f87171;
+        }
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        background-color: var(--bg);
+        color: var(--text);
+        line-height: 1.65;
+        padding: 0;
+      }
+      header.navbar {
+        border-bottom: 1px solid var(--border);
+        padding: 0.85rem 1.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        position: sticky;
+        top: 0;
+        background-color: var(--bg);
+        z-index: 10;
+      }
+      .brand {
+        font-weight: 700;
+        font-size: 1.1rem;
+        color: var(--text);
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+      .nav-links {
+        display: flex;
+        gap: 1rem;
+        font-size: 0.9rem;
+      }
+      .nav-links a {
+        color: var(--text-secondary);
+        text-decoration: none;
+        transition: color 0.15s;
+      }
+      .nav-links a:hover {
+        color: var(--primary);
+      }
+      .container {
+        max-width: 840px;
+        margin: 0 auto;
+        padding: 2.5rem 1.5rem 5rem 1.5rem;
+      }
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        background-color: var(--primary-subtle);
+        color: var(--primary);
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+      }
+      h1 {
+        font-size: 2.25rem;
+        font-weight: 800;
+        line-height: 1.25;
+        margin-bottom: 0.5rem;
+        letter-spacing: -0.025em;
+      }
+      .last-updated {
+        color: var(--text-muted);
+        font-size: 0.875rem;
+        margin-bottom: 2rem;
+      }
+      .summary-card {
+        background-color: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 2.5rem;
+      }
+      .summary-card h2 {
+        font-size: 1.1rem;
+        font-weight: 700;
+        margin-bottom: 0.75rem;
+        color: var(--text);
+      }
+      .summary-card ul {
+        list-style-position: inside;
+        color: var(--text-secondary);
+        font-size: 0.95rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+      section {
+        margin-bottom: 2.5rem;
+      }
+      h2.section-title {
+        font-size: 1.35rem;
+        font-weight: 700;
+        margin-bottom: 0.85rem;
+        color: var(--text);
+        letter-spacing: -0.015em;
+      }
+      h3.sub-title {
+        font-size: 1.05rem;
+        font-weight: 600;
+        margin-top: 1.25rem;
+        margin-bottom: 0.5rem;
+        color: var(--text);
+      }
+      p {
+        color: var(--text-secondary);
+        font-size: 0.95rem;
+        margin-bottom: 0.85rem;
+      }
+      ul,
+      ol {
+        color: var(--text-secondary);
+        font-size: 0.95rem;
+        margin-left: 1.25rem;
+        margin-bottom: 1rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+      }
+      code {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        background-color: var(--border);
+        padding: 0.15rem 0.4rem;
+        border-radius: 4px;
+        font-size: 0.875em;
+      }
+      .code-block {
+        background-color: var(--card-bg);
+        border: 1px solid var(--border);
+        padding: 0.75rem 1rem;
+        border-radius: 8px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-size: 0.85rem;
+        word-break: break-all;
+        margin: 0.5rem 0 1rem 0;
+      }
+      .limited-use-callout {
+        border: 1px solid var(--primary);
+        background-color: var(--primary-subtle);
+        border-radius: 8px;
+        padding: 1.25rem;
+        margin: 1.5rem 0;
+      }
+      .limited-use-callout p.quote {
+        font-style: italic;
+        font-weight: 600;
+        color: var(--text);
+        font-size: 1rem;
+        line-height: 1.5;
+      }
+      .step-card {
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 0.75rem;
+        background-color: var(--card-bg);
+      }
+      .step-card h4 {
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: var(--text);
+        margin-bottom: 0.25rem;
+      }
+      .step-card p {
+        font-size: 0.875rem;
+        margin-bottom: 0;
+      }
+      a {
+        color: var(--primary);
+        text-decoration: underline;
+      }
+      footer {
+        border-top: 1px solid var(--border);
+        padding: 2rem 1.5rem;
+        text-align: center;
+        color: var(--text-muted);
+        font-size: 0.85rem;
+      }
+    </style>
+  </head>
+  <body>
+    <header class="navbar">
+      <a href="/" class="brand">
+        <span>📖</span>
+        <span>Valpr Reader</span>
+      </a>
+      <div class="nav-links">
+        <a href="/terms/">Terms of Service</a>
+        <a href="/reader/">Open Reader</a>
+        <a href="https://github.com/valpr/reader" target="_blank" rel="noopener noreferrer"
+          >GitHub</a
+        >
+      </div>
+    </header>
+
+    <main class="container">
+      <div class="badge">Privacy &amp; Data Protection</div>
+      <h1>Valpr Reader Privacy Policy</h1>
+      <div class="last-updated">
+        Last Updated: September 8, 2026 &bull; Effective Date: September 8, 2026
+      </div>
+
+      <div class="summary-card">
+        <h2>Summary of Core Privacy Principles</h2>
+        <ul>
+          <li>
+            <strong>Local-First:</strong> Valpr Reader runs entirely in your web browser. All book
+            processing and reading statistics are stored locally on your device.
+          </li>
+          <li>
+            <strong>No Proprietary Servers:</strong> Valpr Reader operates no backend application
+            servers, databases, or analytics services. We never collect, track, or sell your
+            personal data.
+          </li>
+          <li>
+            <strong>Direct Cloud Connections:</strong> When optional Google Drive sync is enabled,
+            your browser communicates directly with Google APIs via encrypted HTTPS.
+          </li>
+        </ul>
+      </div>
+
+      <section>
+        <h2 class="section-title">1. Overview of Valpr Reader</h2>
+        <p>
+          <strong>Valpr Reader</strong> is a free, open-source, web-based e-book reader designed
+          specifically for Japanese language learning and immersion (supporting EPUB, HTMLZ, and TXT
+          formats), Yomitan dictionary popups, and reading statistics.
+        </p>
+        <p>
+          This Privacy Policy explains how Valpr Reader handles your information when you access or
+          use the application at <code>https://valpr.github.io/</code> or
+          <code>https://valpr.github.io/reader</code>, or self-host your own instance.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title">2. Information We Process &amp; How It Is Handled</h2>
+        <p>
+          Valpr Reader processes the following types of information strictly to provide reader
+          functionality:
+        </p>
+        <ul>
+          <li>
+            <strong>Book &amp; Library Data:</strong> E-book files and cover images imported by you
+            are stored in your browser's IndexedDB. They never leave your device unless you choose
+            to sync them to your personal cloud storage.
+          </li>
+          <li>
+            <strong>Reading Progress &amp; Statistics:</strong> Reading positions, bookmarks,
+            character counts, reading speed, and session times are calculated and stored locally in
+            your browser.
+          </li>
+          <li>
+            <strong>Reader Preferences:</strong> Themes, fonts, layouts, and reading settings are
+            stored locally in your browser's LocalStorage and IndexedDB.
+          </li>
+          <li>
+            <strong>Cloud Authentication Tokens:</strong> When you connect Google Drive or OneDrive,
+            OAuth access and refresh tokens are stored locally in your browser and may optionally be
+            encrypted with a password.
+          </li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="section-title">3. Google API Services &amp; Google Drive User Data</h2>
+        <p>
+          Valpr Reader offers an optional synchronization feature with Google Drive. Connecting
+          Google Drive is completely optional; the application is fully functional offline without
+          signing in to Google.
+        </p>
+
+        <h3 class="sub-title">A. Requested Google OAuth Scopes</h3>
+        <p>When you choose to connect Google Drive, Valpr Reader requests the following scope:</p>
+        <div class="code-block">https://www.googleapis.com/auth/drive.file</div>
+        <p>
+          Per Google's official scope definition, this scope only grants access to files and folders
+          that were created by or opened with Valpr Reader.
+        </p>
+
+        <h3 class="sub-title">B. What Google Data We Access</h3>
+        <ul>
+          <li>
+            Valpr Reader only reads, creates, and updates files inside the dedicated application
+            folder (named <code>valpr-reader-data</code>) created by the app in your Google Drive.
+          </li>
+          <li>
+            These files include synced reading progress, bookmarks, reading statistics, user
+            settings/profiles, and optional book archives uploaded by you.
+          </li>
+          <li>
+            <strong>What We Do NOT Access:</strong> Valpr Reader cannot access, view, modify, or
+            delete any other files, documents, photos, spreadsheets, emails, or personal information
+            in your Google Drive or Google Account. We do not request or store your Google profile,
+            contact lists, or personal identity information.
+          </li>
+        </ul>
+
+        <h3 class="sub-title">C. How Google Data Is Handled and Transferred</h3>
+        <ul>
+          <li>
+            All communication with Google APIs occurs directly from your browser to Google servers
+            (<code>https://accounts.google.com</code>, <code>https://oauth2.googleapis.com</code>,
+            and <code>https://www.googleapis.com</code>) via secure Transport Layer Security
+            (TLS/HTTPS).
+          </li>
+          <li>
+            No intermediary server is used. Data is never routed through, processed by, or cached on
+            any server operated by Valpr Reader.
+          </li>
+          <li>
+            Google user data is never used for advertising, marketing, analytics, or profiling.
+          </li>
+          <li>Google user data is never sold, rented, or transferred to third parties.</li>
+        </ul>
+
+        <div class="limited-use-callout">
+          <p class="quote">
+            "Valpr Reader's use and transfer of information received from Google APIs to any other
+            app will adhere to the
+            <a
+              href="https://developers.google.com/terms/api-services-user-data-policy#additional_requirements_for_specific_api_scopes"
+              target="_blank"
+              rel="noopener noreferrer"
+              >Google API Services User Data Policy</a
+            >, including the Limited Use requirements."
+          </p>
+        </div>
+      </section>
+
+      <section>
+        <h2 class="section-title">4. Microsoft OneDrive Integration</h2>
+        <p>
+          Valpr Reader also optionally supports synchronizing reading progress with Microsoft
+          OneDrive using the <code>Files.ReadWrite.AppFolder</code> and
+          <code>User.Read</code> scopes. Access is strictly confined to Valpr Reader's sandboxed
+          application folder on OneDrive.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title">5. Data Security &amp; Encryption</h2>
+        <p>
+          All reading data is stored within your browser's origin sandbox (IndexedDB, LocalStorage).
+          All API communications with Google and Microsoft use HTTPS/TLS encryption. You may also
+          configure Valpr Reader with a master password to encrypt OAuth tokens and profiles using
+          AES encryption before persisting them.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title">6. Data Retention &amp; User Deletion Rights</h2>
+        <p>You have complete control over your data at all times:</p>
+        <div class="step-card">
+          <h4>1. Delete Books &amp; Reading Data In-App</h4>
+          <p>
+            In the Book Manager, select books and click the Delete icon to permanently remove books,
+            reading progress, and bookmarks. In Settings &gt; Storage, you can delete statistics or
+            clear all local database storage.
+          </p>
+        </div>
+        <div class="step-card">
+          <h4>2. Delete Synced Files in Google Drive</h4>
+          <p>
+            Open
+            <a href="https://drive.google.com" target="_blank" rel="noopener noreferrer"
+              >Google Drive</a
+            >
+            and delete the <code>valpr-reader-data</code> folder to permanently delete all synced
+            data from Google servers.
+          </p>
+        </div>
+        <div class="step-card">
+          <h4>3. Disconnect &amp; Revoke Google Access</h4>
+          <p>
+            Disconnect Google Drive at any time under Settings &gt; Storage Sources in Valpr Reader,
+            or immediately revoke access at
+            <a
+              href="https://myaccount.google.com/permissions"
+              target="_blank"
+              rel="noopener noreferrer"
+              >Google Account Security Permissions</a
+            >.
+          </p>
+        </div>
+        <div class="step-card">
+          <h4>4. Browser Storage Deletion</h4>
+          <p>
+            Clearing your browser's site data for the application's domain will immediately erase
+            all local state, cached books, and stored tokens.
+          </p>
+        </div>
+      </section>
+
+      <section>
+        <h2 class="section-title">7. Contact Information &amp; Open Source Repository</h2>
+        <p>
+          Valpr Reader is open-source software. If you have questions or feedback regarding this
+          Privacy Policy, please reach out via GitHub:
+        </p>
+        <ul>
+          <li><strong>Application Name:</strong> Valpr Reader</li>
+          <li>
+            <strong>GitHub Repository:</strong>
+            <a href="https://github.com/valpr/reader" target="_blank" rel="noopener noreferrer"
+              >https://github.com/valpr/reader</a
+            >
+          </li>
+          <li>
+            <strong>Issue Tracker:</strong>
+            <a
+              href="https://github.com/valpr/reader/issues"
+              target="_blank"
+              rel="noopener noreferrer"
+              >https://github.com/valpr/reader/issues</a
+            >
+          </li>
+        </ul>
+      </section>
+    </main>
+
+    <footer>
+      <p>&copy; 2026 Valpr Reader. Open-source under BSD-3-Clause. Hosted on GitHub Pages.</p>
+    </footer>
+  </body>
+</html>

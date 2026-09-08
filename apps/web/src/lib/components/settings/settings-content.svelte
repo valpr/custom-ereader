@@ -50,6 +50,7 @@
   import { ImportHTMLFixMode } from '$lib/data/import-html-fix-mode';
   import { logger } from '$lib/data/logger';
   import { MergeMode } from '$lib/data/merge-mode';
+  import { pagePath } from '$lib/data/env';
   import { isAppDefault } from '$lib/data/storage/storage-source-manager';
   import { defaultStorageSources } from '$lib/data/storage/storage-types';
   import { isStorageSourceAvailable } from '$lib/data/storage/storage-view';
@@ -1580,6 +1581,39 @@
 
     <!-- Section 4: Storage Sources -->
     <SettingsStorageSourceList storageSources={$storageSources$} />
+
+    <!-- Section 5: Privacy & Legal -->
+    <ListSection
+      title="Privacy & Legal"
+      description="Data handling policies, Google Drive Limited Use disclosure, and terms of service"
+    >
+      <ListItem
+        headline="Privacy Policy"
+        description="Learn how Valpr Reader handles your data and interacts with Google Drive and OneDrive"
+      >
+        <div slot="suffix">
+          <a
+            href="{pagePath}/privacy"
+            class="text-sm font-medium text-[var(--astryx-color-primary,#6366f1)] hover:underline"
+          >
+            View Policy
+          </a>
+        </div>
+      </ListItem>
+      <ListItem
+        headline="Terms of Service"
+        description="Review terms of use, user responsibilities, and third-party service agreements"
+      >
+        <div slot="suffix">
+          <a
+            href="{pagePath}/terms"
+            class="text-sm font-medium text-[var(--astryx-color-primary,#6366f1)] hover:underline"
+          >
+            View Terms
+          </a>
+        </div>
+      </ListItem>
+    </ListSection>
   </div>
 {/if}
 
