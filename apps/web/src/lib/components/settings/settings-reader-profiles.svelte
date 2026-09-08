@@ -343,7 +343,7 @@
   async function handleDelete(profile: ReaderProfile) {
     if (profiles.length <= 1) return;
 
-    const confirmed = await new Promise<boolean>((resolve) => {
+    const wasCanceled = await new Promise<boolean>((resolve) => {
       dialogManager.dialogs$.next([
         {
           component: ConfirmDialog,
@@ -351,13 +351,24 @@
             dialogHeader: 'Delete Profile',
             dialogMessage: `Are you sure you want to delete the profile "${profile.name}"? This action cannot be undone.`,
             resolver: resolve
-          }
+          },
+          disableCloseOnClick: true
         }
       ]);
     });
 
-    if (confirmed) {
-      deleteProfile(profile.id);
+    if (wasCanceled) return;
+
+    const wasActive = profile.id === currentActiveId;
+    deleteProfile(profile.id);
+    if (wasActive) {
+      const updated = getActiveProfile();
+      if (updated) {
+        lastTrackedProfileId = updated.id;
+        baselineSettings = updated.settings ? { ...updated.settings } : null;
+        isModified = false;
+        dispatch('profileChange', updated);
+      }
     }
   }
 
