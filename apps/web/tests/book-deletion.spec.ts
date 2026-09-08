@@ -30,6 +30,9 @@ test.describe('Book Deletion Confirmation', () => {
     const dialogContent = page.locator('.astryx-dialog-surface');
     await expect(dialogContent).toContainText('Are you sure you want to delete');
     await expect(dialogContent).toContainText(SAMPLE_BOOK.title);
+    await expect(dialogContent).toContainText(
+      'This will permanently remove the book, your reading progress, and all saved bookmarks.'
+    );
     await expect(dialogContent).toContainText('This action cannot be undone.');
 
     // Clicking Cancel should close the dialog and keep the book

@@ -414,8 +414,8 @@
             dialogHeader: `Delete ${pluralize(titlesToDelete.length, 'Book', false)}`,
             dialogMessage:
               titlesToDelete.length === 1
-                ? `Are you sure you want to delete "${titlesToDelete[0]}"? This action cannot be undone.`
-                : `Are you sure you want to delete the selected ${titlesToDelete.length} books? This action cannot be undone.`,
+                ? `Are you sure you want to delete "${titlesToDelete[0]}"?\n\nThis will permanently remove the book, your reading progress, and all saved bookmarks. This action cannot be undone.`
+                : `Are you sure you want to delete the selected ${titlesToDelete.length} books?\n\nThis will permanently remove the books, reading progress, and all saved bookmarks. This action cannot be undone.`,
             contentStyles: 'white-space: pre-line; word-break: break-word;',
             resolver
           },
