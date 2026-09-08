@@ -1191,7 +1191,6 @@
           StorageDataType.PROGRESS,
           StorageDataType.STATISTICS,
           StorageDataType.READING_GOALS,
-          StorageDataType.PROFILES,
           StorageDataType.AUDIOBOOK,
           StorageDataType.SUBTITLE,
           StorageDataType.USER_BOOKMARKS
