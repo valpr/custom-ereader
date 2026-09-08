@@ -27,7 +27,7 @@
   } from '@custom-ereader/ui';
   import type { BooksDbStorageSource } from '$lib/data/database/books-db/versions/books-db';
   import { dialogManager } from '$lib/data/dialog-manager';
-  import { gDriveRevokeEndpoint } from '$lib/data/env';
+  import { gDriveClientId, gDriveRevokeEndpoint, oneDriveClientId } from '$lib/data/env';
   import {
     StorageOAuthManager,
     storageOAuthTokens,
@@ -155,6 +155,11 @@
     : StorageConnectionState.DISCONNECTED;
   $: isCloudSource =
     activeSource?.type === StorageKey.GDRIVE || activeSource?.type === StorageKey.ONEDRIVE;
+  $: isSourceConfigured =
+    !activeSource ||
+    !isAppDefault(activeSource.name) ||
+    (activeSource.name === StorageSourceDefault.GDRIVE_DEFAULT && !!gDriveClientId) ||
+    (activeSource.name === StorageSourceDefault.ONEDRIVE_DEFAULT && !!oneDriveClientId);
   $: activeEmail = activeSource ? getAccountEmail(activeSource) : '';
   $: activeIcon = activeSource
     ? getStorageIconData(activeSource.type)
@@ -528,6 +533,8 @@
                           {activeEmail ? `Connected as ${activeEmail}` : 'Connected'}
                         {:else if activeConnectionState === StorageConnectionState.NEEDS_RECONNECT}
                           Session Expired — Reconnect required
+                        {:else if !isSourceConfigured}
+                          OAuth Client ID not configured
                         {:else}
                           Not connected
                         {/if}
@@ -554,6 +561,13 @@
                       >
                         <Fa icon={faTriangleExclamation} />
                         Needs Reconnect
+                      </span>
+                    {:else if !isSourceConfigured}
+                      <span
+                        class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400"
+                      >
+                        <Fa icon={faTriangleExclamation} />
+                        Setup Required
                       </span>
                     {:else}
                       <span
@@ -623,6 +637,30 @@
                   </div>
                   <Switch bind:checked={enableAutoSyncOnConnect} />
                 </div>
+
+                {#if isCloudSource && !isSourceConfigured}
+                  <div
+                    class="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 text-xs text-amber-800 dark:text-amber-300 mt-1 flex flex-col gap-1.5"
+                  >
+                    <div class="font-semibold flex items-center gap-1.5">
+                      <Fa icon={faTriangleExclamation} />
+                      OAuth Setup Required
+                    </div>
+                    <div>
+                      {getProviderDisplayName(activeSource)} requires an OAuth Client ID to connect.
+                      You can provide
+                      <code
+                        class="px-1 py-0.5 rounded bg-amber-100 dark:bg-amber-900/60 font-mono text-[11px]"
+                      >
+                        {activeSource.name === StorageSourceDefault.GDRIVE_DEFAULT
+                          ? 'VITE_GDRIVE_CLIENT_ID'
+                          : 'VITE_ONEDRIVE_CLIENT_ID'}
+                      </code>
+                      in your build environment, or register custom credentials using
+                      <strong>Add Custom Source</strong> in the Advanced section below.
+                    </div>
+                  </div>
+                {/if}
 
                 <div class="flex justify-end mt-2">
                   <Button

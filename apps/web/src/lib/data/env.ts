@@ -7,7 +7,7 @@
 export const basePath = import.meta.env.VITE_BASE_PATH || 'https://reader.ttsu.app';
 export const pagePath = import.meta.env.VITE_PAGE_PATH || '';
 export const clearConsoleOnReload = !!import.meta.env.VITE_CLEAR_ON_RELOAD || false;
-export const storageRootName = import.meta.env.VITE_STORAGE_ROOT_NAME || 'ttu-reader-data';
+export const storageRootName = import.meta.env.VITE_STORAGE_ROOT_NAME || 'valpr-reader-data';
 export const gDriveAuthEndpoint =
   import.meta.env.VITE_GDRIVE_AUTH_ENDPOINT || 'https://accounts.google.com/o/oauth2/v2/auth';
 export const gDriveTokenEndpoint =
@@ -29,7 +29,8 @@ export const oneDriveTokenEndpoint =
 export const oneDriveDiscoveryEndpoint =
   import.meta.env.VITE_ONEDRIVE_DISCOVERY ||
   'https://login.microsoftonline.com/consumers/v2.0/.well-known/openid-configuration';
-export const oneDriveScope = import.meta.env.VITE_ONEDRIVE_SCOPE || 'files.readwrite';
+export const oneDriveScope =
+  import.meta.env.VITE_ONEDRIVE_SCOPE || 'Files.ReadWrite.AppFolder User.Read';
 export const oneDriveClientId = import.meta.env.VITE_ONEDRIVE_CLIENT_ID || '';
 export const oneDriveClientSecret = import.meta.env.VITE_ONEDRIVE_CLIENT_SECRET || '';
 export const repoUrl = import.meta.env.VITE_REPO_URL || 'https://github.com/valpr/reader';

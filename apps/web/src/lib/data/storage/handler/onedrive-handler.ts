@@ -173,7 +173,7 @@ export class OneDriveStorageHandler extends ApiStorageHandler {
 
   protected async ensureTitle(
     name = BaseStorageHandler.rootName,
-    parent = 'root',
+    _parent = 'root',
     readOnly = false
   ) {
     if (name === BaseStorageHandler.rootName && this.rootId) {
@@ -186,17 +186,15 @@ export class OneDriveStorageHandler extends ApiStorageHandler {
       return externalId;
     }
 
-    const sanitizedName = BaseStorageHandler.sanitizeForFilename(name);
-    const params = new URLSearchParams();
-
-    params.append('select', `id,name`);
-    params.append('filter', `name eq '${sanitizedName}'`);
-
     let titleId = '';
 
     if (name === BaseStorageHandler.rootName) {
-      titleId = (await this.request(`${this.baseEndpoint}/${parent}/children?${params.toString()}`))
-        ?.value?.[0]?.id;
+      const approotParams = new URLSearchParams();
+      approotParams.append('select', 'id,name');
+      const approotResponse = await this.request(
+        `https://graph.microsoft.com/v1.0/me/drive/special/approot?${approotParams.toString()}`
+      );
+      titleId = approotResponse?.id || '';
     } else if (this.rootId) {
       // One Drive Bug (?) - with non latin characters it will return no filter result so we need to refetch all folders
       const remoteFolders = await this.list(this.rootId);
@@ -211,27 +209,29 @@ export class OneDriveStorageHandler extends ApiStorageHandler {
           titleId = remoteFolder.id;
         }
       }
+
+      if (!titleId && !readOnly) {
+        const sanitizedName = BaseStorageHandler.sanitizeForFilename(name);
+        const params = new URLSearchParams();
+        params.append('select', `id,name`);
+
+        const response = await this.request(
+          `${this.baseEndpoint}/${this.rootId}/children?${params.toString()}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              name: sanitizedName,
+              folder: {},
+              '@microsoft.graph.conflictBehavior': 'fail'
+            })
+          }
+        );
+
+        titleId = response.id;
+      }
     } else {
       throw new Error('RootId required for search');
-    }
-
-    if (!titleId && !readOnly) {
-      params.delete('filter');
-
-      const response = await this.request(
-        `${this.baseEndpoint}/${parent}/children?${params.toString()}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: sanitizedName,
-            folder: {},
-            '@microsoft.graph.conflictBehavior': 'fail'
-          })
-        }
-      );
-
-      titleId = response.id;
     }
 
     if (titleId) {
@@ -403,6 +403,7 @@ export class OneDriveStorageHandler extends ApiStorageHandler {
     if (nextLink) {
       response = await this.request(nextLink);
     } else {
+      const targetParent = parent === 'root' && this.rootId ? this.rootId : parent;
       const params = new URLSearchParams();
 
       params.append('select', `id,name,file,folder`);
@@ -415,7 +416,9 @@ export class OneDriveStorageHandler extends ApiStorageHandler {
         params.append('expand', `thumbnails`);
       }
 
-      response = await this.request(`${this.baseEndpoint}/${parent}/children?${params.toString()}`);
+      response = await this.request(
+        `${this.baseEndpoint}/${targetParent}/children?${params.toString()}`
+      );
     }
 
     if (response) {

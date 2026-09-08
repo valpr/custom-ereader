@@ -53,8 +53,8 @@ test.describe('Cloud Storage Settings & Single Source Selection', () => {
     const providerCard = page.locator('.astryx-card').filter({ hasText: 'Google Drive' });
     await expect(providerCard).toBeVisible();
 
-    // Status shows Disconnected initially
-    await expect(providerCard.getByText('Disconnected')).toBeVisible();
+    // Status shows Setup Required when unconfigured
+    await expect(providerCard.getByText('Setup Required', { exact: true })).toBeVisible();
 
     // Sync status shows Never synced
     await expect(providerCard.getByText('Never synced')).toBeVisible();
@@ -74,8 +74,23 @@ test.describe('Cloud Storage Settings & Single Source Selection', () => {
 
     const providerCard = page.locator('.astryx-card').filter({ hasText: 'OneDrive' });
     await expect(providerCard).toBeVisible();
-    await expect(providerCard.getByText('Disconnected')).toBeVisible();
+    await expect(providerCard.getByText('Setup Required', { exact: true })).toBeVisible();
     await expect(providerCard.getByRole('button', { name: 'Connect OneDrive' })).toBeVisible();
+  });
+
+  test('clicking connect on unconfigured provider shows setup dialog without hanging', async ({
+    page
+  }) => {
+    const select = page.locator('#cloud-storage-select');
+    await select.selectOption({ label: 'Google Drive' });
+
+    const providerCard = page.locator('.astryx-card').filter({ hasText: 'Google Drive' });
+    const connectBtn = providerCard.getByRole('button', { name: 'Connect Google Drive' });
+    await connectBtn.click();
+
+    // Verify dialog pops up promptly explaining setup requirement
+    await expect(page.getByText('Google Drive Setup Required')).toBeVisible();
+    await expect(page.getByText('Google Drive OAuth Client ID is not configured.')).toBeVisible();
   });
 
   test('toggles advanced custom credentials section', async ({ page }) => {

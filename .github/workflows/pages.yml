@@ -51,6 +51,8 @@ jobs:
         env:
           BASE_PATH: '/reader'
           VITE_PAGE_PATH: '/reader'
+          VITE_GDRIVE_CLIENT_ID: ${{ secrets.GDRIVE_CLIENT_ID }}
+          VITE_ONEDRIVE_CLIENT_ID: ${{ secrets.ONEDRIVE_CLIENT_ID }}
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
