@@ -745,37 +745,89 @@
 <div
   tabindex="0"
   role="button"
-  class="{pxScreen} h-full pt-16 xl:pt-14"
+  class="{pxScreen} flex min-h-screen flex-col justify-between pt-16 xl:pt-14"
   on:dragenter={(ev) => ev.preventDefault()}
   on:dragover={(ev) => ev.preventDefault()}
   on:dragend={(ev) => ev.preventDefault()}
   on:drop={(ev) => ev.preventDefault()}
   on:drop={(ev) => getDropEventFiles(ev).then(onFilesChange)}
 >
-  {#if !$bookCards$ || $booksAreLoading$}
-    Loading...
-  {:else if $bookCards$.length}
-    <BookCardList
-      currentBookId={$currentBookId$}
-      {selectedBookIds}
-      bookCards={$bookCards$}
-      on:bookClick={(ev) => onBookClick(ev.detail.id)}
-      on:removeBookClick={(ev) => removeBooks([ev.detail.id])}
-    />
-  {:else}
-    <div class="flex justify-center pt-44 text-gray-400 text-opacity-40">
-      <div class="flex w-3/6 justify-center xl:w-3/12">
-        <Fa icon={faUpload} style="width: 100%; height: auto" />
-      </div>
-    </div>
-    <label class="fixed inset-0 z-0">
-      <input
-        type="file"
-        accept="application/epub+zip,.epub,.htmlz,plain/text,.txt"
-        multiple
-        hidden
-        use:inputFile={onFilesChange}
+  <div class="flex-1">
+    {#if !$bookCards$ || $booksAreLoading$}
+      <div class="flex justify-center pt-28 text-sm opacity-60">Loading...</div>
+    {:else if $bookCards$.length}
+      <BookCardList
+        currentBookId={$currentBookId$}
+        {selectedBookIds}
+        bookCards={$bookCards$}
+        on:bookClick={(ev) => onBookClick(ev.detail.id)}
+        on:removeBookClick={(ev) => removeBooks([ev.detail.id])}
       />
-    </label>
-  {/if}
+    {:else}
+      <div
+        class="relative z-10 flex flex-col items-center justify-center pt-28 text-center pointer-events-none"
+      >
+        <div
+          class="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--astryx-color-primary-subtle,rgba(99,102,241,0.12))] text-[var(--astryx-color-primary,#6366f1)] shadow-sm"
+        >
+          <svg class="h-9 w-9 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path
+              d="M21 5c-1.11-.35-2.33-.5-3.5-.5-1.95 0-4.05.4-5.5 1.5-1.45-1.1-3.55-1.5-5.5-1.5S2.45 4.9 1 6v14.65c0 .25.25.5.5.5.1 0 .15-.05.25-.05C3.1 20.45 5.05 20 6.5 20c1.95 0 4.05.4 5.5 1.5 1.35-.85 3.8-1.5 5.5-1.5 1.65 0 3.35.3 4.75 1.05.1.05.15.05.25.05.25 0 .5-.25.5-.5V6c-.6-.45-1.25-.75-2-1zm0 13.5c-1.1-.35-2.3-.5-3.5-.5-1.7 0-4.15.65-5.5 1.5V8c1.35-.85 3.8-1.5 5.5-1.5 1.2 0 2.4.15 3.5.5v11.5z"
+            />
+          </svg>
+        </div>
+        <h1 class="text-2xl font-bold tracking-tight text-[var(--astryx-color-fg-primary,#18181b)]">
+          Valpr Reader
+        </h1>
+        <p class="mt-1 max-w-sm text-sm text-[var(--astryx-color-fg-muted,#71717a)]">
+          Drop EPUB, HTMLZ, or TXT files anywhere on this page to start reading, or click to browse
+          files.
+        </p>
+        <div class="mt-4 pointer-events-auto">
+          <span
+            class="inline-flex items-center gap-1.5 rounded-lg border border-[var(--astryx-color-border-subtle,#e4e4e7)] bg-[var(--astryx-color-surface,#ffffff)] px-4 py-2 text-sm font-medium text-[var(--astryx-color-fg-primary,#18181b)] shadow-sm hover:bg-[var(--astryx-color-surface-hover,#f4f4f5)] transition-colors cursor-pointer"
+          >
+            <Fa icon={faUpload} class="text-sm opacity-70" />
+            <span>Upload Books</span>
+          </span>
+        </div>
+      </div>
+      <label class="fixed inset-0 z-0">
+        <input
+          type="file"
+          accept="application/epub+zip,.epub,.htmlz,plain/text,.txt"
+          multiple
+          hidden
+          use:inputFile={onFilesChange}
+        />
+      </label>
+    {/if}
+  </div>
+
+  <footer
+    class="relative z-10 py-6 text-center text-xs text-[var(--astryx-color-fg-muted,#71717a)]"
+  >
+    <a
+      href="{pagePath}/privacy"
+      class="underline hover:text-[var(--astryx-color-fg-primary,#18181b)] transition-colors"
+    >
+      Privacy Policy
+    </a>
+    <span class="mx-2">&bull;</span>
+    <a
+      href="{pagePath}/terms"
+      class="underline hover:text-[var(--astryx-color-fg-primary,#18181b)] transition-colors"
+    >
+      Terms of Service
+    </a>
+    <span class="mx-2">&bull;</span>
+    <a
+      href="https://github.com/valpr/reader"
+      target="_blank"
+      rel="noopener noreferrer"
+      class="hover:text-[var(--astryx-color-fg-primary,#18181b)] transition-colors"
+    >
+      GitHub
+    </a>
+  </footer>
 </div>

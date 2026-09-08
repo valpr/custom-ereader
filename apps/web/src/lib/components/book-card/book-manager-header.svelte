@@ -280,6 +280,13 @@
             </svg>
           </IconButton>
         </Tooltip>
+        {#if !selectMode}
+          <span
+            class="hidden sm:inline-block text-sm font-semibold tracking-tight text-[var(--astryx-color-fg-primary)] ml-1"
+          >
+            Valpr Reader
+          </span>
+        {/if}
       {:else}
         <Tooltip text="Disable Book Selection">
           <IconButton
