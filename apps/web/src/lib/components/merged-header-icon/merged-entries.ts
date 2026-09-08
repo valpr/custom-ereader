@@ -10,11 +10,13 @@ import {
   faCog,
   faEllipsis,
   faFileArrowUp,
+  faFileContract,
   faFileZipper,
   faFolderPlus,
   faHashtag,
   faIcons,
   faImages,
+  faShieldHalved,
   faSignOutAlt,
   faTriangleExclamation
 } from '@fortawesome/free-solid-svg-icons';
@@ -71,5 +73,22 @@ export const mergeEntries = {
     title: 'Import from Folder'
   },
   FILE_IMPORT: { routeId: '', label: 'Import File(s)', icon: faFileArrowUp, title: 'Import Files' },
-  BACKUP_IMPORT: { routeId: '', label: 'Import Backup', icon: faFileZipper, title: 'Import Backup' }
+  BACKUP_IMPORT: {
+    routeId: '',
+    label: 'Import Backup',
+    icon: faFileZipper,
+    title: 'Import Backup'
+  },
+  PRIVACY: {
+    routeId: '/privacy',
+    label: 'Privacy Policy',
+    icon: faShieldHalved,
+    title: 'Privacy Policy'
+  },
+  TERMS: {
+    routeId: '/terms',
+    label: 'Terms of Service',
+    icon: faFileContract,
+    title: 'Terms of Service'
+  }
 };
