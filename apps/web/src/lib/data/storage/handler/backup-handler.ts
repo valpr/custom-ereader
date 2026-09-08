@@ -33,6 +33,10 @@ export class BackupStorageHandler extends BaseStorageHandler {
     return Promise.resolve([]);
   }
 
+  checkHasData(): Promise<{ connected: boolean; hasData: boolean }> {
+    return Promise.resolve({ connected: false, hasData: false });
+  }
+
   prepareBookForReading() {
     return Promise.resolve(0);
   }

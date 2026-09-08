@@ -78,6 +78,16 @@ export class BrowserStorageHandler extends BaseStorageHandler {
     return [...this.titleToBookCard.values()];
   }
 
+  async checkHasData(): Promise<{ connected: boolean; hasData: boolean }> {
+    try {
+      const db = await database.db;
+      const count = await db.count('data');
+      return { connected: true, hasData: count > 0 };
+    } catch {
+      return { connected: true, hasData: true };
+    }
+  }
+
   clearData(clearAll = true) {
     if (clearAll) {
       this.titleToBookCard.clear();

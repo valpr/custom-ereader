@@ -8,7 +8,13 @@ import type { BookCardProps } from '$lib/components/book-card/book-card-props';
 import { gDriveRefreshEndpoint } from '$lib/data/env';
 import { ApiStorageHandler } from '$lib/data/storage/handler/api-handler';
 import { BaseStorageHandler, type ExternalFile } from '$lib/data/storage/handler/base-handler';
-import { StorageKey } from '$lib/data/storage/storage-types';
+import { StorageKey, StorageSourceDefault } from '$lib/data/storage/storage-types';
+import {
+  storageOAuthTokens,
+  storageConnectionStates$,
+  getConnectionState,
+  StorageConnectionState
+} from '$lib/data/storage/storage-oauth-manager';
 import { database, gDriveStorageSource$ } from '$lib/data/store';
 import pLimit from 'p-limit';
 
@@ -97,6 +103,42 @@ export class GDriveStorageHandler extends ApiStorageHandler {
     }
 
     return [...this.titleToBookCard.values()];
+  }
+
+  async checkHasData(): Promise<{ connected: boolean; hasData: boolean }> {
+    const sourceName =
+      this.storageSourceName ||
+      gDriveStorageSource$.getValue() ||
+      StorageSourceDefault.GDRIVE_DEFAULT;
+    const token = storageOAuthTokens.get(sourceName);
+    const connState =
+      storageConnectionStates$.getValue()[sourceName] || getConnectionState(sourceName);
+    const isConnected =
+      (!!token && token.expiration > Date.now()) || connState === StorageConnectionState.CONNECTED;
+
+    if (!isConnected || !token || token.expiration <= Date.now()) {
+      return { connected: isConnected, hasData: false };
+    }
+
+    if (this.titleToBookCard.size > 0) {
+      return { connected: true, hasData: true };
+    }
+
+    try {
+      this.setInternalSettings(sourceName);
+      await this.ensureTitle(BaseStorageHandler.rootName, 'root', true);
+      if (!this.rootId) {
+        return { connected: true, hasData: false };
+      }
+
+      const titles = await this.list(
+        `trashed=false and mimeType='application/vnd.google-apps.folder' and '${this.rootId}' in parents`,
+        'files(id,name),nextPageToken'
+      );
+      return { connected: true, hasData: titles.length > 0 };
+    } catch {
+      return { connected: true, hasData: false };
+    }
   }
 
   protected async ensureTitle(

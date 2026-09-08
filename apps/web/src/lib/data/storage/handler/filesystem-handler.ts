@@ -91,6 +91,14 @@ export class FilesystemStorageHandler extends BaseStorageHandler {
     return [...this.titleToBookCard.values()];
   }
 
+  async checkHasData(): Promise<{ connected: boolean; hasData: boolean }> {
+    const fsSource = this.storageSourceName || fsStorageSource$.getValue();
+    if (!fsSource || !(this.window && 'showDirectoryPicker' in this.window)) {
+      return { connected: false, hasData: false };
+    }
+    return { connected: true, hasData: true };
+  }
+
   clearData(clearAll = true) {
     this.titleToFiles.clear();
     this.rootFileHandles.clear();
