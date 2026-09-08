@@ -3,7 +3,6 @@
     faArrowsRotate,
     faCheck,
     faClone,
-    faCloud,
     faComputer,
     faDownload,
     faEdit,
@@ -21,7 +20,6 @@
   } from '@fortawesome/free-solid-svg-icons';
   import ConfirmDialog from '$lib/components/confirm-dialog.svelte';
   import MessageDialog from '$lib/components/message-dialog.svelte';
-  import SettingsSyncDialog from '$lib/components/settings/settings-sync-dialog.svelte';
   import {
     Button,
     ButtonGroup,
@@ -34,8 +32,7 @@
     Select,
     Tooltip
   } from '@custom-ereader/ui';
-  import { dialogManager, type SyncSelection } from '$lib/data/dialog-manager';
-  import type { BooksDbStorageSource } from '$lib/data/database/books-db/versions/books-db';
+  import { dialogManager } from '$lib/data/dialog-manager';
   import {
     applyProfile,
     applyProfileById,
@@ -60,8 +57,6 @@
     type ReaderProfile,
     type ReaderProfileSettings
   } from '$lib/data/profiles/profile-types';
-  import { getStorageHandler } from '$lib/data/storage/storage-handler-factory';
-  import { StorageDataType, StorageKey } from '$lib/data/storage/storage-types';
   import {
     activeProfileId$,
     appThemeMode$,
@@ -72,7 +67,6 @@
     autosaveHistoryInterval$,
     autosaveHistoryMaxCount$,
     avoidPageBreak$,
-    cacheStorageData$,
     confirmClose$,
     customReadingPointEnabled$,
     disableWheelNavigation$,
@@ -99,14 +93,12 @@
     pauseTrackerOnCustomPointChange$,
     prioritizeReaderStyles$,
     readerProfiles$,
-    replicationSaveBehavior$,
     secondDimensionMaxValue$,
     selectionToBookmarkEnabled$,
     showCharacterCounter$,
     showFooterChapterCharacterCounter$,
     showFooterChapterPercentage$,
     showPercentage$,
-    statisticsMergeMode$,
     swipeThreshold$,
     textIndentation$,
     textMarginMode$,
@@ -116,12 +108,8 @@
     viewMode$,
     writingMode$
   } from '$lib/data/store';
-  import { replicateData } from '$lib/functions/replication/replicator';
-  import { isOnlineSourceAvailable } from '$lib/functions/utils';
   import { createEventDispatcher } from 'svelte';
   import Fa from 'svelte-fa';
-
-  export let storageSources: BooksDbStorageSource[] = [];
 
   const dispatch = createEventDispatcher<{
     spinner: boolean;
@@ -228,10 +216,6 @@
       isModified = false;
     }
   }
-
-  $: availableSources = storageSources.filter((source) =>
-    isOnlineSourceAvailable($isOnline$, source.type)
-  );
 
   function getIcon(icon?: ProfileIconType) {
     switch (icon) {
@@ -372,78 +356,6 @@
     }
 
     deleteProfile(profile.id);
-  }
-
-  async function handleCloudSync() {
-    const [source, target] = await new Promise<SyncSelection[]>((resolver) => {
-      dialogManager.dialogs$.next([
-        {
-          component: SettingsSyncDialog,
-          props: {
-            settingsSyncHeader: 'Sync Reader Profiles',
-            storageSources: availableSources,
-            resolver
-          },
-          disableCloseOnClick: true
-        }
-      ]);
-    });
-
-    if (!source || !target) return;
-
-    dispatch('spinner', true);
-
-    try {
-      const error = await replicateData(
-        getStorageHandler(
-          window,
-          source.type,
-          source.id,
-          target.type === StorageKey.BROWSER,
-          $cacheStorageData$,
-          $replicationSaveBehavior$,
-          $statisticsMergeMode$
-        ),
-        getStorageHandler(
-          window,
-          target.type,
-          target.id,
-          target.type === StorageKey.BROWSER,
-          $cacheStorageData$,
-          $replicationSaveBehavior$,
-          $statisticsMergeMode$
-        ),
-        false,
-        [],
-        [StorageDataType.PROFILES]
-      );
-
-      if (error) {
-        throw new Error(error);
-      }
-
-      dialogManager.dialogs$.next([
-        {
-          component: MessageDialog,
-          props: {
-            title: 'Profiles Synchronized',
-            message: 'Reader profiles were successfully synchronized with cloud storage.'
-          }
-        }
-      ]);
-    } catch (err: any) {
-      dialogManager.dialogs$.next([
-        {
-          component: MessageDialog,
-          props: {
-            title: 'Sync Error',
-            message: `Error synchronizing profiles: ${err?.message || err}`
-          }
-        }
-      ]);
-    } finally {
-      dispatch('spinner', false);
-    }
   }
 
   function handleExportFile() {
@@ -687,20 +599,13 @@
   <!-- Cloud Sync & JSON Backup Bar -->
   <ListItem
     layout="stacked"
-    headline="Profile Cloud Sync & Backup"
-    description="Sync reader profiles with connected cloud storage (Google Drive, OneDrive, or ZIP) or transfer via file"
+    headline="Profile Backup & Transfer"
+    description="Export or import reader profiles as a JSON file to transfer between devices or create a local backup"
   >
     <div slot="suffix">
       <ButtonGroup size="sm" attached={false} class="flex-wrap gap-2">
-        <Tooltip text="Sync profiles across cloud storage">
-          <Button variant="outline" size="sm" on:click={handleCloudSync}>
-            <Fa icon={faCloud} class="mr-1.5 text-xs text-blue-500" />
-            Sync Profiles
-          </Button>
-        </Tooltip>
-
         <Tooltip text="Export profiles as a JSON file">
-          <Button variant="ghost" size="sm" on:click={handleExportFile}>
+          <Button variant="outline" size="sm" on:click={handleExportFile}>
             <Fa icon={faFileExport} class="mr-1.5 text-xs" />
             Export
           </Button>

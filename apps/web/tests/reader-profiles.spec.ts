@@ -153,10 +153,8 @@ test.describe('Reader Profiles System', () => {
     await page.goto('/settings');
     await page.waitForLoadState('networkidle');
 
-    // Verify "Profile Cloud Sync & Backup" description is rendered with wide text width (not crushed)
-    const backupDescription = page.locator(
-      'text=Sync reader profiles with connected cloud storage'
-    );
+    // Verify "Profile Backup & Transfer" description is rendered with wide text width (not crushed)
+    const backupDescription = page.locator('text=Export or import reader profiles as a JSON file');
     await expect(backupDescription).toBeVisible();
 
     const descBox = await backupDescription.boundingBox();
