@@ -370,6 +370,8 @@
         dispatch('profileChange', updated);
       }
     }
+
+    deleteProfile(profile.id);
   }
 
   async function handleCloudSync() {
