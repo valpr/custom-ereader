@@ -5,7 +5,7 @@
  */
 
 import type { BookCardProps } from '$lib/components/book-card/book-card-props';
-import { oneDriveScope, oneDriveTokenEndpoint } from '$lib/data/env';
+import { oneDriveTokenEndpoint } from '$lib/data/env';
 import { ApiStorageHandler } from '$lib/data/storage/handler/api-handler';
 import { BaseStorageHandler, type ExternalFile } from '$lib/data/storage/handler/base-handler';
 import { StorageKey } from '$lib/data/storage/storage-types';
@@ -171,13 +171,9 @@ export class OneDriveStorageHandler extends ApiStorageHandler {
     return [...this.titleToBookCard.values()];
   }
 
-  private isAppFolderMode(): boolean {
-    return oneDriveScope.toLowerCase().includes('appfolder');
-  }
-
   protected async ensureTitle(
     name = BaseStorageHandler.rootName,
-    parent = 'root',
+    _parent = 'root',
     readOnly = false
   ) {
     if (name === BaseStorageHandler.rootName && this.rootId) {
@@ -193,42 +189,12 @@ export class OneDriveStorageHandler extends ApiStorageHandler {
     let titleId = '';
 
     if (name === BaseStorageHandler.rootName) {
-      if (this.isAppFolderMode()) {
-        const approotParams = new URLSearchParams();
-        approotParams.append('select', 'id,name');
-        const approotResponse = await this.request(
-          `https://graph.microsoft.com/v1.0/me/drive/special/approot?${approotParams.toString()}`
-        );
-        titleId = approotResponse?.id || '';
-      } else {
-        const sanitizedName = BaseStorageHandler.sanitizeForFilename(name);
-        const params = new URLSearchParams();
-        params.append('select', `id,name`);
-        params.append('filter', `name eq '${sanitizedName}'`);
-
-        titleId = (
-          await this.request(`${this.baseEndpoint}/${parent}/children?${params.toString()}`)
-        )?.value?.[0]?.id;
-
-        if (!titleId && !readOnly) {
-          params.delete('filter');
-
-          const response = await this.request(
-            `${this.baseEndpoint}/${parent}/children?${params.toString()}`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                name: sanitizedName,
-                folder: {},
-                '@microsoft.graph.conflictBehavior': 'fail'
-              })
-            }
-          );
-
-          titleId = response.id;
-        }
-      }
+      const approotParams = new URLSearchParams();
+      approotParams.append('select', 'id,name');
+      const approotResponse = await this.request(
+        `https://graph.microsoft.com/v1.0/me/drive/special/approot?${approotParams.toString()}`
+      );
+      titleId = approotResponse?.id || '';
     } else if (this.rootId) {
       // One Drive Bug (?) - with non latin characters it will return no filter result so we need to refetch all folders
       const remoteFolders = await this.list(this.rootId);
@@ -246,12 +212,11 @@ export class OneDriveStorageHandler extends ApiStorageHandler {
 
       if (!titleId && !readOnly) {
         const sanitizedName = BaseStorageHandler.sanitizeForFilename(name);
-        const parentId = parent === 'root' ? this.rootId : parent;
         const params = new URLSearchParams();
         params.append('select', `id,name`);
 
         const response = await this.request(
-          `${this.baseEndpoint}/${parentId}/children?${params.toString()}`,
+          `${this.baseEndpoint}/${this.rootId}/children?${params.toString()}`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
