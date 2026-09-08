@@ -724,7 +724,6 @@
   <div class="flex flex-col gap-5 w-full mx-auto pb-16" class:hidden={activeSettings !== 'Reader'}>
     <!-- Reader Profiles (Universally accessible on both desktop and mobile) -->
     <SettingsReaderProfiles
-      storageSources={$storageSources$}
       on:spinner={({ detail }) => (showSpinner = detail)}
       on:profileChange={handleProfileChange}
     />
