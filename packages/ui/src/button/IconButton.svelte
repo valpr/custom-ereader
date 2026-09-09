@@ -8,6 +8,8 @@
   export let disabled: boolean = false;
   export let active: boolean = false;
   export let type: 'button' | 'submit' | 'reset' = 'button';
+  // Set to false when wrapped in a Tooltip so the styled tooltip is the only one shown.
+  export let nativeTooltip: boolean = true;
   let customClass: string = '';
   export { customClass as class };
 
@@ -29,7 +31,7 @@
   data-size={size}
   {disabled}
   aria-label={label}
-  title={label}
+  title={nativeTooltip ? label : undefined}
   on:click={handleClick}
   on:pointerdown
   on:pointerup

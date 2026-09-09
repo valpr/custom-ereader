@@ -942,6 +942,7 @@
                 {#if fontCacheSupported}
                   <Tooltip text="Manage Installed Web Fonts">
                     <IconButton
+                      nativeTooltip={false}
                       variant="ghost"
                       size="sm"
                       label="Manage Installed Web Fonts"
@@ -977,6 +978,7 @@
                 {#if fontCacheSupported}
                   <Tooltip text="Manage Installed Web Fonts">
                     <IconButton
+                      nativeTooltip={false}
                       variant="ghost"
                       size="sm"
                       label="Manage Installed Web Fonts"

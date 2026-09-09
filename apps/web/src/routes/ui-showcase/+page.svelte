@@ -159,7 +159,7 @@
         <div class="demo-row items-center">
           <span class="sub-label">Icon Buttons with Tooltips:</span>
           <Tooltip text="Bookmark Page (B)">
-            <IconButton label="Bookmark" variant="subtle">
+            <IconButton nativeTooltip={false} label="Bookmark" variant="subtle">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 width="18"
@@ -176,7 +176,7 @@
           </Tooltip>
 
           <Tooltip text="Table of Contents (T)">
-            <IconButton label="Table of Contents" variant="ghost">
+            <IconButton nativeTooltip={false} label="Table of Contents" variant="ghost">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 width="18"
@@ -203,7 +203,7 @@
           </Tooltip>
 
           <Tooltip text="Search Dictionary (Ctrl+F)">
-            <IconButton label="Search" variant="ghost">
+            <IconButton nativeTooltip={false} label="Search" variant="ghost">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 width="18"
@@ -220,7 +220,7 @@
           </Tooltip>
 
           <Tooltip text="Open Fullscreen (F11)">
-            <IconButton label="Fullscreen" variant="primary" shape="circle">
+            <IconButton nativeTooltip={false} label="Fullscreen" variant="primary" shape="circle">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 width="16"
