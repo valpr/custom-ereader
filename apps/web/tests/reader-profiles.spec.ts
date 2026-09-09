@@ -24,9 +24,7 @@ test.describe('Reader Profiles System', () => {
     await expect(activeBadge).toBeVisible();
   });
 
-  test('switches profile without triggering unsaved changes warning and updates reading settings values', async ({
-    page
-  }) => {
+  test('switches profile and updates reading settings values', async ({ page }) => {
     // Initial desktop font size should be 20px
     const fontSizeDisplay = page.locator('text=20px').first();
     await expect(fontSizeDisplay).toBeVisible();
@@ -37,32 +35,31 @@ test.describe('Reader Profiles System', () => {
     // Font size should update to 17px for mobile profile
     await expect(page.locator('text=17px').first()).toBeVisible();
 
-    // The unsaved changes banner should NOT appear on profile switch
-    await expect(page.getByTestId('unsaved-changes-banner')).not.toBeVisible();
+    // No unsaved-changes banner exists anymore (settings auto-save)
+    await expect(page.getByTestId('unsaved-changes-banner')).toHaveCount(0);
 
     // Switch to Tablet / E-Reader
     await page.locator('[role="button"]:has-text("Tablet / E-Reader")').click();
     await expect(page.locator('text=22px').first()).toBeVisible();
-    await expect(page.getByTestId('unsaved-changes-banner')).not.toBeVisible();
+    await expect(page.getByTestId('unsaved-changes-banner')).toHaveCount(0);
 
     // Switch back to PC / Desktop
     await page.locator('[role="button"]:has-text("PC / Desktop")').click();
     await expect(page.locator('text=20px').first()).toBeVisible();
-    await expect(page.getByTestId('unsaved-changes-banner')).not.toBeVisible();
+    await expect(page.getByTestId('unsaved-changes-banner')).toHaveCount(0);
   });
 
-  test('detects modifications, auto-saves to active profile locally, and allows reverting', async ({
-    page
-  }) => {
+  test('auto-saves modifications to active profile locally without a banner', async ({ page }) => {
     // Modify font size slider by triggering an input change or pressing arrow key
     const slider = page.locator('input[type="range"]').first();
     await slider.focus();
     await page.keyboard.press('ArrowRight');
     await page.keyboard.press('ArrowRight');
 
-    // "Unsaved Changes" notification banner should appear
-    await expect(page.getByTestId('unsaved-changes-banner')).toBeVisible();
-    await expect(page.locator('button:has-text("Revert")').first()).toBeVisible();
+    // No banner or manual save buttons anymore
+    await expect(page.getByTestId('unsaved-changes-banner')).toHaveCount(0);
+    await expect(page.locator('button:has-text("Revert")')).toHaveCount(0);
+    await expect(page.locator('button:has-text("Update Profile")')).toHaveCount(0);
 
     // Active profile in localStorage should reflect the updated font size (auto-saved locally)
     const activeFontSize = await page.evaluate(() => {
@@ -73,21 +70,11 @@ test.describe('Reader Profiles System', () => {
     });
     expect(activeFontSize).toBe(22);
 
-    // Click Revert
-    await page.locator('button:has-text("Revert")').first().click();
-
-    // Unsaved changes banner should disappear and font size returns to 20px
-    await expect(page.getByTestId('unsaved-changes-banner')).not.toBeVisible();
-    await expect(page.locator('text=20px').first()).toBeVisible();
-
-    // Active profile in localStorage should also be reverted to 20px
-    const revertedFontSize = await page.evaluate(() => {
-      const profiles = JSON.parse(localStorage.getItem('readerProfiles') || '[]');
-      const activeId = localStorage.getItem('activeProfileId') || 'default-desktop';
-      const active = profiles.find((p: any) => p.id === activeId);
-      return active?.settings?.fontSize;
-    });
-    expect(revertedFontSize).toBe(20);
+    // Edits survive a profile switch round-trip (previous profile was auto-saved)
+    await page.locator('[role="button"]:has-text("Mobile / Phone")').click();
+    await expect(page.locator('text=17px').first()).toBeVisible();
+    await page.locator('[role="button"]:has-text("PC / Desktop")').click();
+    await expect(page.locator('text=22px').first()).toBeVisible();
   });
 
   test('creates a new custom profile via modal', async ({ page }) => {
@@ -145,7 +132,7 @@ test.describe('Reader Profiles System', () => {
     await expect(page.locator('text=Profile To Delete')).not.toBeVisible();
   });
 
-  test('mobile responsive layout does not crush description into vertical line or truncate banner', async ({
+  test('mobile responsive layout does not crush description into vertical line', async ({
     page
   }) => {
     // Resize viewport to mobile screen (iPhone SE: 375x667)
@@ -161,28 +148,5 @@ test.describe('Reader Profiles System', () => {
     expect(descBox).not.toBeNull();
     // In mobile stacked layout, description should be wide (> 250px), not a narrow column
     expect(descBox!.width).toBeGreaterThan(250);
-
-    // On mobile viewports, drill into the Typography section to access settings sliders
-    await page.locator('button.astryx-list-item-inner:has-text("Typography & Fonts")').click();
-
-    // Trigger modifications banner by changing font size slider
-    const slider = page.locator('input[type="range"]').first();
-    await slider.scrollIntoViewIfNeeded();
-    await slider.focus();
-    await page.keyboard.press('ArrowRight');
-
-    const banner = page.getByTestId('unsaved-changes-banner');
-    await expect(banner).toBeVisible();
-
-    // Verify banner does not horizontally overflow the container
-    const isOverflowing = await banner.evaluate((el) => {
-      return el.scrollWidth > el.clientWidth + 2;
-    });
-    expect(isOverflowing).toBe(false);
-
-    // Verify all 3 action buttons are visible and not clipped
-    await expect(page.locator('button:has-text("Revert")').first()).toBeVisible();
-    await expect(page.locator('button:has-text("Save as New...")').first()).toBeVisible();
-    await expect(page.locator('button:has-text("Update Profile")').first()).toBeVisible();
   });
 });
