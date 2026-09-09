@@ -120,5 +120,44 @@ test.describe('Reader Settings Astryx List Layout', () => {
       await expect(sidebar).toBeVisible();
       await expect(contentPanel).toBeHidden();
     });
+
+    test('thin mobile window: list item headlines and descriptions render horizontally and do not stack vertically', async ({
+      page
+    }) => {
+      // Test on a very thin mobile window (320px width)
+      await page.setViewportSize({ width: 320, height: 667 });
+      const sidebar = page.getByTestId('reader-settings-sidebar');
+      await expect(sidebar).toBeVisible();
+
+      // Check "All Settings" item
+      const allSettingsHeadline = sidebar.locator('.astryx-list-item-headline', {
+        hasText: 'All Settings'
+      });
+      await expect(allSettingsHeadline).toBeVisible();
+      const allBox = await allSettingsHeadline.boundingBox();
+      expect(allBox).not.toBeNull();
+      // Headline must be wide horizontally (>70px) and single-line height (<35px), not a 1-character vertical strip
+      expect(allBox!.width).toBeGreaterThan(70);
+      expect(allBox!.height).toBeLessThan(35);
+
+      // Check "Theme & Appearance" item
+      const themeHeadline = sidebar.locator('.astryx-list-item-headline', {
+        hasText: 'Theme & Appearance'
+      });
+      await expect(themeHeadline).toBeVisible();
+      const themeBox = await themeHeadline.boundingBox();
+      expect(themeBox).not.toBeNull();
+      expect(themeBox!.width).toBeGreaterThan(120);
+      expect(themeBox!.height).toBeLessThan(35);
+
+      // Suffix chevron should not consume 100% of the item width
+      const chevronSuffix = sidebar
+        .locator('.astryx-list-item', { hasText: 'Theme & Appearance' })
+        .locator('.astryx-list-item-suffix');
+      await expect(chevronSuffix).toBeVisible();
+      const suffixBox = await chevronSuffix.boundingBox();
+      expect(suffixBox).not.toBeNull();
+      expect(suffixBox!.width).toBeLessThan(40);
+    });
   });
 });

@@ -42,6 +42,7 @@
     align-items: center;
     width: 100%;
     box-sizing: border-box;
+    writing-mode: horizontal-tb;
     font-family: var(--astryx-font-family-sans, sans-serif);
     color: var(--astryx-color-fg-primary, #18181b);
     background-color: var(--astryx-color-surface, #ffffff);

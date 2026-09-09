@@ -116,6 +116,7 @@
   .astryx-dialog-surface {
     position: relative;
     box-sizing: border-box;
+    writing-mode: horizontal-tb;
     width: 100%;
     max-height: calc(100vh - 32px);
     display: flex;

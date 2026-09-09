@@ -224,6 +224,7 @@
     display: flex;
     align-items: center;
     width: 100%;
+    min-width: 0;
     box-sizing: border-box;
     text-align: left;
     text-decoration: none;
@@ -288,7 +289,8 @@
     color: var(--astryx-color-fg-primary, #18181b);
     line-height: 1.35;
     white-space: normal;
-    word-break: break-word;
+    word-break: normal;
+    overflow-wrap: break-word;
   }
 
   .astryx-list-item-description {
@@ -303,7 +305,8 @@
     white-space: normal;
     overflow: visible;
     text-overflow: clip;
-    word-break: break-word;
+    word-break: normal;
+    overflow-wrap: break-word;
   }
 
   /* Card / Top-Title Layout */
@@ -378,7 +381,8 @@
       gap: var(--astryx-space-2, 8px);
     }
 
-    .astryx-list-item-suffix {
+    .astryx-list-item-content-row .astryx-list-item-suffix,
+    [data-layout='stacked'] .astryx-list-item-stacked-header .astryx-list-item-suffix {
       margin-left: 0;
       width: 100%;
       justify-content: flex-start;
