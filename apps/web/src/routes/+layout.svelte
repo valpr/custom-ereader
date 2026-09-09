@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onDestroy, onMount } from 'svelte';
   import { browser } from '$app/environment';
   import { page } from '$app/stores';
   import DomainHint from '$lib/components/domain-hint.svelte';
@@ -15,7 +15,6 @@
   import { applyAppTheme } from '$lib/functions/app-theme';
   import { dummyFn, isMobile, isMobile$ } from '$lib/functions/utils';
   import { MetaTags } from 'svelte-meta-tags';
-  import { onDestroy, onMount } from 'svelte';
   import '../app.scss';
 
   let path = '';
