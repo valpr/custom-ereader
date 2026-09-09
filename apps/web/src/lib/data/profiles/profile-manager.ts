@@ -324,26 +324,6 @@ export function duplicateProfile(id: string): ReaderProfile | undefined {
   return newProfile;
 }
 
-export function hasUnsavedChanges(profile: ReaderProfile): boolean {
-  if (!profile || !profile.settings) return false;
-  const current = getCurrentReaderSettings();
-  const saved = profile.settings;
-
-  for (const key of Object.keys(current) as (keyof ReaderProfileSettings)[]) {
-    if (current[key] !== saved[key]) {
-      return true;
-    }
-  }
-  return false;
-}
-
-export function revertActiveProfile(): void {
-  const active = getActiveProfile();
-  if (active) {
-    applyProfile(active);
-  }
-}
-
 export function mergeProfiles(
   localProfiles: ReaderProfile[] = [],
   remoteProfiles: ReaderProfile[] = [],

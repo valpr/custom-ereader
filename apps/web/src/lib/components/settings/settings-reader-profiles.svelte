@@ -1,29 +1,22 @@
 <script lang="ts">
   import {
-    faArrowsRotate,
     faCheck,
     faClone,
     faComputer,
-    faDownload,
     faEdit,
     faFileExport,
     faFileImport,
     faMobileScreen,
     faPlus,
-    faRotate,
-    faSave,
     faSliders,
     faTabletScreenButton,
-    faTrash,
-    faTriangleExclamation,
-    faUpload
+    faTrash
   } from '@fortawesome/free-solid-svg-icons';
   import ConfirmDialog from '$lib/components/confirm-dialog.svelte';
   import MessageDialog from '$lib/components/message-dialog.svelte';
   import {
     Button,
     ButtonGroup,
-    Card,
     Dialog,
     IconButton,
     Input,
@@ -34,7 +27,6 @@
   } from '@custom-ereader/ui';
   import { dialogManager } from '$lib/data/dialog-manager';
   import {
-    applyProfile,
     applyProfileById,
     createProfile,
     deleteProfile,
@@ -42,10 +34,9 @@
     exportProfilesAsJson,
     getActiveProfile,
     getCurrentReaderSettings,
-    hasUnsavedChanges,
     importProfilesFromJson,
-    revertActiveProfile,
     saveCurrentToActiveProfile,
+    syncProfilesToCloudTarget,
     updateProfileMetadata
   } from '$lib/data/profiles/profile-manager';
   import {
@@ -54,8 +45,7 @@
     defaultReaderProfiles,
     defaultTabletSettings,
     type ProfileIconType,
-    type ReaderProfile,
-    type ReaderProfileSettings
+    type ReaderProfile
   } from '$lib/data/profiles/profile-types';
   import {
     activeProfileId$,
@@ -85,8 +75,6 @@
     hideFurigana$,
     hideSpoilerImage$,
     hideSpoilerImageMode$,
-    isOnline$,
-    lastProfilesModified$,
     lineHeight$,
     manualBookmark$,
     pageColumns$,
@@ -109,6 +97,7 @@
     writingMode$
   } from '$lib/data/store';
   import { createEventDispatcher } from 'svelte';
+  import { tick } from 'svelte';
   import Fa from 'svelte-fa';
 
   const dispatch = createEventDispatcher<{
@@ -131,17 +120,20 @@
   // Hidden file input for JSON import
   let fileInputElement: HTMLInputElement;
 
-  // Reactively track changes between current settings and the active profile
+  // Reader settings auto-save to the active profile locally.
+  // Cloud sync happens on leaving the settings page (+page.svelte)
+  // and immediately after switching profiles (handleSelectProfile).
   $: profiles = $readerProfiles$ || [];
   $: currentActiveId = $activeProfileId$;
   $: activeProfile =
     profiles.find((p) => p.id === currentActiveId) || profiles[0] || defaultReaderProfiles[0];
 
-  let baselineSettings: ReaderProfileSettings | null = null;
-  let lastTrackedProfileId = '';
-  let isModified = false;
+  // Suppress instant auto-save while a profile switch/create/duplicate/delete
+  // is applying many stores at once; otherwise intermediate values would be
+  // saved into the wrong profile before activeProfileId settles.
+  let suppressAutosave = false;
 
-  // Reactively track if current slider/switch values differ from the session baseline
+  // Auto-save any setting change into the active profile (local persistence).
   $: {
     // Reference any store to trigger reactivity when settings change
     $fontSize$;
@@ -191,29 +183,19 @@
     $readerProfiles$;
     $activeProfileId$;
 
-    if (activeProfile) {
-      if (lastTrackedProfileId !== currentActiveId) {
-        lastTrackedProfileId = currentActiveId;
-        baselineSettings = activeProfile.settings ? { ...activeProfile.settings } : null;
-        isModified = false;
-      } else if (baselineSettings) {
-        const current = getCurrentReaderSettings();
-        let hasDiff = false;
-        for (const key of Object.keys(current) as (keyof ReaderProfileSettings)[]) {
-          if (current[key] !== baselineSettings[key]) {
-            hasDiff = true;
-            break;
-          }
-        }
-        isModified = hasDiff;
-
-        // Auto-save setting changes to the active profile locally
-        if (hasDiff) {
-          saveCurrentToActiveProfile();
+    if (!suppressAutosave && activeProfile?.settings) {
+      const current = getCurrentReaderSettings();
+      const saved = activeProfile.settings;
+      let hasDiff = false;
+      for (const key of Object.keys(current) as (keyof typeof current)[]) {
+        if (current[key] !== saved[key]) {
+          hasDiff = true;
+          break;
         }
       }
-    } else {
-      isModified = false;
+      if (hasDiff) {
+        saveCurrentToActiveProfile();
+      }
     }
   }
 
@@ -230,40 +212,23 @@
     }
   }
 
-  function handleSelectProfile(id: string) {
+  async function handleSelectProfile(id: string) {
     if (id === currentActiveId) return;
-    const target = profiles.find((p) => p.id === id);
-    if (target) {
-      lastTrackedProfileId = id;
-      baselineSettings = target.settings ? { ...target.settings } : null;
-      isModified = false;
-    }
-    const success = applyProfileById(id);
-    if (success) {
-      const updated = getActiveProfile();
-      dispatch('profileChange', updated);
-    }
-  }
-
-  function handleSaveCurrent() {
-    saveCurrentToActiveProfile();
-    const updated = getActiveProfile();
-    if (updated?.settings) {
-      baselineSettings = { ...updated.settings };
-    }
-    isModified = false;
-  }
-
-  function handleRevert() {
-    if (baselineSettings && activeProfile) {
-      applyProfile({ ...activeProfile, settings: baselineSettings });
+    // Persist any pending edits to the previous profile before switching.
+    suppressAutosave = true;
+    try {
       saveCurrentToActiveProfile();
-      isModified = false;
-      const updated = getActiveProfile();
-      dispatch('profileChange', updated);
-    } else {
-      revertActiveProfile();
-      isModified = false;
+      const success = applyProfileById(id);
+      if (success) {
+        const updated = getActiveProfile();
+        dispatch('profileChange', updated);
+        // Push the just-saved previous profile + new active id to the cloud now,
+        // instead of waiting for page leave.
+        syncProfilesToCloudTarget();
+      }
+    } finally {
+      await tick();
+      suppressAutosave = false;
     }
   }
 
@@ -274,7 +239,7 @@
     showCreateModal = true;
   }
 
-  function handleConfirmCreate() {
+  async function handleConfirmCreate() {
     if (!newProfileName.trim()) return;
 
     let templateSettings = defaultDesktopSettings;
@@ -284,18 +249,21 @@
       templateSettings = defaultTabletSettings;
     }
 
-    const created = createProfile(
-      newProfileName,
-      newProfileIcon,
-      newProfileTemplate === 'current',
-      templateSettings
-    );
+    suppressAutosave = true;
+    try {
+      const created = createProfile(
+        newProfileName,
+        newProfileIcon,
+        newProfileTemplate === 'current',
+        templateSettings
+      );
 
-    lastTrackedProfileId = created.id;
-    baselineSettings = created.settings ? { ...created.settings } : null;
-    isModified = false;
-    showCreateModal = false;
-    dispatch('profileChange', created);
+      showCreateModal = false;
+      dispatch('profileChange', created);
+    } finally {
+      await tick();
+      suppressAutosave = false;
+    }
   }
 
   function handleOpenRename(profile: ReaderProfile) {
@@ -314,13 +282,16 @@
     showRenameModal = false;
   }
 
-  function handleDuplicate(profile: ReaderProfile) {
-    const cloned = duplicateProfile(profile.id);
-    if (cloned) {
-      lastTrackedProfileId = cloned.id;
-      baselineSettings = cloned.settings ? { ...cloned.settings } : null;
-      isModified = false;
-      dispatch('profileChange', cloned);
+  async function handleDuplicate(profile: ReaderProfile) {
+    suppressAutosave = true;
+    try {
+      const cloned = duplicateProfile(profile.id);
+      if (cloned) {
+        dispatch('profileChange', cloned);
+      }
+    } finally {
+      await tick();
+      suppressAutosave = false;
     }
   }
 
@@ -344,15 +315,18 @@
     if (wasCanceled) return;
 
     const wasActive = profile.id === currentActiveId;
-    deleteProfile(profile.id);
-    if (wasActive) {
-      const updated = getActiveProfile();
-      if (updated) {
-        lastTrackedProfileId = updated.id;
-        baselineSettings = updated.settings ? { ...updated.settings } : null;
-        isModified = false;
-        dispatch('profileChange', updated);
+    suppressAutosave = true;
+    try {
+      deleteProfile(profile.id);
+      if (wasActive) {
+        const updated = getActiveProfile();
+        if (updated) {
+          dispatch('profileChange', updated);
+        }
       }
+    } finally {
+      await tick();
+      suppressAutosave = false;
     }
   }
 
@@ -398,17 +372,6 @@
     } finally {
       target.value = '';
     }
-  }
-
-  function formatLastModified(timestamp: number) {
-    if (!timestamp) return 'Never synced';
-    const date = new Date(timestamp);
-    return date.toLocaleDateString(undefined, {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
   }
 </script>
 
@@ -542,57 +505,6 @@
       {/each}
     </div>
   </ListItem>
-
-  <!-- Unsaved Modifications Warning Bar -->
-  {#if isModified}
-    <ListItem layout="stacked">
-      <Card
-        data-testid="unsaved-changes-banner"
-        variant="surface"
-        padding="sm"
-        radius="md"
-        class="w-full border border-amber-300 dark:border-amber-800 bg-amber-50/80 dark:bg-amber-950/40 text-amber-950 dark:text-amber-100"
-      >
-        <div
-          class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 w-full"
-        >
-          <div class="flex items-start sm:items-center gap-2.5 min-w-0 flex-1">
-            <Fa
-              icon={faTriangleExclamation}
-              class="text-amber-600 dark:text-amber-400 shrink-0 text-base mt-0.5 sm:mt-0"
-            />
-            <div class="text-xs sm:text-sm min-w-0 break-words leading-snug">
-              <span class="font-semibold">Unsaved Changes:</span> Current reader settings differ
-              from saved profile
-              <span class="font-semibold underline">"{activeProfile?.name}"</span>.
-            </div>
-          </div>
-
-          <div class="w-full sm:w-auto shrink-0 flex justify-end">
-            <ButtonGroup
-              size="sm"
-              attached={false}
-              class="flex-wrap gap-2 w-full sm:w-auto justify-end"
-            >
-              <Button variant="ghost" size="sm" on:click={handleRevert}>
-                <Fa icon={faRotate} class="mr-1 text-xs" />
-                Revert
-              </Button>
-
-              <Button variant="ghost" size="sm" on:click={() => handleOpenCreate(true)}>
-                Save as New...
-              </Button>
-
-              <Button variant="primary" size="sm" on:click={handleSaveCurrent}>
-                <Fa icon={faSave} class="mr-1 text-xs" />
-                Update Profile
-              </Button>
-            </ButtonGroup>
-          </div>
-        </div>
-      </Card>
-    </ListItem>
-  {/if}
 
   <!-- Cloud Sync & JSON Backup Bar -->
   <ListItem
