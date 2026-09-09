@@ -354,8 +354,6 @@
         dispatch('profileChange', updated);
       }
     }
-
-    deleteProfile(profile.id);
   }
 
   function handleExportFile() {
