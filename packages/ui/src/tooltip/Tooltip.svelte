@@ -228,6 +228,7 @@
         top: {coords.top}px;
         left: {coords.left}px;
         max-width: min({parsedMaxWidth}, calc(100vw - 16px));
+        writing-mode: horizontal-tb;
       "
     >
       {#if $$slots.content}
@@ -244,7 +245,7 @@
           ? `left: ${coords.arrowLeft}px;`
           : `top: ${coords.arrowTop}px;`}
         "
-      />
+      ></div>
     </div>
   {/if}
 </div>
@@ -255,6 +256,7 @@
     display: inline-flex;
     align-items: center;
     vertical-align: middle;
+    writing-mode: horizontal-tb;
   }
 
   .astryx-tooltip {
@@ -262,6 +264,7 @@
     display: block;
     width: max-content;
     box-sizing: border-box;
+    writing-mode: horizontal-tb;
     padding: var(--astryx-space-1, 4px) var(--astryx-space-2-5, 9px);
     font-family: var(
       --astryx-font-family-sans,

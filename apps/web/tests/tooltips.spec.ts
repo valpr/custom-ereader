@@ -5,6 +5,7 @@
  */
 
 import { expect, test } from '@playwright/test';
+import { seedReaderBook } from './fixtures/book-fixture';
 
 test.describe('Astryx Tooltip Component & Settings Page Tooltips', () => {
   test('settings page profile action tooltips do not collapse to icon width and stay within viewport', async ({
@@ -126,6 +127,42 @@ test.describe('Astryx Tooltip Component & Settings Page Tooltips', () => {
     expect(tooltipBox).not.toBeNull();
     if (tooltipBox) {
       expect(tooltipBox.width).toBeGreaterThan(80);
+      expect(tooltipBox.x + tooltipBox.width).toBeLessThanOrEqual(1280);
+    }
+  });
+
+  test('reader header tooltips render horizontally and do not inherit vertical writing mode in reader view', async ({
+    page
+  }) => {
+    await seedReaderBook(page);
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto('/b?id=1');
+
+    // Wait for book content and open header
+    await expect(page.locator('.book-content')).toBeVisible();
+    const topTrigger = page.locator('button.fixed.inset-x-0.top-0');
+    await topTrigger.click();
+
+    const completeBtn = page.locator('button[aria-label="Complete Book"]');
+    await expect(completeBtn).toBeVisible({ timeout: 5000 });
+
+    // Hover over Complete Book button
+    await completeBtn.hover();
+
+    const tooltip = page.locator('.astryx-tooltip', { hasText: 'Complete Book' });
+    await expect(tooltip).toBeVisible();
+
+    // Verify writing-mode is horizontal-tb (not vertical-rl)
+    const writingMode = await tooltip.evaluate((el) => window.getComputedStyle(el).writingMode);
+    expect(writingMode).toBe('horizontal-tb');
+
+    // Verify tooltip bounding box has width significantly larger than height (horizontal orientation)
+    const tooltipBox = await tooltip.boundingBox();
+    expect(tooltipBox).not.toBeNull();
+    if (tooltipBox) {
+      expect(tooltipBox.width).toBeGreaterThan(60);
+      expect(tooltipBox.width).toBeGreaterThan(tooltipBox.height);
+      expect(tooltipBox.x).toBeGreaterThanOrEqual(0);
       expect(tooltipBox.x + tooltipBox.width).toBeLessThanOrEqual(1280);
     }
   });
