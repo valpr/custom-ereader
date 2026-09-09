@@ -57,7 +57,12 @@
       >
         <div slot="icon">
           <Tooltip text="Copy Data in TMW Log Format">
-            <IconButton variant="ghost" size="md" label="Copy Data in TMW Log Format">
+            <IconButton
+              nativeTooltip={false}
+              variant="ghost"
+              size="md"
+              label="Copy Data in TMW Log Format"
+            >
               <Fa icon={faCopy} />
             </IconButton>
           </Tooltip>
@@ -89,6 +94,7 @@
       text={$statisticsTitleFilterEnabled$ ? 'Open Title Filter' : 'Title filter not applicable'}
     >
       <IconButton
+        nativeTooltip={false}
         variant="ghost"
         size="md"
         label="Open Title Filter"
@@ -107,6 +113,7 @@
     <!-- Statistics Settings Trigger -->
     <Tooltip text="Statistics Settings">
       <IconButton
+        nativeTooltip={false}
         variant="ghost"
         size="md"
         label="Statistics Settings"
@@ -120,6 +127,7 @@
     {#if currentBookId}
       <Tooltip text="Back to Current Book">
         <IconButton
+          nativeTooltip={false}
           variant="ghost"
           size="md"
           label="Back to Current Book"

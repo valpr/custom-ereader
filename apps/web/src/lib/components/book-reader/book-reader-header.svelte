@@ -140,6 +140,7 @@
       {#if hasChapterData}
         <Tooltip text="Open Table of Contents">
           <IconButton
+            nativeTooltip={false}
             label="Open Table of Contents"
             size="md"
             variant="ghost"
@@ -152,6 +153,7 @@
 
       <Tooltip text="Open Bookmarks">
         <IconButton
+          nativeTooltip={false}
           label="Open Bookmarks"
           size="md"
           variant="ghost"
@@ -163,6 +165,7 @@
 
       <Tooltip text="Save Position (Hold to Create Named Bookmark)">
         <IconButton
+          nativeTooltip={false}
           label="Save Position (Hold to Create Named Bookmark)"
           size="md"
           variant="ghost"
@@ -182,6 +185,7 @@
       {#if hasBookmarkData}
         <Tooltip text="Return to Bookmark">
           <IconButton
+            nativeTooltip={false}
             label="Return to Bookmark"
             size="md"
             variant="ghost"
@@ -208,6 +212,7 @@
       <div class="flex items-center gap-0.5 sm:gap-1" bind:clientWidth={primaryEndWidth}>
         <Tooltip text={mergeEntries.SETTINGS.title}>
           <IconButton
+            nativeTooltip={false}
             label={mergeEntries.SETTINGS.title}
             size="md"
             variant="ghost"
@@ -221,6 +226,7 @@
 
         <Tooltip text={mergeEntries.MANAGE.title}>
           <IconButton
+            nativeTooltip={false}
             label={mergeEntries.MANAGE.title}
             size="md"
             variant="ghost"
@@ -235,6 +241,7 @@
         {#if showFullscreenButton}
           <Tooltip text="Toggle Fullscreen">
             <IconButton
+              nativeTooltip={false}
               label="Toggle Fullscreen"
               size="md"
               variant="ghost"
@@ -259,6 +266,7 @@
         {#if item.id === 'complete'}
           <Tooltip text="Complete Book">
             <IconButton
+              nativeTooltip={false}
               label="Complete Book"
               size="md"
               variant="ghost"
@@ -304,6 +312,7 @@
           {#if isOldUrl}
             <Tooltip text={mergeEntries.DOMAIN_HINT.title}>
               <IconButton
+                nativeTooltip={false}
                 label={mergeEntries.DOMAIN_HINT.title}
                 size="md"
                 variant="ghost"
@@ -315,6 +324,7 @@
           {:else}
             <Tooltip text={mergeEntries.STATISTICS.title}>
               <IconButton
+                nativeTooltip={false}
                 label={mergeEntries.STATISTICS.title}
                 size="md"
                 variant="ghost"
@@ -330,6 +340,7 @@
           {#if hasText}
             <Tooltip text={mergeEntries.JUMP_TO_POSITION.title}>
               <IconButton
+                nativeTooltip={false}
                 label={mergeEntries.JUMP_TO_POSITION.title}
                 size="md"
                 variant="ghost"
@@ -343,6 +354,7 @@
           {#if $readerImageGalleryPictures$.length}
             <Tooltip text={mergeEntries.READER_IMAGE_GALLERY.title}>
               <IconButton
+                nativeTooltip={false}
                 label={mergeEntries.READER_IMAGE_GALLERY.title}
                 size="md"
                 variant="ghost"

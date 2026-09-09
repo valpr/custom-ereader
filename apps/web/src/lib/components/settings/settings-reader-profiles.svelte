@@ -459,6 +459,7 @@
           >
             <Tooltip text="Rename profile">
               <IconButton
+                nativeTooltip={false}
                 variant="ghost"
                 size="sm"
                 label="Rename profile"
@@ -473,6 +474,7 @@
 
             <Tooltip text="Duplicate profile">
               <IconButton
+                nativeTooltip={false}
                 variant="ghost"
                 size="sm"
                 label="Duplicate profile"
@@ -488,6 +490,7 @@
             {#if profiles.length > 1}
               <Tooltip text="Delete profile">
                 <IconButton
+                  nativeTooltip={false}
                   variant="ghost"
                   size="sm"
                   label="Delete profile"

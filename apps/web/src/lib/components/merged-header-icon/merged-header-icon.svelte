@@ -65,6 +65,7 @@
 {#if leavePageLink}
   <Tooltip text={backEntry.title || 'Back'}>
     <IconButton
+      nativeTooltip={false}
       variant="ghost"
       size="md"
       label={backEntry.title || 'Back'}
@@ -81,6 +82,7 @@
       {#each actionItems as actionItem (actionItem.label)}
         <Tooltip text={actionItem.title || actionItem.label}>
           <IconButton
+            nativeTooltip={false}
             variant="ghost"
             size="md"
             label={actionItem.title || actionItem.label}

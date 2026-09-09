@@ -423,6 +423,7 @@
       {#if readingGoals.length}
         <Tooltip content="Reset / delete all reading goals">
           <IconButton
+            nativeTooltip={false}
             size="sm"
             variant="ghost"
             label="Reset all goals"
@@ -529,6 +530,7 @@
                   <div slot="suffix">
                     <Tooltip content="Delete Reading Goal">
                       <IconButton
+                        nativeTooltip={false}
                         size="sm"
                         variant="ghost"
                         label="Delete Reading Goal"

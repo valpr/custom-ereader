@@ -263,6 +263,7 @@
       {#if selectedCount === 0}
         <Tooltip text={selectMode ? 'Disable Book Selection' : 'Enable Book Selection'}>
           <IconButton
+            nativeTooltip={false}
             label={selectMode ? 'Disable Book Selection' : 'Enable Book Selection'}
             size="md"
             variant={selectMode ? 'secondary' : 'ghost'}
@@ -290,6 +291,7 @@
       {:else}
         <Tooltip text="Disable Book Selection">
           <IconButton
+            nativeTooltip={false}
             label="Disable Book Selection"
             size="md"
             variant="ghost"
@@ -311,6 +313,7 @@
         {#if hasBookOpened}
           <Tooltip text="Back to Book">
             <IconButton
+              nativeTooltip={false}
               label="Back to Book"
               size="md"
               variant="ghost"
@@ -333,6 +336,7 @@
       {:else}
         <Tooltip text="Select all Books">
           <IconButton
+            nativeTooltip={false}
             label="Select all Books"
             size="md"
             variant="ghost"
@@ -564,6 +568,7 @@
       {:else}
         <Tooltip text="Open Export Menu">
           <IconButton
+            nativeTooltip={false}
             label="Open Export Menu"
             size="md"
             variant="ghost"
@@ -576,6 +581,7 @@
         {#if $storageSource$ === StorageKey.BROWSER}
           <Tooltip text="Go to Statistics">
             <IconButton
+              nativeTooltip={false}
               label="Go to Statistics"
               size="md"
               variant="ghost"
@@ -587,6 +593,7 @@
 
           <Tooltip text="Delete Statistics for selected Books">
             <IconButton
+              nativeTooltip={false}
               label="Delete Statistics for selected Books"
               size="md"
               variant="ghost"
@@ -599,6 +606,7 @@
 
         <Tooltip text="Delete selected Books">
           <IconButton
+            nativeTooltip={false}
             label="Delete selected Books"
             size="md"
             variant="ghost"

@@ -894,6 +894,7 @@
                     <div slot="suffix" class="flex items-center gap-1">
                       <Tooltip content="Edit source credentials">
                         <IconButton
+                          nativeTooltip={false}
                           size="sm"
                           variant="ghost"
                           label="Edit source"
@@ -905,6 +906,7 @@
 
                       <Tooltip content="Delete source">
                         <IconButton
+                          nativeTooltip={false}
                           size="sm"
                           variant="ghost"
                           label="Delete source"
