@@ -162,7 +162,7 @@
 
   export let persistentStorage: boolean;
 
-  export let hideExternalReadHint: boolean;
+  export let externalReadAction: string;
 
   export let confirmClose: boolean;
 
@@ -189,8 +189,6 @@
   export let autoReplication: string;
 
   export let replicationSaveBehavior: string;
-
-  export let showExternalPlaceholder: boolean;
 
   export let keepLocalStatisticsOnDeletion: boolean;
 
@@ -479,6 +477,11 @@
     value: o.id,
     label: o.text
   }));
+  const segmentsForExternalReadAction = [
+    { value: 'ask', label: 'Ask every time' },
+    { value: 'download', label: 'Download to browser' },
+    { value: 'stream', label: 'Just continue' }
+  ];
 
   const readerSections = [
     {
@@ -656,7 +659,7 @@
       break;
   }
   $: cacheStorageDataTooltip = cacheStorageData
-    ? 'Storage data is cached. Saves network traffic/latency but requires to reload current/open a new tab to retrieve data changes'
+    ? 'Storage data is cached. Saves network traffic/latency but requires to reload current/open a new tab to retrieve data changes. Recommended ON for the unified library.'
     : 'Storage data is refetched on every action. May consume more network traffic/latency but ensures current data';
   $: replicationSaveBehaviorTooltip =
     replicationSaveBehavior === ReplicationSaveBehavior.Overwrite
@@ -677,10 +680,6 @@
       autoReplicationTypeTooltip = 'No automatic import/export of data';
       break;
   }
-  $: showExternalPlaceholderToolTip = showExternalPlaceholder
-    ? 'Placeholder data for external books is shown in the browser source manager'
-    : 'Placeholder data for external books is hidden';
-
   $: startOfDayHours = `${`${startDayHoursForTracker}`.padStart(2, '0')}:00`;
 
   $: trackerIdleTimeInMin = secondsToMinutes(trackerIdleTime);
@@ -1537,17 +1536,15 @@
       {/if}
 
       <ListItem
-        headline="Hide External Source Hint"
-        description="Hides the warning notification when opening a book from an external storage source"
+        layout="stacked"
+        headline="Opening cloud books"
+        description="Choose what happens when you open a book stored on GDrive or OneDrive"
       >
-        <Switch slot="suffix" bind:checked={hideExternalReadHint} />
-      </ListItem>
-
-      <ListItem
-        headline="Show External Books Placeholder"
-        description={showExternalPlaceholderToolTip}
-      >
-        <Switch slot="suffix" bind:checked={showExternalPlaceholder} />
+        <SegmentedControl
+          options={segmentsForExternalReadAction}
+          bind:value={externalReadAction}
+          size="sm"
+        />
       </ListItem>
     </ListSection>
 
@@ -1851,7 +1848,7 @@
 
       <ListItem
         headline="Keep Local Data on Deletion"
-        description="Preserves reading statistics and history when removing a local copy of a book"
+        description="Preserves reading statistics and history when removing the local copy (cloud copies are unaffected unless “also delete from cloud” is checked)"
       >
         <Switch slot="suffix" bind:checked={keepLocalStatisticsOnDeletion} />
       </ListItem>

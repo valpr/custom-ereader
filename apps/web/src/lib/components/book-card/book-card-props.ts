@@ -4,6 +4,8 @@
  * All rights reserved.
  */
 
+import type { StorageKey } from '$lib/data/storage/storage-types';
+
 export interface BookCardProps {
   id: number;
   imagePath: string | Blob;
@@ -14,4 +16,5 @@ export interface BookCardProps {
   progress: number;
   lastBookmarkModified: number;
   isPlaceholder: boolean;
+  sources?: StorageKey[];
 }

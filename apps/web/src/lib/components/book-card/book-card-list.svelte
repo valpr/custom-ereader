@@ -29,10 +29,18 @@
   function getCardDateInfo(dateTime: number) {
     return dateTime ? new Date(dateTime).toLocaleString() : 'No Data';
   }
+
+  function getSourceLabel(source: string): string {
+    if (source === 'browser') return 'Browser';
+    if (source === 'gdrive') return 'GDrive';
+    if (source === 'onedrive') return 'OneDrive';
+    if (source === 'fs') return 'FS';
+    return source;
+  }
 </script>
 
 <div class="grid grid-cols-3 justify-between gap-5 pb-4 md:grid-cols-4 lg:grid-cols-5">
-  {#each bookCards as bookCard (bookCard.id)}
+  {#each bookCards as bookCard (bookCard.title)}
     <div
       role="banner"
       class="relative"
@@ -46,6 +54,19 @@
         class:mdc-elevation--z4={selectedBookIds.has(bookCard.id) || bookCard.id === currentBookId}
       >
         <BookCard {...bookCard} on:click={() => onBookCardClick(bookCard.id)} />
+
+        {#if bookCard.sources && bookCard.sources.length > 0}
+          <div class="absolute left-1.5 top-1.5 flex flex-wrap gap-1">
+            {#each bookCard.sources as source (source)}
+              <span
+                class="rounded-full bg-[var(--astryx-color-surface,#ffffff)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--astryx-color-fg-secondary,#52525b)] shadow"
+                title={getSourceLabel(source)}
+              >
+                {getSourceLabel(source)}
+              </span>
+            {/each}
+          </div>
+        {/if}
 
         {#if selectedBookIds.has(bookCard.id)}
           <div
