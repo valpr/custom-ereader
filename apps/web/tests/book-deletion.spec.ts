@@ -102,4 +102,29 @@ test.describe('Book Deletion Confirmation', () => {
     await expect(page.locator('.astryx-dialog-surface')).not.toBeVisible();
     await expect(bookCard).not.toBeVisible({ timeout: 10000 });
   });
+
+  test('library settles after deleting the only book instead of sticking on Loading', async ({
+    page
+  }) => {
+    await seedReaderBook(page);
+    await page.goto('/manage');
+
+    const bookCard = page.locator('.aspect-w-2').first();
+    await expect(bookCard).toBeVisible({ timeout: 10000 });
+
+    await bookCard.hover();
+    const deleteBtn = page.locator('div[role="button"].bg-red-400').first();
+    await expect(deleteBtn).toBeVisible();
+    await deleteBtn.click();
+
+    const confirmBtn = page
+      .locator('.astryx-dialog-surface button')
+      .filter({ hasText: 'Delete local copy' });
+    await confirmBtn.click();
+
+    // Dialog closes and the empty-state (not a stuck Loading indicator) appears
+    await expect(page.locator('.astryx-dialog-surface')).not.toBeVisible();
+    await expect(page.getByText('Loading...')).not.toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('Upload Books')).toBeVisible({ timeout: 10000 });
+  });
 });
