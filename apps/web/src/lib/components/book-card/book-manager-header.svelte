@@ -27,9 +27,11 @@
     faArrowDownWideShort,
     faCalendarXmark,
     faChartLine,
+    faCheck,
     faChevronDown,
     faCircleXmark,
     faCloudArrowUp,
+    faFilter,
     faSortDown,
     faSortUp,
     faTimes,
@@ -77,34 +79,44 @@
   let backupImportElm: HTMLElement;
   let countImportElm: HTMLInputElement;
   let importMenuElm: Popover;
+  let filterElm: Popover;
   let sortOptionsElm: Popover;
   let isOldUrl = false;
   let showLoadCount = false;
 
   function isFilterActive(key: StorageKey): boolean {
-    return $librarySourceFilter$.has(key);
+    return $librarySourceFilter$.size === 1 && $librarySourceFilter$.has(key);
   }
 
   function isAllActive(): boolean {
     return $librarySourceFilter$.size === 0;
   }
 
-  function toggleSourceFilter(key: StorageKey) {
-    const next = new Set($librarySourceFilter$);
-    if (next.has(key)) {
-      next.delete(key);
-    } else {
-      next.add(key);
-    }
-    librarySourceFilter$.next(next);
+  // Single-select: picking a source shows only that source; picking it again
+  // (or All) clears back to the unified view. Legacy multi-sets collapse to All.
+  function selectSourceFilter(key: StorageKey | null) {
+    librarySourceFilter$.next(key === null ? new Set() : new Set([key]));
+    filterElm?.toggleOpen();
   }
 
-  function clearSourceFilter() {
-    librarySourceFilter$.next(new Set());
-  }
+  $: currentFilterLabel = (() => {
+    if ($librarySourceFilter$.size === 0) return 'All';
+    const key = [...$librarySourceFilter$][0];
+    return sourceFilters.find((f) => f.key === key)?.label ?? 'All';
+  })();
 
   function isSourceDisabled(requiresConnectivity: boolean): boolean {
     return requiresConnectivity && !$isOnline$;
+  }
+
+  function sourceAvailabilityHint(
+    key: StorageKey,
+    requiresConnectivity: boolean
+  ): string | undefined {
+    if (requiresConnectivity && !$isOnline$) return 'Needs internet';
+    if (key === StorageKey.GDRIVE && !gDriveAvailable) return 'Not connected';
+    if (key === StorageKey.ONEDRIVE && !oneDriveAvailable) return 'Not connected';
+    return undefined;
   }
 
   $: if (browser) {
@@ -362,50 +374,68 @@
           </div>
         </Popover>
 
-        <div
-          class="flex items-center gap-1"
-          role="group"
-          aria-label="Filter library by source"
-          title="Filter library by source"
+        <Popover
+          placement="bottom"
+          fallbackPlacements={['bottom-end', 'bottom-start']}
+          yOffset={4}
+          bind:this={filterElm}
         >
-          <button
-            type="button"
-            class="rounded-[var(--astryx-radius-md,6px)] px-2.5 h-9 text-xs font-semibold transition-colors hover:bg-[var(--astryx-color-surface-hover)]"
-            class:bg-[var(--astryx-color-primary-subtle,rgba(99,102,241,0.15))]={isAllActive()}
-            class:text-[var(--astryx-color-primary,#6366f1)]={isAllActive()}
-            class:text-[var(--astryx-color-fg-muted)]={!isAllActive()}
-            on:click={clearSourceFilter}
+          <div slot="icon">
+            <Button
+              variant="ghost"
+              size="md"
+              class="gap-1.5 px-2.5 text-sm font-medium text-[var(--astryx-color-fg-secondary)] hover:text-[var(--astryx-color-fg-primary)]"
+              title="Filter library by source"
+              aria-label="Filter library by source"
+            >
+              <Fa icon={faFilter} class="text-sm opacity-80" />
+              <span>{currentFilterLabel}</span>
+              <Fa icon={faChevronDown} class="text-xs opacity-60" />
+            </Button>
+          </div>
+          <div
+            class="min-w-[12rem] rounded-lg border border-[var(--astryx-color-border-subtle,#e4e4e7)] bg-[var(--astryx-color-surface,#ffffff)] py-1 shadow-lg text-sm"
+            slot="content"
           >
-            All
-          </button>
-          {#each sourceFilters as sourceFilter (sourceFilter.key)}
-            {@const disabled = isSourceDisabled(sourceFilter.requiresConnectivity)}
-            {@const active = isFilterActive(sourceFilter.key)}
-            {@const unavailable =
-              (sourceFilter.key === StorageKey.GDRIVE && !gDriveAvailable) ||
-              (sourceFilter.key === StorageKey.ONEDRIVE && !oneDriveAvailable)}
             <button
               type="button"
-              {disabled}
-              title={disabled
-                ? `${sourceFilter.label} needs internet`
-                : unavailable
-                  ? `${sourceFilter.label} not connected`
-                  : `Filter by ${sourceFilter.label}`}
-              aria-pressed={active}
-              class="rounded-[var(--astryx-radius-md,6px)] px-2.5 h-9 text-xs font-semibold transition-colors hover:bg-[var(--astryx-color-surface-hover)] disabled:cursor-not-allowed disabled:opacity-50"
-              class:bg-[var(--astryx-color-primary-subtle,rgba(99,102,241,0.15))]={active}
-              class:text-[var(--astryx-color-primary,#6366f1)]={active}
-              class:text-[var(--astryx-color-fg-muted)]={!active}
-              class:opacity-60={!active && unavailable}
-              on:click={() => {
-                if (!disabled) toggleSourceFilter(sourceFilter.key);
-              }}
+              class="w-full flex items-center gap-2.5 px-3.5 py-2 text-sm text-left text-[var(--astryx-color-fg-primary)] hover:bg-[var(--astryx-color-surface-hover)] focus-visible:bg-[var(--astryx-color-surface-hover)] outline-none transition-colors cursor-pointer"
+              on:click={() => selectSourceFilter(null)}
             >
-              {sourceFilter.label}
+              <span class="w-4 text-center">
+                {#if isAllActive()}
+                  <Fa icon={faCheck} class="text-xs" />
+                {/if}
+              </span>
+              <span>All sources</span>
             </button>
-          {/each}
-        </div>
+            {#each sourceFilters as sourceFilter (sourceFilter.key)}
+              {@const disabled = isSourceDisabled(sourceFilter.requiresConnectivity)}
+              {@const active = isFilterActive(sourceFilter.key)}
+              {@const hint = sourceAvailabilityHint(
+                sourceFilter.key,
+                sourceFilter.requiresConnectivity
+              )}
+              <button
+                type="button"
+                {disabled}
+                title={hint ? `${sourceFilter.label} — ${hint}` : `Show only ${sourceFilter.label}`}
+                class="w-full flex items-center gap-2.5 px-3.5 py-2 text-sm text-left text-[var(--astryx-color-fg-primary)] hover:bg-[var(--astryx-color-surface-hover)] focus-visible:bg-[var(--astryx-color-surface-hover)] outline-none transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+                on:click={() => !disabled && selectSourceFilter(active ? null : sourceFilter.key)}
+              >
+                <span class="w-4 text-center">
+                  {#if active}
+                    <Fa icon={faCheck} class="text-xs" />
+                  {/if}
+                </span>
+                <span class="flex-1">{sourceFilter.label}</span>
+                {#if hint}
+                  <span class="text-xs opacity-60">{hint}</span>
+                {/if}
+              </button>
+            {/each}
+          </div>
+        </Popover>
 
         <Popover
           placement="bottom"

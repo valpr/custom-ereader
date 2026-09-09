@@ -70,6 +70,7 @@
   import { browser } from '$app/environment';
   import {
     combineLatest,
+    finalize,
     from,
     map,
     Observable,
@@ -82,7 +83,12 @@
   import { onDestroy, tick } from 'svelte';
   import Fa from 'svelte-fa';
 
-  const booksAreLoading$ = database.listLoading$.pipe(map((isLoading) => isLoading));
+  // Loading state owned by the unified pipeline below. The shared
+  // database.listLoading$ is poked (true) by every handler getBookList call
+  // with the matching reset (false) emitted only by database.dataList$'s own
+  // pipeline, so direct reads must not drive the template from it.
+  const unifiedLoading$ = new Subject<boolean>();
+  const booksAreLoading$ = unifiedLoading$.pipe(startWith(false), share());
 
   function resolveReadSource(card: BookCardProps | undefined): StorageKey {
     if (!card?.sources?.length) return $storageSource$;
@@ -100,13 +106,14 @@
   ]).pipe(
     switchMap(([, , gDriveSource, oneDriveSource]) => {
       if (!browser || typeof window === 'undefined') return from([[]]);
+      unifiedLoading$.next(true);
       return from(
         fetchUnifiedBookLists(window, {
           gDriveSourceName: gDriveSource,
           oneDriveSourceName: oneDriveSource,
           includeClouds: true
         }).catch(() => [])
-      );
+      ).pipe(finalize(() => unifiedLoading$.next(false)));
     }),
     share()
   );
