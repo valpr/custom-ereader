@@ -6,6 +6,7 @@
   import { dialogManager, type Dialog } from '$lib/data/dialog-manager';
   import { userFontsCacheName, type UserFont } from '$lib/data/fonts';
   import { appThemeMode$, fontFamilyGroupOne$, isOnline$, userFonts$ } from '$lib/data/store';
+  import { applyAppTheme } from '$lib/functions/app-theme';
   import { dummyFn, isMobile, isMobile$ } from '$lib/functions/utils';
   import { MetaTags } from 'svelte-meta-tags';
   import '../app.scss';
@@ -18,9 +19,7 @@
   $: if (browser) {
     isMobile$.next(isMobile(window));
     addUserFonts($userFonts$);
-    const mode = $appThemeMode$;
-    const theme = mode === 'stone' || mode === 'gothic' ? mode : 'neutral';
-    document.documentElement.setAttribute('data-astryx-theme', theme);
+    applyAppTheme($appThemeMode$);
   }
 
   if (clearConsoleOnReload && import.meta.hot) {

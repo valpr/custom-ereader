@@ -63,7 +63,7 @@ import type { WritingMode } from './writing-mode';
 import { writableSetLocalStorageSubject } from './internal/writable-set-local-storage-subject';
 import { writableStringLocalStorageSubject } from './internal/writable-string-local-storage-subject';
 
-export type AppTheme = 'neutral' | 'stone' | 'gothic';
+export type AppTheme = 'light' | 'dark';
 export type AppThemeMode = 'system' | AppTheme;
 
 export const appThemeMode$ = writableStringLocalStorageSubject<AppThemeMode>()(

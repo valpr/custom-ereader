@@ -436,8 +436,8 @@
 
   const segmentsForAppTheme = [
     { value: 'system', label: 'Auto (System)' },
-    { value: 'stone', label: 'Stone' },
-    { value: 'gothic', label: 'Gothic' }
+    { value: 'light', label: 'Light theme' },
+    { value: 'dark', label: 'Dark theme' }
   ];
 
   const segmentsForWritingMode = optionsForWritingMode.map((o) => ({ value: o.id, label: o.text }));

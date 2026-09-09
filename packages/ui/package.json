@@ -15,9 +15,7 @@
     },
     "./styles": "./src/styles/index.css",
     "./tokens": "./src/styles/tokens.css",
-    "./themes/neutral": "./src/styles/themes/neutral.css",
-    "./themes/stone": "./src/styles/themes/stone.css",
-    "./themes/gothic": "./src/styles/themes/gothic.css"
+    "./themes/neutral": "./src/styles/themes/neutral.css"
   },
   "devDependencies": {
     "svelte": "^5.0.0",

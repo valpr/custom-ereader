@@ -26,8 +26,13 @@
     <script>
       try {
         var savedTheme = localStorage.getItem('appTheme') || 'system';
-        var theme = savedTheme === 'stone' || savedTheme === 'gothic' ? savedTheme : 'neutral';
-        document.documentElement.setAttribute('data-astryx-theme', theme);
+        var mode = savedTheme === 'stone' ? 'light' : savedTheme === 'gothic' ? 'dark' : savedTheme;
+        document.documentElement.setAttribute('data-astryx-theme', 'neutral');
+        if (mode === 'light' || mode === 'dark') {
+          document.documentElement.setAttribute('data-theme', mode);
+        } else {
+          document.documentElement.removeAttribute('data-theme');
+        }
       } catch (e) {
         document.documentElement.setAttribute('data-astryx-theme', 'neutral');
       }
