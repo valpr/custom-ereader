@@ -19,10 +19,16 @@ test.describe('Reader Settings Astryx List Layout', () => {
       const sidebar = page.getByTestId('reader-settings-sidebar');
       await expect(sidebar).toBeVisible();
 
-      // "All Settings" is selected by default
+      // "Theme & Appearance" is selected by default
+      const appearanceItem = sidebar.locator('.astryx-list-item', {
+        hasText: 'Theme & Appearance'
+      });
+      await expect(appearanceItem).toBeVisible();
+      await expect(appearanceItem).toHaveClass(/is-selected/);
+
+      // "All Settings" is not selected
       const allSettingsItem = sidebar.locator('.astryx-list-item', { hasText: 'All Settings' });
-      await expect(allSettingsItem).toBeVisible();
-      await expect(allSettingsItem).toHaveClass(/is-selected/);
+      await expect(allSettingsItem).not.toHaveClass(/is-selected/);
     });
 
     test('switches active section when clicking sidebar items in desktop view', async ({
