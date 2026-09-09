@@ -8,6 +8,8 @@ import type { BookCardProps } from '$lib/components/book-card/book-card-props';
 import { getStorageHandler } from '$lib/data/storage/storage-handler-factory';
 import { StorageKey } from '$lib/data/storage/storage-types';
 import { isStorageSourceAvailable } from '$lib/data/storage/storage-view';
+import { MergeMode } from '$lib/data/merge-mode';
+import { ReplicationSaveBehavior } from '$lib/functions/replication/replication-options';
 
 export const UNIFIED_SOURCES: StorageKey[] = [
   StorageKey.BROWSER,
@@ -78,6 +80,11 @@ export interface UnifiedFetchOptions {
  * Fetches Browser + connected cloud lists in parallel. Unavailable/failed
  * sources resolve to [] so one offline cloud never breaks the whole library.
  * FS is intentionally excluded in v1.
+ *
+ * Background refresh: askForStorageUnlock=false so an expired cloud session
+ * defers to the reconnect banner instead of popping an unlock modal, and the
+ * caller owns loading state (handler getBookList pokes the shared
+ * listLoading$ without a matching reset for direct calls).
  */
 export async function fetchUnifiedBookLists(
   window: Window,
@@ -85,7 +92,17 @@ export async function fetchUnifiedBookLists(
 ): Promise<{ source: StorageKey; cards: BookCardProps[] }[]> {
   const { gDriveSourceName = '', oneDriveSourceName = '', includeClouds = true } = options;
 
-  const browserPromise = getStorageHandler(window, StorageKey.BROWSER, '')
+  const browserPromise = getStorageHandler(
+    window,
+    StorageKey.BROWSER,
+    '',
+    true,
+    false,
+    ReplicationSaveBehavior.NewOnly,
+    MergeMode.MERGE,
+    MergeMode.MERGE,
+    false
+  )
     .getBookList()
     .catch(() => [] as BookCardProps[])
     .then((cards) => ({ source: StorageKey.BROWSER as StorageKey, cards }));
@@ -98,7 +115,17 @@ export async function fetchUnifiedBookLists(
 
   if (isStorageSourceAvailable(StorageKey.GDRIVE, gDriveSourceName, window)) {
     cloudTasks.push(
-      getStorageHandler(window, StorageKey.GDRIVE, gDriveSourceName)
+      getStorageHandler(
+        window,
+        StorageKey.GDRIVE,
+        gDriveSourceName,
+        false,
+        false,
+        ReplicationSaveBehavior.NewOnly,
+        MergeMode.MERGE,
+        MergeMode.MERGE,
+        false
+      )
         .getBookList()
         .catch(() => [] as BookCardProps[])
         .then((cards) => ({ source: StorageKey.GDRIVE as StorageKey, cards }))
@@ -107,7 +134,17 @@ export async function fetchUnifiedBookLists(
 
   if (isStorageSourceAvailable(StorageKey.ONEDRIVE, oneDriveSourceName, window)) {
     cloudTasks.push(
-      getStorageHandler(window, StorageKey.ONEDRIVE, oneDriveSourceName)
+      getStorageHandler(
+        window,
+        StorageKey.ONEDRIVE,
+        oneDriveSourceName,
+        false,
+        false,
+        ReplicationSaveBehavior.NewOnly,
+        MergeMode.MERGE,
+        MergeMode.MERGE,
+        false
+      )
         .getBookList()
         .catch(() => [] as BookCardProps[])
         .then((cards) => ({ source: StorageKey.ONEDRIVE as StorageKey, cards }))
