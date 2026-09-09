@@ -1,12 +1,17 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onDestroy, onMount } from 'svelte';
   import { browser } from '$app/environment';
   import { page } from '$app/stores';
   import DomainHint from '$lib/components/domain-hint.svelte';
+  import CloudSyncStatus from '$lib/components/cloud/cloud-sync-status.svelte';
   import { basePath, clearConsoleOnReload } from '$lib/data/env';
   import { dialogManager, type Dialog } from '$lib/data/dialog-manager';
   import { userFontsCacheName, type UserFont } from '$lib/data/fonts';
   import { appThemeMode$, fontFamilyGroupOne$, isOnline$, userFonts$ } from '$lib/data/store';
+  import {
+    startProactiveRefresh,
+    stopProactiveRefresh
+  } from '$lib/data/storage/token-refresh-scheduler';
   import { applyAppTheme } from '$lib/functions/app-theme';
   import { dummyFn, isMobile, isMobile$ } from '$lib/functions/utils';
   import { MetaTags } from 'svelte-meta-tags';
@@ -92,6 +97,16 @@
     dialogs = d;
   });
 
+  onMount(() => {
+    if (browser) {
+      startProactiveRefresh();
+    }
+  });
+
+  onDestroy(() => {
+    stopProactiveRefresh();
+  });
+
   page.subscribe((p) => (path = p.url.pathname));
 </script>
 
@@ -114,6 +129,8 @@
 />
 
 <slot />
+
+<CloudSyncStatus />
 
 {#if dialogs.length > 0}
   <div class="writing-horizontal-tb fixed inset-0 z-50 h-full w-full" style:z-index={zIndex}>

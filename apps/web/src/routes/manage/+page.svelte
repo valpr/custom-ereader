@@ -5,6 +5,7 @@
   import type { BookCardProps } from '$lib/components/book-card/book-card-props';
   import BookManagerHeader from '$lib/components/book-card/book-manager-header.svelte';
   import BookExportDialog from '$lib/components/book-export/book-export-dialog.svelte';
+  import CloudReconnectBanner from '$lib/components/cloud/cloud-reconnect-banner.svelte';
   import ConfirmDialog from '$lib/components/confirm-dialog.svelte';
   import ExternalReadDialog from '$lib/components/external-read-dialog.svelte';
   import LogReportDialog from '$lib/components/log-report-dialog.svelte';
@@ -19,6 +20,11 @@
   import { SortDirection, type SortOption } from '$lib/data/sort-types';
   import { ApiStorageHandler } from '$lib/data/storage/handler/api-handler';
   import { getStorageHandler } from '$lib/data/storage/storage-handler-factory';
+  import {
+    StorageOAuthManager,
+    storageConnectionStates$,
+    StorageConnectionState
+  } from '$lib/data/storage/storage-oauth-manager';
   import { StorageKey } from '$lib/data/storage/storage-types';
   import { storageSource$ } from '$lib/data/storage/storage-view';
   import {
@@ -32,11 +38,14 @@
     keepLocalStatisticsOnDeletion$,
     lastExportedTarget$,
     lastExportedTypes$,
+    pendingCloudSync$,
     readingGoalsMergeMode$,
     replicationSaveBehavior$,
     showExternalPlaceholder$,
-    statisticsMergeMode$
+    statisticsMergeMode$,
+    syncTarget$
   } from '$lib/data/store';
+  import { reconnectAndSyncNow } from '$lib/functions/replication/cloud-reauth';
   import { cloneMutateSet } from '$lib/functions/clone-mutate-set';
   import { getDropEventFiles } from '$lib/functions/file-dom/get-drop-event-files';
   import { inputFile } from '$lib/functions/file-dom/input-file';
@@ -109,6 +118,28 @@
   let replicationDone = new Subject<void>();
   let progressBase = 0;
   let executionStart: number;
+  let cloudReconnecting = false;
+
+  $: expiredSyncTarget =
+    $syncTarget$ &&
+    ($storageConnectionStates$[$syncTarget$] === StorageConnectionState.NEEDS_RECONNECT ||
+      $pendingCloudSync$[$syncTarget$])
+      ? $syncTarget$
+      : '';
+  $: expiredFailedOps =
+    (expiredSyncTarget && $pendingCloudSync$[expiredSyncTarget]?.failedOps) || 0;
+
+  async function handleCloudReconnect() {
+    if (!expiredSyncTarget || cloudReconnecting) return;
+    // Open synchronously in the click handler so mobile browsers don't block it.
+    const preOpened = StorageOAuthManager.openAuthWindowSync(window);
+    cloudReconnecting = true;
+    try {
+      await reconnectAndSyncNow(window, expiredSyncTarget, preOpened);
+    } finally {
+      cloudReconnecting = false;
+    }
+  }
 
   $: {
     if (!selectMode) {
@@ -716,6 +747,10 @@
     {replicationProgress}
     {replicationToProgress}
     {replicationProgressRemaining}
+    showCloudWarning={!!expiredSyncTarget}
+    cloudWarningLabel={expiredSyncTarget
+      ? `Cloud session expired for ${expiredSyncTarget}. Reconnect to resume syncing.`
+      : 'Cloud session expired. Reconnect to resume syncing.'}
     bind:selectMode
     on:selectAllClick={onSelectAllBooks}
     on:backToBookClick={backToCurrentBook}
@@ -738,6 +773,7 @@
     }}
     on:deleteStatistics={onDeleteStatistics}
     on:replicateData={onReplicateData}
+    on:cloudReconnectClick={handleCloudReconnect}
     on:importBackup={(ev) => onImportBackup(ev.detail)}
   />
 </div>
@@ -753,6 +789,14 @@
   on:drop={(ev) => getDropEventFiles(ev).then(onFilesChange)}
 >
   <div class="flex-1">
+    {#if expiredSyncTarget}
+      <CloudReconnectBanner
+        sourceName={expiredSyncTarget}
+        busy={cloudReconnecting}
+        failedOps={expiredFailedOps}
+        on:reconnect={handleCloudReconnect}
+      />
+    {/if}
     {#if !$bookCards$ || $booksAreLoading$}
       <div class="flex justify-center pt-28 text-sm opacity-60">Loading...</div>
     {:else if $bookCards$.length}

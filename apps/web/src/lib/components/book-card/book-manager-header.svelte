@@ -5,7 +5,7 @@
   import { mergeEntries } from '$lib/components/merged-header-icon/merged-entries';
   import MergedHeaderIcon from '$lib/components/merged-header-icon/merged-header-icon.svelte';
   import Popover from '$lib/components/popover/popover.svelte';
-  import { Button, IconButton, Tooltip, TopBar } from '@custom-ereader/ui';
+  import { Button, CloudStatusIcon, IconButton, Tooltip, TopBar } from '@custom-ereader/ui';
   import { pagePath } from '$lib/data/env';
   import { SortDirection } from '$lib/data/sort-types';
   import { FilesystemStorageHandler } from '$lib/data/storage/handler/filesystem-handler';
@@ -40,7 +40,8 @@
     faSortUp,
     faSpinner,
     faTimes,
-    faTrash
+    faTrash,
+    faTriangleExclamation
   } from '@fortawesome/free-solid-svg-icons';
   import { createEventDispatcher } from 'svelte';
   import Fa from 'svelte-fa';
@@ -53,6 +54,8 @@
   export let replicationProgress: number;
   export let replicationToProgress: number;
   export let replicationProgressRemaining: string;
+  export let showCloudWarning = false;
+  export let cloudWarningLabel = 'Cloud session expired. Reconnect to resume syncing.';
 
   const dispatch = createEventDispatcher<{
     selectAllClick: void;
@@ -66,6 +69,7 @@
     deleteStatistics: void;
     replicateData: void;
     cancelReplication: void;
+    cloudReconnectClick: void;
   }>();
 
   let importMenuItems = [mergeEntries.FILE_IMPORT];
@@ -287,6 +291,15 @@
           >
             Valpr Reader
           </span>
+        {/if}
+        {#if showCloudWarning}
+          <CloudStatusIcon
+            label={cloudWarningLabel}
+            state="warning"
+            on:click={() => dispatch('cloudReconnectClick')}
+          >
+            <Fa icon={faTriangleExclamation} class="text-base" />
+          </CloudStatusIcon>
         {/if}
       {:else}
         <Tooltip text="Disable Book Selection">

@@ -72,6 +72,7 @@
     selectionToBookmarkEnabled$,
     lineHeight$,
     syncTarget$,
+    pendingCloudSync$,
     autoReplication$,
     skipKeyDownListener$,
     replicationSaveBehavior$,
@@ -161,6 +162,12 @@
     ReplicationSaveBehavior
   } from '$lib/functions/replication/replication-options';
   import { replicateData } from '$lib/functions/replication/replicator';
+  import { reconnectAndSyncNow } from '$lib/functions/replication/cloud-reauth';
+  import {
+    StorageOAuthManager,
+    storageConnectionStates$,
+    StorageConnectionState
+  } from '$lib/data/storage/storage-oauth-manager';
   import { readableToObservable } from '$lib/functions/rxjs/readable-to-observable';
   import { reduceToEmptyString } from '$lib/functions/rxjs/reduce-to-empty-string';
   import { takeWhenBrowser } from '$lib/functions/rxjs/take-when-browser';
@@ -1861,6 +1868,27 @@
       }
     }
   }
+
+  let cloudReconnecting = false;
+
+  $: expiredSyncTarget =
+    $syncTarget$ &&
+    ($storageConnectionStates$[$syncTarget$] === StorageConnectionState.NEEDS_RECONNECT ||
+      $pendingCloudSync$[$syncTarget$])
+      ? $syncTarget$
+      : '';
+
+  async function handleCloudReconnect() {
+    if (!expiredSyncTarget || cloudReconnecting) return;
+    // Open synchronously in the click handler so mobile browsers don't block it.
+    const preOpened = StorageOAuthManager.openAuthWindowSync(window);
+    cloudReconnecting = true;
+    try {
+      await reconnectAndSyncNow(window, expiredSyncTarget, preOpened);
+    } finally {
+      cloudReconnecting = false;
+    }
+  }
 </script>
 
 <svelte:head>
@@ -1955,6 +1983,11 @@
       on:settingsClick={() => leaveReader(mergeEntries.SETTINGS.routeId, false)}
       on:domainHintClick={onDomainHintClick}
       on:bookManagerClick={() => leaveReader(mergeEntries.MANAGE.routeId)}
+      showCloudWarning={!!expiredSyncTarget}
+      cloudWarningLabel={expiredSyncTarget
+        ? `Cloud session expired for ${expiredSyncTarget}. Reconnect to resume syncing.`
+        : 'Cloud session expired. Reconnect to resume syncing.'}
+      on:cloudReconnectClick={handleCloudReconnect}
     />
   </div>
 {/if}

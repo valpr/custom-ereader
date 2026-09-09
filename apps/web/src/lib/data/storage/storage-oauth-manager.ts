@@ -32,7 +32,7 @@ import {
   type StorageUnlockAction
 } from '$lib/data/storage/storage-source-manager';
 import { StorageSourceDefault, StorageKey } from '$lib/data/storage/storage-types';
-import { database, syncTarget$ } from '$lib/data/store';
+import { clearPendingCloudSync, database, syncTarget$ } from '$lib/data/store';
 import { convertAuthErrorResponse } from '$lib/functions/replication/error-handler';
 import { writableSubject } from '$lib/functions/svelte/store';
 import { isMobile } from '$lib/functions/utils';
@@ -53,6 +53,11 @@ export function setConnectionState(storageSourceName: string, state: StorageConn
       [storageSourceName]: state
     });
   }
+  if (state === StorageConnectionState.CONNECTED) {
+    clearPendingCloudSync(storageSourceName);
+  } else {
+    clearProactiveRefresh(storageSourceName);
+  }
 }
 
 interface OAuthTokenData {
@@ -62,7 +67,70 @@ interface OAuthTokenData {
   refreshToken?: string;
 }
 
+export interface StorageAuthOptions {
+  /**
+   * When false (default for background sync), never open a popup window or
+   * show an unlock/login dialog. Instead mark NEEDS_RECONNECT and throw.
+   * Pass true only from an explicit user gesture (Reconnect button / banner).
+   */
+  allowInteractive?: boolean;
+}
+
 export const storageOAuthTokens = new Map<string, OAuthTokenData>();
+
+/**
+ * Single-flight refresh promises keyed by storage source name. Manager
+ * instances are per-handler and handlers are reconfigured per source, so the
+ * map must live at module level — otherwise parallel background requests for
+ * the same source would fire parallel `/token` exchanges and, under refresh
+ * token rotation, all but the first would fail with `invalid_grant`.
+ */
+const inFlightRefreshes = new Map<string, Promise<OAuthTokenData | undefined>>();
+
+/**
+ * Lead time before (buffered) access-token expiry to attempt a silent refresh.
+ * Industry consensus is 30-60s clock-skew leeway with proactive refresh
+ * minutes before expiry; our stored expiry already subtracts a 600s buffer
+ * at issue time, so this 60s scheduling headroom yields ~11min total margin
+ * on 1-hour Google tokens — at the conservative end of the 5-10min guidance.
+ * No jitter: single-user app, at most a couple of sources per tab.
+ */
+const proactiveRefreshLeewayMs = 60000;
+
+const proactiveRefreshTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
+export function clearProactiveRefresh(storageSourceName: string) {
+  const timer = proactiveRefreshTimers.get(storageSourceName);
+  if (timer !== undefined) {
+    clearTimeout(timer);
+    proactiveRefreshTimers.delete(storageSourceName);
+  }
+}
+
+/**
+ * Schedule a silent token refresh ahead of expiry so background sync rarely
+ * hits an expired token. Fires `trySilentRefresh` once; that path never opens
+ * popups or dialogs. Rescheduling happens at every token-store site.
+ */
+export function scheduleProactiveRefresh(storageSourceName: string) {
+  clearProactiveRefresh(storageSourceName);
+  const token = storageOAuthTokens.get(storageSourceName);
+  if (!token) return;
+
+  const delay = token.expiration - Date.now() - proactiveRefreshLeewayMs;
+  if (delay <= 0) {
+    void StorageOAuthManager.trySilentRefresh(storageSourceName);
+    return;
+  }
+
+  proactiveRefreshTimers.set(
+    storageSourceName,
+    setTimeout(() => {
+      proactiveRefreshTimers.delete(storageSourceName);
+      void StorageOAuthManager.trySilentRefresh(storageSourceName);
+    }, delay)
+  );
+}
 
 export class StorageOAuthManager {
   private storageType: StorageKey;
@@ -104,8 +172,10 @@ export class StorageOAuthManager {
     askForStorageUnlock: boolean,
     authWindow?: Window | null,
     oldUnlockResult?: StorageUnlockAction,
-    oldStorageSource?: BooksDbStorageSource | undefined
+    oldStorageSource?: BooksDbStorageSource | undefined,
+    options?: StorageAuthOptions
   ): Promise<string | undefined> {
+    const allowInteractive = options?.allowInteractive ?? !!authWindow;
     const oldToken = storageOAuthTokens.get(storageSourceName);
     const shallUnlock = !oldToken || askForStorageUnlock;
 
@@ -169,6 +239,12 @@ export class StorageOAuthManager {
         );
 
         if (!unlockResult) {
+          if (!allowInteractive) {
+            setConnectionState(storageSourceName, StorageConnectionState.NEEDS_RECONNECT);
+            throw new Error(
+              `Session expired for "${storageSourceName}". Please reconnect to resume syncing.`
+            );
+          }
           throw new Error(`Unable to unlock required data`);
         }
       }
@@ -195,7 +271,7 @@ export class StorageOAuthManager {
     if (authWindow) {
       this.authWindow = authWindow;
       this.authWindow.location.assign(`${pagePath}/auth?ttu-init-auth=1`);
-    } else if (shallUnlock) {
+    } else if (shallUnlock && allowInteractive) {
       this.authWindow = StorageOAuthManager.createWindow(
         `${pagePath}/auth?ttu-init-auth=1`,
         'auth',
@@ -208,7 +284,7 @@ export class StorageOAuthManager {
     }
 
     if (!this.authWindow) {
-      if (shallUnlock) {
+      if (shallUnlock && allowInteractive) {
         await new Promise<undefined>((resolver) => {
           dialogManager.dialogs$.next([
             {
@@ -237,7 +313,15 @@ export class StorageOAuthManager {
             window
           ),
           unlockResult,
-          storageSource
+          storageSource,
+          { allowInteractive: true }
+        );
+      }
+
+      if (!allowInteractive) {
+        setConnectionState(storageSourceName, StorageConnectionState.NEEDS_RECONNECT);
+        throw new Error(
+          `Session expired for "${storageSourceName}". Please reconnect to resume syncing.`
         );
       }
 
@@ -256,6 +340,7 @@ export class StorageOAuthManager {
 
       storageOAuthTokens.set(storageSourceName, token);
       setConnectionState(storageSourceName, StorageConnectionState.CONNECTED);
+      scheduleProactiveRefresh(storageSourceName);
 
       if (this.remoteData && !this.remoteData.accountEmail && token.accessToken) {
         const account =
@@ -330,7 +415,28 @@ export class StorageOAuthManager {
     return this.refreshToken();
   }
 
-  private async refreshToken() {
+  private async refreshToken(): Promise<OAuthTokenData | undefined> {
+    const sourceName = this.storageSourceName;
+    const inFlight = sourceName ? inFlightRefreshes.get(sourceName) : undefined;
+    if (inFlight) {
+      return inFlight;
+    }
+
+    const refreshPromise = this.doRefreshToken();
+    if (sourceName) {
+      inFlightRefreshes.set(sourceName, refreshPromise);
+    }
+
+    try {
+      return await refreshPromise;
+    } finally {
+      if (sourceName && inFlightRefreshes.get(sourceName) === refreshPromise) {
+        inFlightRefreshes.delete(sourceName);
+      }
+    }
+  }
+
+  private async doRefreshToken(): Promise<OAuthTokenData | undefined> {
     if (
       !(
         this.refreshEndpoint &&
@@ -340,6 +446,12 @@ export class StorageOAuthManager {
         this.remoteData.refreshToken
       )
     ) {
+      // Missing credentials/refresh token on an existing source means the
+      // session cannot be silently renewed — surface as needing reconnect
+      // rather than plain disconnected so background sync defers to in-app UI.
+      if (this.storageSourceName && (this.remoteData?.clientId || this.remoteData?.refreshToken)) {
+        setConnectionState(this.storageSourceName, StorageConnectionState.NEEDS_RECONNECT);
+      }
       return undefined;
     }
 
@@ -391,6 +503,7 @@ export class StorageOAuthManager {
 
     storageOAuthTokens.set(this.storageSourceName, token);
     setConnectionState(this.storageSourceName, StorageConnectionState.CONNECTED);
+    scheduleProactiveRefresh(this.storageSourceName);
 
     return token;
   }
@@ -627,7 +740,108 @@ export class StorageOAuthManager {
     return {};
   }
 
-  static async reconnect(window: Window, storageSourceName: string): Promise<boolean> {
+  /**
+   * Open a blank auth window synchronously inside a user-gesture handler
+   * (click/tap) so iOS/Safari does not block it as a popup. The caller must
+   * pass the returned window into `reconnect()`; `getToken()` will then
+   * navigate it to the provider. Returns null when blocked.
+   */
+  static openAuthWindowSync(window: Window): Window | null {
+    return StorageOAuthManager.createWindow(
+      `${pagePath}/auth?ttu-init-wait=1`,
+      'auth',
+      Math.min(Math.max(window.innerWidth, 300), 560),
+      Math.min(Math.max(window.innerHeight, 300), 560),
+      window
+    );
+  }
+
+  /**
+   * Attempt a fully silent token renewal: no popups, no unlock dialogs.
+   * Used by the proactive refresh scheduler and safe to call from timers.
+   * Returns true when a usable access token is cached afterwards.
+   */
+  static async trySilentRefresh(storageSourceName: string): Promise<boolean> {
+    try {
+      if (!storageSourceName) return false;
+
+      let storageSourceType = StorageKey.GDRIVE;
+      let refreshEndpoint = gDriveRefreshEndpoint;
+      let remoteData: RemoteContext | undefined;
+
+      if (isAppDefault(storageSourceName)) {
+        if (storageSourceName === StorageSourceDefault.GDRIVE_DEFAULT) {
+          if (!gDriveClientId) return false;
+          remoteData = { clientId: gDriveClientId, clientSecret: '' };
+        } else if (storageSourceName === StorageSourceDefault.ONEDRIVE_DEFAULT) {
+          if (!oneDriveClientId) return false;
+          storageSourceType = StorageKey.ONEDRIVE;
+          refreshEndpoint = oneDriveTokenEndpoint;
+          remoteData = { clientId: oneDriveClientId, clientSecret: '' };
+        } else {
+          return false;
+        }
+      } else {
+        const db = await database.db;
+        const storageSource = await db.get('storageSource', storageSourceName);
+        if (
+          !storageSource ||
+          (storageSource.type !== StorageKey.GDRIVE && storageSource.type !== StorageKey.ONEDRIVE)
+        ) {
+          return false;
+        }
+
+        storageSourceType = storageSource.type;
+        refreshEndpoint =
+          storageSource.type === StorageKey.GDRIVE ? gDriveRefreshEndpoint : oneDriveTokenEndpoint;
+
+        // Silent only: no unlock props, so this resolves from the password
+        // manager / unencrypted context or returns undefined without a dialog.
+        const unlockResult = await unlockStorageData(
+          storageSource,
+          'Proactive token refresh',
+          undefined
+        );
+        if (!unlockResult) return false;
+
+        remoteData = {
+          clientId: unlockResult.clientId,
+          clientSecret: unlockResult.clientSecret,
+          refreshToken: unlockResult.refreshToken,
+          accountEmail: unlockResult.accountEmail,
+          accountName: unlockResult.accountName
+        };
+      }
+
+      const manager = new StorageOAuthManager(storageSourceType, refreshEndpoint);
+      manager.storageSourceName = storageSourceName;
+      manager.remoteData = remoteData;
+
+      const token = await manager.verifyToken(storageOAuthTokens.get(storageSourceName));
+      return !!token;
+    } catch (error: any) {
+      logger.error(`Silent refresh failed for ${storageSourceName}: ${error?.message}`);
+      return false;
+    }
+  }
+
+  static async reconnect(
+    window: Window,
+    storageSourceName: string,
+    preOpenedWindow?: Window | null
+  ): Promise<boolean> {
+    // Close a caller-pre-opened window when bailing out early so no stray
+    // blank tab is left behind (e.g. unconfigured provider, cancelled unlock).
+    const abortPreOpened = () => {
+      try {
+        if (preOpenedWindow && !preOpenedWindow.closed) {
+          preOpenedWindow.close();
+        }
+      } catch {
+        // no-op
+      }
+    };
+
     const isDefault = isAppDefault(storageSourceName);
     let storageSourceType = StorageKey.GDRIVE;
     let refreshEndpoint = gDriveRefreshEndpoint;
@@ -656,6 +870,7 @@ export class StorageOAuthManager {
             disableCloseOnClick: true
           }
         ]);
+        abortPreOpened();
         return false;
       }
 
@@ -669,11 +884,13 @@ export class StorageOAuthManager {
 
       if (!storageSource) {
         logger.error(`Storage source ${storageSourceName} not found for reconnect`);
+        abortPreOpened();
         return false;
       }
 
       if (storageSource.type !== StorageKey.GDRIVE && storageSource.type !== StorageKey.ONEDRIVE) {
         logger.error(`Cannot reconnect non-cloud storage source ${storageSourceName}`);
+        abortPreOpened();
         return false;
       }
 
@@ -692,17 +909,20 @@ export class StorageOAuthManager {
       );
 
       if (!unlockResult) {
+        abortPreOpened();
         return false;
       }
     }
 
-    const authWindow = StorageOAuthManager.createWindow(
-      `${pagePath}/auth?ttu-init-auth=1`,
-      'auth',
-      Math.min(Math.max(window.innerWidth, 300), 560),
-      Math.min(Math.max(window.innerHeight, 300), 560),
-      window
-    );
+    const authWindow =
+      preOpenedWindow ||
+      StorageOAuthManager.createWindow(
+        `${pagePath}/auth?ttu-init-auth=1`,
+        'auth',
+        Math.min(Math.max(window.innerWidth, 300), 560),
+        Math.min(Math.max(window.innerHeight, 300), 560),
+        window
+      );
 
     if (!authWindow) {
       dialogManager.dialogs$.next([
@@ -727,7 +947,8 @@ export class StorageOAuthManager {
         false,
         authWindow,
         unlockResult,
-        storageSource
+        storageSource,
+        { allowInteractive: true }
       );
 
       if (!accessToken) {

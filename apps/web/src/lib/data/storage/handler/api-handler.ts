@@ -32,7 +32,7 @@ import {
   storageOAuthTokens
 } from '$lib/data/storage/storage-oauth-manager';
 import { StorageKey } from '$lib/data/storage/storage-types';
-import { database } from '$lib/data/store';
+import { database, markPendingCloudSync } from '$lib/data/store';
 import {
   convertAuthErrorResponse,
   handleErrorDuringReplication
@@ -50,6 +50,12 @@ interface RequestOptions {
   trackDownload?: boolean;
   trackUpload?: boolean;
   skipAuth?: boolean;
+  /**
+   * When true, auth may open a popup / show login dialogs. Defaults to false
+   * so background sync never steals focus; explicit reconnect flows pass true
+   * via a pre-opened window instead (see StorageOAuthManager.reconnect).
+   */
+  allowInteractiveAuth?: boolean;
 }
 
 export abstract class ApiStorageHandler extends BaseStorageHandler {
@@ -760,9 +766,28 @@ export abstract class ApiStorageHandler extends BaseStorageHandler {
     type: XMLHttpRequestResponseType = 'json',
     progressBase = 1
   ): Promise<any> {
-    const token = await (options.skipAuth
-      ? Promise.resolve('')
-      : this.authManager.getToken(this.window, this.storageSourceName, this.askForStorageUnlock));
+    const interactive = options.allowInteractiveAuth ?? false;
+    let token = '';
+    try {
+      token =
+        (await (options.skipAuth
+          ? Promise.resolve('')
+          : this.authManager.getToken(
+              this.window,
+              this.storageSourceName,
+              interactive ? this.askForStorageUnlock : false,
+              undefined,
+              undefined,
+              undefined,
+              { allowInteractive: interactive }
+            ))) || '';
+    } catch (error: any) {
+      // Silent background auth failure: never pop up. Record intent so the UI
+      // can offer in-app re-auth and auto-retry the sync afterwards.
+      setConnectionState(this.storageSourceName, StorageConnectionState.NEEDS_RECONNECT);
+      markPendingCloudSync(this.storageSourceName, error?.message || 'auth failed');
+      throw error;
+    }
     // eslint-disable-next-line @typescript-eslint/no-this-alias
     const self = this;
 
@@ -819,10 +844,11 @@ export abstract class ApiStorageHandler extends BaseStorageHandler {
               if (this.status === 401) {
                 storageOAuthTokens.delete(self.storageSourceName);
                 setConnectionState(self.storageSourceName, StorageConnectionState.NEEDS_RECONNECT);
+                markPendingCloudSync(self.storageSourceName, errorMessage || 'unauthorized');
                 logger.error(errorMessage);
                 reject(
                   new Error(
-                    `Session expired for "${self.storageSourceName}". Please reconnect in Settings.`
+                    `Session expired for "${self.storageSourceName}". Please reconnect to resume syncing.`
                   )
                 );
               } else if (this.status === 404) {

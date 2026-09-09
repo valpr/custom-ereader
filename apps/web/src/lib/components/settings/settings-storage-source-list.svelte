@@ -31,6 +31,8 @@
   import { gDriveClientId, gDriveRevokeEndpoint, oneDriveClientId } from '$lib/data/env';
   import {
     StorageOAuthManager,
+    clearProactiveRefresh,
+    scheduleProactiveRefresh,
     storageOAuthTokens,
     storageConnectionStates$,
     getConnectionState,
@@ -266,11 +268,13 @@
   }
 
   async function connectAndInitialSync(source: BooksDbStorageSource) {
+    // Open synchronously in the click handler so mobile browsers don't block it.
+    const preOpened = StorageOAuthManager.openAuthWindowSync(window);
     actionLoading[source.name] = true;
     actionLoading = { ...actionLoading };
 
     try {
-      const connected = await StorageOAuthManager.reconnect(window, source.name);
+      const connected = await StorageOAuthManager.reconnect(window, source.name, preOpened);
       if (connected) {
         $syncTarget$ = source.name;
         setStorageSourceDefault(source.name, source.type);
@@ -288,11 +292,17 @@
   }
 
   async function reconnectStorageSource(source: BooksDbStorageSource) {
+    // Open synchronously in the click handler so mobile browsers don't block it.
+    // Reconnect resumes with a sync below so expired sessions recover fully.
+    const preOpened = StorageOAuthManager.openAuthWindowSync(window);
     actionLoading[source.name] = true;
     actionLoading = { ...actionLoading };
 
     try {
-      await StorageOAuthManager.reconnect(window, source.name);
+      const connected = await StorageOAuthManager.reconnect(window, source.name, preOpened);
+      if (connected && source.name === $syncTarget$) {
+        await triggerManualSync(source.name);
+      }
     } finally {
       actionLoading[source.name] = false;
       actionLoading = { ...actionLoading };
@@ -468,9 +478,11 @@
     if (saveResult.old) {
       const oldToken = storageOAuthTokens.get(saveResult.old);
       storageOAuthTokens.delete(saveResult.old);
+      clearProactiveRefresh(saveResult.old);
 
       if (oldToken && saveResult.new.type === storageSource?.type) {
         storageOAuthTokens.set(saveResult.new.name, oldToken);
+        scheduleProactiveRefresh(saveResult.new.name);
       }
 
       database.storageSourcesChanged$.next(

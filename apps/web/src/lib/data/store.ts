@@ -552,6 +552,39 @@ export const horizontalCustomReadingPosition$ = writableNumberLocalStorageSubjec
 
 export const isOnline$ = writableSubject<boolean>(true);
 
+export interface PendingCloudSync {
+  at: number;
+  reason: string;
+  failedOps: number;
+}
+
+export const pendingCloudSync$ = writableObjectLocalStorageSubject<
+  Record<string, PendingCloudSync>
+>()('pendingCloudSync', {});
+
+export function markPendingCloudSync(sourceName: string, reason: string) {
+  if (!sourceName) return;
+  const current = pendingCloudSync$.getValue();
+  const existing = current[sourceName];
+  pendingCloudSync$.next({
+    ...current,
+    [sourceName]: {
+      at: existing?.at ?? Date.now(),
+      reason: existing?.reason ?? reason,
+      failedOps: (existing?.failedOps ?? 0) + 1
+    }
+  });
+}
+
+export function clearPendingCloudSync(sourceName: string) {
+  if (!sourceName) return;
+  const current = pendingCloudSync$.getValue();
+  if (!current[sourceName]) return;
+  const next = { ...current };
+  delete next[sourceName];
+  pendingCloudSync$.next(next);
+}
+
 export const skipKeyDownListener$ = writableSubject<boolean>(false);
 
 export const userFonts$ = writableArrayLocalStorageSubject<UserFont>()('userfonts', []);

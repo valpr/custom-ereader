@@ -22,7 +22,7 @@
   import { readerImageGalleryPictures$ } from '$lib/components/book-reader/book-reader-image-gallery/book-reader-image-gallery';
   import { mergeEntries } from '$lib/components/merged-header-icon/merged-entries';
   import Popover from '$lib/components/popover/popover.svelte';
-  import { IconButton, Tooltip, TopBar, OverflowList } from '@custom-ereader/ui';
+  import { IconButton, Tooltip, TopBar, OverflowList, CloudStatusIcon } from '@custom-ereader/ui';
   import { pagePath } from '$lib/data/env';
   import { customReadingPointEnabled$, viewMode$ } from '$lib/data/store';
   import { ViewMode } from '$lib/data/view-mode';
@@ -37,6 +37,8 @@
   export let showFullscreenButton: boolean;
   export let isBookmarkScreen: boolean;
   export let hasBookmarkData: boolean;
+  export let showCloudWarning = false;
+  export let cloudWarningLabel = 'Cloud session expired. Reconnect to resume syncing.';
 
   const dispatch = createEventDispatcher<{
     tocClick: void;
@@ -55,6 +57,7 @@
     settingsClick: void;
     domainHintClick: void;
     bookManagerClick: void;
+    cloudReconnectClick: void;
   }>();
 
   let bookmarkPressTimer: any;
@@ -194,6 +197,16 @@
             <Fa icon={faRotateLeft} class="text-base" />
           </IconButton>
         </Tooltip>
+      {/if}
+
+      {#if showCloudWarning}
+        <CloudStatusIcon
+          label={cloudWarningLabel}
+          state="warning"
+          on:click={() => dispatch('cloudReconnectClick')}
+        >
+          <Fa icon={faTriangleExclamation} class="text-base" />
+        </CloudStatusIcon>
       {/if}
 
       {#if $viewMode$ === ViewMode.Continuous && !$isMobile$}
