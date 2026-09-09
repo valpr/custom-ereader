@@ -81,6 +81,8 @@
   import { map } from 'rxjs';
   import Fa from 'svelte-fa';
   import { onDestroy } from 'svelte';
+  import { goto } from '$app/navigation';
+  import { settingsUrl } from '$lib/components/settings/settings-tabs';
 
   export let appThemeMode: AppThemeMode = 'system';
 
@@ -179,6 +181,10 @@
   export let autosaveHistoryMaxCount: number;
 
   export let activeSettings: string;
+
+  export let activeReaderSection = 'appearance';
+
+  export let activeReaderSectionExplicit = false;
 
   export let importHTMLFixMode: string;
 
@@ -534,10 +540,14 @@
     }
   ];
 
-  let selectedReaderSection = 'appearance';
-  let mobileSelectedSection: string | null = null;
-  $: currentActiveSection =
-    mobileSelectedSection !== null ? mobileSelectedSection : selectedReaderSection;
+  // Reader sections are URL-driven (see routes/settings/[tab]/[[section]]).
+  // `activeReaderSection` comes from the route params (defaulting to 'appearance').
+  // The mobile drill-down opens only for explicit section URLs, so the mobile list
+  // stays the landing view while deep-links, back/forward and taps stay in sync.
+  $: selectedReaderSection = activeReaderSection;
+  $: mobileSelectedSection =
+    activeReaderSection === 'all' || !activeReaderSectionExplicit ? null : activeReaderSection;
+  $: currentActiveSection = activeReaderSection;
 
   function handleProfileChange(e: CustomEvent<{ settings: any }>) {
     const s = e.detail?.settings;
@@ -743,10 +753,7 @@
               description={section.description}
               clickable={true}
               selected={selectedReaderSection === section.id}
-              on:click={() => {
-                selectedReaderSection = section.id;
-                mobileSelectedSection = section.id;
-              }}
+              on:click={() => goto(settingsUrl('Reader', section.id))}
             >
               <svelte:fragment slot="prefix">
                 <div class="w-5 text-center text-zinc-500 dark:text-zinc-400">
@@ -773,14 +780,13 @@
         <div
           class="md:hidden flex items-center justify-between pb-3 border-b border-[var(--astryx-color-border-subtle,#f4f4f5)]"
         >
-          <Button variant="ghost" size="sm" on:click={() => (mobileSelectedSection = null)}>
+          <Button variant="ghost" size="sm" on:click={() => goto(settingsUrl('Reader'))}>
             <Fa icon={faChevronLeft} class="mr-1.5" /> All Settings
           </Button>
           <span
             class="text-xs font-semibold text-[var(--astryx-color-fg-secondary,#71717a)] truncate max-w-[180px]"
           >
-            {readerSections.find((s) => s.id === (mobileSelectedSection || selectedReaderSection))
-              ?.headline ?? ''}
+            {readerSections.find((s) => s.id === selectedReaderSection)?.headline ?? ''}
           </span>
         </div>
 

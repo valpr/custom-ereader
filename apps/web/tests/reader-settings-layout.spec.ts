@@ -10,7 +10,7 @@ test.describe('Reader Settings Astryx List Layout', () => {
   test.describe('Desktop Viewport (1280x800)', () => {
     test.beforeEach(async ({ page }) => {
       await page.setViewportSize({ width: 1280, height: 800 });
-      await page.goto('/settings');
+      await page.goto('/settings/reader');
       await expect(page.locator('text=Reader Profiles').first()).toBeVisible({ timeout: 10000 });
     });
 
@@ -87,7 +87,7 @@ test.describe('Reader Settings Astryx List Layout', () => {
   test.describe('Mobile Viewport (375x667)', () => {
     test.beforeEach(async ({ page }) => {
       await page.setViewportSize({ width: 375, height: 667 });
-      await page.goto('/settings');
+      await page.goto('/settings/reader');
       await page.waitForLoadState('networkidle');
       await expect(page.locator('text=Reader Profiles').first()).toBeVisible({ timeout: 10000 });
     });

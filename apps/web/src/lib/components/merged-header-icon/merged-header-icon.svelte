@@ -23,7 +23,12 @@
 
   const dispatch = createEventDispatcher<{ action: string }>();
 
-  $: actionItems = items.filter((item) => item.routeId !== $page.route.id);
+  $: actionItems = items.filter((item) => {
+    if (item.routeId === $page.route.id) return false;
+    // Settings now lives under /settings/[tab]/[[section]]; hide its entry on all of them.
+    if (item === mergeEntries.SETTINGS && $page.route.id?.startsWith('/settings')) return false;
+    return true;
+  });
 
   let menuElm: Popover;
 

@@ -1,0 +1,51 @@
+/**
+ * @license BSD-3-Clause
+ * Copyright (c) 2026, ッツ Reader Authors
+ * All rights reserved.
+ */
+
+import { pagePath } from '$lib/data/env';
+
+export const SETTINGS_TABS = ['Reader', 'Data', 'Statistics'] as const;
+
+export type SettingsTab = (typeof SETTINGS_TABS)[number];
+
+export const READER_SECTIONS = [
+  'all',
+  'appearance',
+  'layout',
+  'typography',
+  'margins',
+  'rendering',
+  'navigation',
+  'progress'
+] as const;
+
+export type ReaderSection = (typeof READER_SECTIONS)[number];
+
+export const DEFAULT_READER_SECTION: ReaderSection = 'appearance';
+
+export function settingsTabFromSlug(slug: string | undefined): SettingsTab | undefined {
+  const normalized = slug?.toLowerCase();
+  return SETTINGS_TABS.find((tab) => tab.toLowerCase() === normalized);
+}
+
+export function settingsTabToSlug(tab: string): string {
+  return tab.toLowerCase();
+}
+
+export function isReaderSection(value: string | undefined | null): value is ReaderSection {
+  if (!value) return false;
+  return (READER_SECTIONS as readonly string[]).includes(value.toLowerCase());
+}
+
+/**
+ * Builds the canonical URL for a settings tab, optionally with a Reader section.
+ * The `all` Reader section maps to the bare `/settings/reader` URL.
+ */
+export function settingsUrl(tab: string, section?: string | null): string {
+  const slug = settingsTabToSlug(tab);
+  const normalizedSection = section?.toLowerCase();
+  const suffix = normalizedSection && normalizedSection !== 'all' ? `/${normalizedSection}` : '';
+  return `${pagePath}/settings/${slug}${suffix}`;
+}

@@ -1,5 +1,7 @@
 <script lang="ts">
+  import { goto } from '$app/navigation';
   import MergedHeaderIcon from '$lib/components/merged-header-icon/merged-header-icon.svelte';
+  import { settingsUrl } from '$lib/components/settings/settings-tabs';
   import { TopBar, Tabs } from '@custom-ereader/ui';
 
   export let leavePageLink: string;
@@ -29,8 +31,8 @@
   <div class="flex items-center justify-center w-full max-w-xs sm:max-w-sm">
     <Tabs
       items={settingItems}
-      bind:activeId={activeSettings}
-      on:change={(e) => (activeSettings = e.detail.id)}
+      activeId={activeSettings}
+      on:change={(e) => goto(settingsUrl(e.detail.id))}
       variant="pill"
       size="sm"
     />

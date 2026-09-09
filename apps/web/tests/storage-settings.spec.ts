@@ -8,7 +8,7 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Cloud Storage Settings & Single Source Selection', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/settings');
+    await page.goto('/settings/data');
     // Switch to Data tab and ensure it is selected
     const dataTab = page.getByRole('tab', { name: 'Data' });
     await expect(async () => {
