@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { browser } from '$app/environment';
   import { page } from '$app/stores';
   import DomainHint from '$lib/components/domain-hint.svelte';
@@ -21,6 +22,14 @@
     addUserFonts($userFonts$);
     applyAppTheme($appThemeMode$);
   }
+
+  onMount(() => {
+    const systemDarkMode = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleSystemThemeChange = () => applyAppTheme($appThemeMode$);
+
+    systemDarkMode.addEventListener('change', handleSystemThemeChange);
+    return () => systemDarkMode.removeEventListener('change', handleSystemThemeChange);
+  });
 
   if (clearConsoleOnReload && import.meta.hot) {
     // eslint-disable-next-line no-console

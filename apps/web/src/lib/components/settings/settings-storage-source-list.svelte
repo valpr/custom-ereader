@@ -760,7 +760,7 @@
                 >
                   <div class="text-xs text-zinc-500 dark:text-zinc-400">
                     {#if activeConnectionState === StorageConnectionState.NEEDS_RECONNECT}
-                      <span class="text-amber-500 font-medium"
+                      <span class="text-amber-500 dark:text-amber-400 font-medium"
                         >Session has expired. Please reconnect to resume syncing.</span
                       >
                     {/if}
