@@ -2,6 +2,7 @@
 const plugin = require('tailwindcss/plugin');
 
 const config = {
+  darkMode: 'class',
   content: ['./src/**/*.{html,js,svelte,ts}', '../../packages/ui/src/**/*.{svelte,ts}'],
   theme: {
     extend: {

@@ -30,11 +30,17 @@
         document.documentElement.setAttribute('data-astryx-theme', 'neutral');
         if (mode === 'light' || mode === 'dark') {
           document.documentElement.setAttribute('data-theme', mode);
+          document.documentElement.classList.toggle('dark', mode === 'dark');
         } else {
           document.documentElement.removeAttribute('data-theme');
+          document.documentElement.classList.toggle(
+            'dark',
+            window.matchMedia('(prefers-color-scheme: dark)').matches
+          );
         }
       } catch (e) {
         document.documentElement.setAttribute('data-astryx-theme', 'neutral');
+        document.documentElement.classList.remove('dark');
       }
     </script>
     <title>Valpr Reader</title>

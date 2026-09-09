@@ -9,12 +9,17 @@ export function applyAppTheme(appThemeMode: string) {
     appThemeMode === 'stone' ? 'light' : appThemeMode === 'gothic' ? 'dark' : appThemeMode;
   const root = document.documentElement;
 
+  root.setAttribute('data-astryx-theme', 'neutral');
+
   if (mode === 'dark' || mode === 'light') {
-    root.setAttribute('data-astryx-theme', 'neutral');
     root.setAttribute('data-theme', mode);
+    root.classList.toggle('dark', mode === 'dark');
     return;
   }
 
-  root.setAttribute('data-astryx-theme', 'neutral');
   root.removeAttribute('data-theme');
+  root.classList.toggle(
+    'dark',
+    window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false
+  );
 }
