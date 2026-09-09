@@ -9,20 +9,14 @@
   import { pagePath } from '$lib/data/env';
   import { SortDirection } from '$lib/data/sort-types';
   import { FilesystemStorageHandler } from '$lib/data/storage/handler/filesystem-handler';
-  import { getStorageHandler } from '$lib/data/storage/storage-handler-factory';
   import { StorageKey } from '$lib/data/storage/storage-types';
+  import { isStorageSourceAvailable } from '$lib/data/storage/storage-view';
   import {
-    isStorageSourceAvailable,
-    storageIcon$,
-    storageSource$
-  } from '$lib/data/storage/storage-view';
-  import {
-    booklistSortOptions$,
-    cacheStorageData$,
     fileCountData$,
-    fsStorageSource$,
     gDriveStorageSource$,
     isOnline$,
+    librarySortOption$,
+    librarySourceFilter$,
     oneDriveStorageSource$
   } from '$lib/data/store';
   import { inputAllowDirectory } from '$lib/functions/file-dom/input-allow-directory';
@@ -38,7 +32,6 @@
     faCloudArrowUp,
     faSortDown,
     faSortUp,
-    faSpinner,
     faTimes,
     faTrash,
     faTriangleExclamation
@@ -73,83 +66,45 @@
   }>();
 
   let importMenuItems = [mergeEntries.FILE_IMPORT];
-  let storageSourceMenuItems = [
-    { label: 'Browser', key: StorageKey.BROWSER, requiresConnectivity: false }
+  const sourceFilters = [
+    { label: 'Browser', key: StorageKey.BROWSER, requiresConnectivity: false },
+    { label: 'GDrive', key: StorageKey.GDRIVE, requiresConnectivity: true },
+    { label: 'OneDrive', key: StorageKey.ONEDRIVE, requiresConnectivity: true }
   ];
-  let isCheckingSources = false;
-  let gDriveVerifiedHasData = false;
-  let oneDriveVerifiedHasData = false;
 
   let fileImportElm: HTMLElement;
   let folderImportElm: HTMLElement;
   let backupImportElm: HTMLElement;
   let countImportElm: HTMLInputElement;
   let importMenuElm: Popover;
-  let storageSourceElm: Popover;
   let sortOptionsElm: Popover;
   let isOldUrl = false;
   let showLoadCount = false;
 
-  function updateStorageSourceMenuItems() {
-    if (!browser) return;
-    const items = [{ label: 'Browser', key: StorageKey.BROWSER, requiresConnectivity: false }];
-
-    if (gDriveVerifiedHasData || $storageSource$ === StorageKey.GDRIVE) {
-      items.push({
-        label: 'GDrive',
-        key: StorageKey.GDRIVE,
-        requiresConnectivity: true
-      });
-    }
-
-    if (oneDriveVerifiedHasData || $storageSource$ === StorageKey.ONEDRIVE) {
-      items.push({
-        label: 'OneDrive',
-        key: StorageKey.ONEDRIVE,
-        requiresConnectivity: true
-      });
-    }
-
-    if (isStorageSourceAvailable(StorageKey.FS, $fsStorageSource$, window)) {
-      items.push({
-        label: 'Filesystem',
-        key: StorageKey.FS,
-        requiresConnectivity: false
-      });
-    }
-
-    storageSourceMenuItems = items;
+  function isFilterActive(key: StorageKey): boolean {
+    return $librarySourceFilter$.has(key);
   }
 
-  async function checkCloudSources() {
-    if (!browser || isCheckingSources) return;
+  function isAllActive(): boolean {
+    return $librarySourceFilter$.size === 0;
+  }
 
-    isCheckingSources = true;
-    try {
-      const gDriveHandler = getStorageHandler(window, StorageKey.GDRIVE, $gDriveStorageSource$);
-      const oneDriveHandler = getStorageHandler(
-        window,
-        StorageKey.ONEDRIVE,
-        $oneDriveStorageSource$
-      );
-
-      const [gDriveResult, oneDriveResult] = await Promise.all([
-        isStorageSourceAvailable(StorageKey.GDRIVE, $gDriveStorageSource$, window)
-          ? gDriveHandler.checkHasData()
-          : Promise.resolve({ connected: false, hasData: false }),
-        isStorageSourceAvailable(StorageKey.ONEDRIVE, $oneDriveStorageSource$, window)
-          ? oneDriveHandler.checkHasData()
-          : Promise.resolve({ connected: false, hasData: false })
-      ]);
-
-      gDriveVerifiedHasData = gDriveResult.connected && gDriveResult.hasData;
-      oneDriveVerifiedHasData = oneDriveResult.connected && oneDriveResult.hasData;
-      updateStorageSourceMenuItems();
-    } catch {
-      // Ignore background check errors
-    } finally {
-      isCheckingSources = false;
+  function toggleSourceFilter(key: StorageKey) {
+    const next = new Set($librarySourceFilter$);
+    if (next.has(key)) {
+      next.delete(key);
+    } else {
+      next.add(key);
     }
+    librarySourceFilter$.next(next);
+  }
+
+  function clearSourceFilter() {
+    librarySourceFilter$.next(new Set());
+  }
+
+  function isSourceDisabled(requiresConnectivity: boolean): boolean {
+    return requiresConnectivity && !$isOnline$;
   }
 
   $: if (browser) {
@@ -162,12 +117,15 @@
         ? [mergeEntries.BACKUP_IMPORT]
         : [mergeEntries.FOLDER_IMPORT, mergeEntries.BACKUP_IMPORT])
     ];
-
-    updateStorageSourceMenuItems();
   }
 
+  $: gDriveAvailable =
+    browser && isStorageSourceAvailable(StorageKey.GDRIVE, $gDriveStorageSource$, window);
+  $: oneDriveAvailable =
+    browser && isStorageSourceAvailable(StorageKey.ONEDRIVE, $oneDriveStorageSource$, window);
+
   $: sortMenuItems = [
-    ...($storageSource$ === StorageKey.BROWSER ? [{ property: 'id', label: 'Added (id)' }] : []),
+    { property: 'id', label: 'Added (id)' },
     { property: 'title', label: 'Title' },
     { property: 'characters', label: 'Characters' },
     { property: 'lastBookModified', label: 'Last Update' },
@@ -210,20 +168,15 @@
   }
 
   function changeSortOptions(clickedProperty: string, newDirection: SortDirection) {
-    const { property, direction } = $booklistSortOptions$[$storageSource$];
+    const { property, direction } = $librarySortOption$;
 
     if (property !== clickedProperty || direction !== newDirection) {
-      booklistSortOptions$.next({
-        ...$booklistSortOptions$,
-        ...{
-          [$storageSource$]: {
-            property: clickedProperty as Exclude<
-              keyof BookCardProps,
-              'imagePath' | 'isPlaceholder'
-            >,
-            direction: newDirection
-          }
-        }
+      librarySortOption$.next({
+        property: clickedProperty as Exclude<
+          keyof BookCardProps,
+          'imagePath' | 'isPlaceholder' | 'sources'
+        >,
+        direction: newDirection
       });
     }
 
@@ -409,72 +362,50 @@
           </div>
         </Popover>
 
-        <Popover
-          placement="bottom"
-          fallbackPlacements={['bottom-end', 'bottom-start']}
-          yOffset={4}
-          bind:this={storageSourceElm}
-          on:open={checkCloudSources}
+        <div
+          class="flex items-center gap-1"
+          role="group"
+          aria-label="Filter library by source"
+          title="Filter library by source"
         >
-          <div
-            slot="icon"
-            role="button"
-            tabindex="0"
-            class="flex h-9 w-9 cursor-pointer items-center justify-center rounded-[var(--astryx-radius-md,6px)] text-[var(--astryx-color-fg-muted)] transition-colors hover:bg-[var(--astryx-color-surface-hover)] hover:text-[var(--astryx-color-fg-primary)]"
-            title="Select Storage Source"
-            aria-label="Select Storage Source"
+          <button
+            type="button"
+            class="rounded-[var(--astryx-radius-md,6px)] px-2.5 h-9 text-xs font-semibold transition-colors hover:bg-[var(--astryx-color-surface-hover)]"
+            class:bg-[var(--astryx-color-primary-subtle,rgba(99,102,241,0.15))]={isAllActive()}
+            class:text-[var(--astryx-color-primary,#6366f1)]={isAllActive()}
+            class:text-[var(--astryx-color-fg-muted)]={!isAllActive()}
+            on:click={clearSourceFilter}
           >
-            {#key $storageIcon$}
-              <svg
-                class="h-5 w-5 fill-current"
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox={$storageIcon$.viewBox}
-              >
-                <path class="fill-current" d={$storageIcon$.d} />
-              </svg>
-            {/key}
-          </div>
-          <div
-            class="min-w-[7.5rem] rounded-lg border border-[var(--astryx-color-border-subtle)] bg-[var(--astryx-color-surface)] py-1 shadow-lg"
-            slot="content"
-          >
-            {#each storageSourceMenuItems as sourceMenuItem (sourceMenuItem.key)}
-              <div
-                tabindex="0"
-                role="button"
-                class="cursor-pointer px-4 py-2 text-left text-sm text-[var(--astryx-color-fg-primary)] transition-colors hover:bg-[var(--astryx-color-surface-hover)]"
-                class:cursor-not-allowed={sourceMenuItem.requiresConnectivity && !$isOnline$}
-                class:opacity-50={sourceMenuItem.requiresConnectivity && !$isOnline$}
-                on:click={async () => {
-                  if (sourceMenuItem.requiresConnectivity && !$isOnline$) {
-                    return;
-                  }
-
-                  if (sourceMenuItem.key !== $storageSource$) {
-                    if (!$cacheStorageData$) {
-                      getStorageHandler(window, sourceMenuItem.key).clearData();
-                    }
-
-                    storageSource$.next(sourceMenuItem.key);
-                  }
-
-                  storageSourceElm.toggleOpen();
-                }}
-                on:keyup={dummyFn}
-              >
-                {sourceMenuItem.label}
-              </div>
-            {/each}
-            {#if isCheckingSources}
-              <div
-                class="flex items-center gap-2 px-4 py-1.5 text-xs text-[var(--astryx-color-fg-muted)] border-t border-[var(--astryx-color-border-subtle)] mt-1"
-              >
-                <Fa icon={faSpinner} spin class="text-xs" />
-                <span>Checking...</span>
-              </div>
-            {/if}
-          </div>
-        </Popover>
+            All
+          </button>
+          {#each sourceFilters as sourceFilter (sourceFilter.key)}
+            {@const disabled = isSourceDisabled(sourceFilter.requiresConnectivity)}
+            {@const active = isFilterActive(sourceFilter.key)}
+            {@const unavailable =
+              (sourceFilter.key === StorageKey.GDRIVE && !gDriveAvailable) ||
+              (sourceFilter.key === StorageKey.ONEDRIVE && !oneDriveAvailable)}
+            <button
+              type="button"
+              {disabled}
+              title={disabled
+                ? `${sourceFilter.label} needs internet`
+                : unavailable
+                  ? `${sourceFilter.label} not connected`
+                  : `Filter by ${sourceFilter.label}`}
+              aria-pressed={active}
+              class="rounded-[var(--astryx-radius-md,6px)] px-2.5 h-9 text-xs font-semibold transition-colors hover:bg-[var(--astryx-color-surface-hover)] disabled:cursor-not-allowed disabled:opacity-50"
+              class:bg-[var(--astryx-color-primary-subtle,rgba(99,102,241,0.15))]={active}
+              class:text-[var(--astryx-color-primary,#6366f1)]={active}
+              class:text-[var(--astryx-color-fg-muted)]={!active}
+              class:opacity-60={!active && unavailable}
+              on:click={() => {
+                if (!disabled) toggleSourceFilter(sourceFilter.key);
+              }}
+            >
+              {sourceFilter.label}
+            </button>
+          {/each}
+        </div>
 
         <Popover
           placement="bottom"
@@ -487,7 +418,7 @@
             class="flex h-9 w-9 cursor-pointer items-center justify-center rounded-[var(--astryx-radius-md,6px)] text-[var(--astryx-color-fg-muted)] transition-colors hover:bg-[var(--astryx-color-surface-hover)] hover:text-[var(--astryx-color-fg-primary)]"
             title="Select Sort Options"
           >
-            {#if $booklistSortOptions$[$storageSource$].direction === SortDirection.ASC}
+            {#if $librarySortOption$.direction === SortDirection.ASC}
               <Fa icon={faArrowDownShortWide} class="text-base" />
             {:else}
               <Fa icon={faArrowDownWideShort} class="text-base" />
@@ -498,11 +429,9 @@
             slot="content"
           >
             {#each sortMenuItems as sortMenuItem (sortMenuItem.property)}
-              {@const isCurrentSort =
-                $booklistSortOptions$[$storageSource$].property === sortMenuItem.property}
+              {@const isCurrentSort = $librarySortOption$.property === sortMenuItem.property}
               {@const isCurrentSortAsc =
-                isCurrentSort &&
-                $booklistSortOptions$[$storageSource$].direction === SortDirection.ASC}
+                isCurrentSort && $librarySortOption$.direction === SortDirection.ASC}
               <div
                 class="grid grid-cols-[auto_1fr_auto] items-center text-sm transition-colors hover:bg-[var(--astryx-color-surface-hover)]"
                 class:bg-[var(--astryx-color-surface-active)]={isCurrentSort}
@@ -591,7 +520,7 @@
           </IconButton>
         </Tooltip>
 
-        {#if $storageSource$ === StorageKey.BROWSER}
+        {#if isAllActive() || isFilterActive(StorageKey.BROWSER)}
           <Tooltip text="Go to Statistics">
             <IconButton
               nativeTooltip={false}

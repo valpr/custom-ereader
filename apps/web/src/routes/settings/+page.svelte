@@ -34,7 +34,7 @@
     fontSize$,
     fontWeight$,
     furiganaStyle$,
-    hideExternalReadHint$,
+    externalReadAction$,
     hideFurigana$,
     hideSpoilerImage$,
     importHTMLFixMode$,
@@ -55,7 +55,6 @@
     showPercentage$,
     showFooterChapterCharacterCounter$,
     showFooterChapterPercentage$,
-    showExternalPlaceholder$,
     startDayHoursForTracker$,
     statisticsEnabled$,
     statisticsMergeMode$,
@@ -213,7 +212,7 @@
       bind:enableTapEdgeToFlip={$enableTapEdgeToFlip$}
       bind:pageColumns={$pageColumns$}
       bind:persistentStorage={$persistentStorage$}
-      bind:hideExternalReadHint={$hideExternalReadHint$}
+      bind:externalReadAction={$externalReadAction$}
       bind:confirmClose={$confirmClose$}
       bind:manualBookmark={$manualBookmark$}
       bind:autoBookmark={$autoBookmark$}
@@ -226,7 +225,6 @@
       bind:cacheStorageData={$cacheStorageData$}
       bind:replicationSaveBehavior={$replicationSaveBehavior$}
       bind:autoReplication={$autoReplication$}
-      bind:showExternalPlaceholder={$showExternalPlaceholder$}
       bind:keepLocalStatisticsOnDeletion={$keepLocalStatisticsOnDeletion$}
       bind:overwriteBookCompletion={$overwriteBookCompletion$}
       bind:startDayHoursForTracker={$startDayHoursForTracker$}

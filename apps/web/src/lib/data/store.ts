@@ -224,6 +224,24 @@ export const hideExternalReadHint$ = writableBooleanLocalStorageSubject()(
   false
 );
 
+/** @deprecated migrated to externalReadAction$ — kept for one-time migration only */
+export type ExternalReadAction = 'ask' | 'download' | 'stream';
+
+export const externalReadAction$ = writableStringLocalStorageSubject<ExternalReadAction>()(
+  'externalReadAction',
+  'ask'
+);
+
+export const librarySourceFilter$ = writableSetLocalStorageSubject<StorageKey>()(
+  'librarySourceFilter',
+  new Set()
+);
+
+export const librarySortOption$ = writableObjectLocalStorageSubject<SortOption>()(
+  'librarySortOption',
+  { property: 'title', direction: SortDirection.DESC }
+);
+
 export const importHTMLFixMode$ = writableStringLocalStorageSubject<ImportHTMLFixMode>()(
   'importHTMLFixMode',
   ImportHTMLFixMode.OFF
@@ -588,3 +606,19 @@ export function clearPendingCloudSync(sourceName: string) {
 export const skipKeyDownListener$ = writableSubject<boolean>(false);
 
 export const userFonts$ = writableArrayLocalStorageSubject<UserFont>()('userfonts', []);
+
+// One-time migrations for unified library v1 (safe to re-run; idempotent)
+if (browser) {
+  try {
+    if (hideExternalReadHint$.getValue() && externalReadAction$.getValue() === 'ask') {
+      externalReadAction$.next('stream');
+    }
+    const seeded = librarySortOption$.getValue();
+    if (!seeded || !seeded.property) {
+      const legacy = booklistSortOptions$.getValue()?.[StorageKey.BROWSER];
+      if (legacy?.property) librarySortOption$.next(legacy);
+    }
+  } catch {
+    // Ignore migration errors (e.g. storage unavailable)
+  }
+}

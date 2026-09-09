@@ -25,15 +25,11 @@ test.describe('Book Deletion Confirmation', () => {
 
     // Confirm dialog should be visible with expected header and message
     const dialogHeader = page.locator('.astryx-dialog-surface h2');
-    await expect(dialogHeader).toHaveText('Delete Book');
+    await expect(dialogHeader).toContainText('Delete');
 
     const dialogContent = page.locator('.astryx-dialog-surface');
-    await expect(dialogContent).toContainText('Are you sure you want to delete');
+    await expect(dialogContent).toContainText('local browser copy');
     await expect(dialogContent).toContainText(SAMPLE_BOOK.title);
-    await expect(dialogContent).toContainText(
-      'This will permanently remove the book, your reading progress, and all saved bookmarks.'
-    );
-    await expect(dialogContent).toContainText('This action cannot be undone.');
 
     // Clicking Cancel should close the dialog and keep the book
     const cancelBtn = page.locator('.astryx-dialog-surface button').filter({ hasText: 'Cancel' });
@@ -56,10 +52,12 @@ test.describe('Book Deletion Confirmation', () => {
     await deleteBtn.click();
 
     // Confirm dialog should be visible
-    await expect(page.locator('.astryx-dialog-surface h2')).toHaveText('Delete Book');
+    await expect(page.locator('.astryx-dialog-surface h2')).toContainText('Delete');
 
-    // Click Confirm to delete
-    const confirmBtn = page.locator('.astryx-dialog-surface button').filter({ hasText: 'Confirm' });
+    // Click Delete local copy to delete
+    const confirmBtn = page
+      .locator('.astryx-dialog-surface button')
+      .filter({ hasText: 'Delete local copy' });
     await confirmBtn.click();
 
     // Dialog closes and book is removed
@@ -90,14 +88,14 @@ test.describe('Book Deletion Confirmation', () => {
     await deleteSelectedBtn.click();
 
     // Dialog appears with header and message
-    await expect(page.locator('.astryx-dialog-surface h2')).toHaveText('Delete Book');
-    await expect(page.locator('.astryx-dialog-surface')).toContainText(
-      'Are you sure you want to delete'
-    );
+    await expect(page.locator('.astryx-dialog-surface h2')).toContainText('Delete');
+    await expect(page.locator('.astryx-dialog-surface')).toContainText('local browser copy');
     await expect(page.locator('.astryx-dialog-surface')).toContainText(SAMPLE_BOOK.title);
 
     // Confirm deletion
-    const confirmBtn = page.locator('.astryx-dialog-surface button').filter({ hasText: 'Confirm' });
+    const confirmBtn = page
+      .locator('.astryx-dialog-surface button')
+      .filter({ hasText: 'Delete local copy' });
     await confirmBtn.click();
 
     // Book is deleted

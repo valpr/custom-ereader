@@ -7,6 +7,7 @@
   import BookExportDialog from '$lib/components/book-export/book-export-dialog.svelte';
   import CloudReconnectBanner from '$lib/components/cloud/cloud-reconnect-banner.svelte';
   import ConfirmDialog from '$lib/components/confirm-dialog.svelte';
+  import DeleteBooksDialog from '$lib/components/delete-books-dialog.svelte';
   import ExternalReadDialog from '$lib/components/external-read-dialog.svelte';
   import LogReportDialog from '$lib/components/log-report-dialog.svelte';
   import { mergeEntries } from '$lib/components/merged-header-icon/merged-entries';
@@ -25,19 +26,23 @@
     storageConnectionStates$,
     StorageConnectionState
   } from '$lib/data/storage/storage-oauth-manager';
-  import { StorageKey } from '$lib/data/storage/storage-types';
+  import { StorageDataType, StorageKey } from '$lib/data/storage/storage-types';
+  import { fetchUnifiedBookLists, mergeBookLists } from '$lib/data/storage/unified-library';
   import { storageSource$ } from '$lib/data/storage/storage-view';
   import {
-    booklistSortOptions$,
     cacheStorageData$,
     confirmStatisticsDeletion$,
     database,
+    externalReadAction$,
     fileCountData$,
-    hideExternalReadHint$,
+    gDriveStorageSource$,
     isOnline$,
     keepLocalStatisticsOnDeletion$,
     lastExportedTarget$,
     lastExportedTypes$,
+    librarySortOption$,
+    librarySourceFilter$,
+    oneDriveStorageSource$,
     pendingCloudSync$,
     readingGoalsMergeMode$,
     replicationSaveBehavior$,
@@ -62,41 +67,81 @@
   import { pluralize } from '$lib/functions/utils';
   import { reduceToEmptyString } from '$lib/functions/rxjs/reduce-to-empty-string';
   import pLimit from 'p-limit';
-  import { combineLatest, map, Observable, share, Subject, switchMap, takeUntil } from 'rxjs';
+  import { browser } from '$app/environment';
+  import {
+    combineLatest,
+    from,
+    map,
+    Observable,
+    share,
+    startWith,
+    Subject,
+    switchMap,
+    takeUntil
+  } from 'rxjs';
   import { onDestroy, tick } from 'svelte';
   import Fa from 'svelte-fa';
 
   const booksAreLoading$ = database.listLoading$.pipe(map((isLoading) => isLoading));
 
-  const bookCards$: Observable<BookCardProps[]> = combineLatest([
+  function resolveReadSource(card: BookCardProps | undefined): StorageKey {
+    if (!card?.sources?.length) return $storageSource$;
+    if (card.sources.includes(StorageKey.BROWSER)) return StorageKey.BROWSER;
+    if (card.sources.includes(StorageKey.GDRIVE)) return StorageKey.GDRIVE;
+    if (card.sources.includes(StorageKey.ONEDRIVE)) return StorageKey.ONEDRIVE;
+    return card.sources[0];
+  }
+
+  const unifiedLists$ = combineLatest([
+    database.dataListChanged$.pipe(startWith(undefined)),
     database.dataList$,
-    database.bookmarks$,
-    booklistSortOptions$
+    gDriveStorageSource$,
+    oneDriveStorageSource$
   ]).pipe(
-    map(([dataList, bookmarks]) => {
-      const sortProp = $booklistSortOptions$[$storageSource$];
+    switchMap(([, , gDriveSource, oneDriveSource]) => {
+      if (!browser || typeof window === 'undefined') return from([[]]);
+      return from(
+        fetchUnifiedBookLists(window, {
+          gDriveSourceName: gDriveSource,
+          oneDriveSourceName: oneDriveSource,
+          includeClouds: true
+        }).catch(() => [])
+      );
+    }),
+    share()
+  );
+
+  const bookCards$: Observable<BookCardProps[]> = combineLatest([
+    unifiedLists$,
+    database.bookmarks$,
+    librarySortOption$,
+    librarySourceFilter$
+  ]).pipe(
+    map(([lists, bookmarks, sortProp]) => {
       const isTitleSort = sortProp.property === 'title';
+      const merged = mergeBookLists(
+        (lists as { source: StorageKey; cards: BookCardProps[] }[]) || []
+      );
+      const filter = librarySourceFilter$.getValue();
+      const filtered =
+        !filter || filter.size === 0
+          ? merged
+          : merged.filter((card) => (card.sources || []).some((s) => filter.has(s)));
 
-      if ($storageSource$ === StorageKey.BROWSER) {
-        const bookmarkMap = keyBy(bookmarks, 'dataId');
-
-        return [
-          ...dataList
-            .filter((d) => $showExternalPlaceholder$ || !d.isPlaceholder)
-            .map((d) => ({
-              ...d,
-              ...bookmarkToProgress(bookmarkMap.get(d.id))
-            }))
-            .sort((card1: BookCardProps, card2: BookCardProps) =>
-              sortBookCards(card1, card2, sortProp, isTitleSort)
-            )
-        ];
-      }
+      const bookmarkMap = keyBy(bookmarks, 'dataId');
 
       return [
-        ...dataList.sort((card1: BookCardProps, card2: BookCardProps) =>
-          sortBookCards(card1, card2, sortProp, isTitleSort)
-        )
+        ...filtered
+          .filter((d) => $showExternalPlaceholder$ || !d.isPlaceholder)
+          .map((d) => ({
+            ...d,
+            ...((d.sources || []).includes(StorageKey.BROWSER)
+              ? bookmarkToProgress(bookmarkMap.get(d.id))
+              : { progress: d.progress || 0 })
+          }))
+          .sort((card1: BookCardProps, card2: BookCardProps) =>
+            sortBookCards(card1, card2, sortProp, isTitleSort)
+          )
       ];
     }),
     share()
@@ -186,6 +231,53 @@
     return sortDiff;
   }
 
+  function sourceLabelFor(source: StorageKey): string {
+    if (source === StorageKey.GDRIVE) return 'GDrive';
+    if (source === StorageKey.ONEDRIVE) return 'OneDrive';
+    if (source === StorageKey.FS) return 'Filesystem';
+    return 'Browser';
+  }
+
+  async function downloadCloudBookToBrowser(
+    sourceHandler: ApiStorageHandler,
+    title: string,
+    imagePath: BookCardProps['imagePath']
+  ): Promise<number> {
+    const browserHandler = getStorageHandler(
+      window,
+      StorageKey.BROWSER,
+      '',
+      true,
+      $cacheStorageData$,
+      $replicationSaveBehavior$,
+      $statisticsMergeMode$,
+      $readingGoalsMergeMode$
+    );
+
+    const error = await replicateData(
+      sourceHandler,
+      browserHandler,
+      false,
+      [{ title, imagePath }],
+      [StorageDataType.DATA, StorageDataType.PROGRESS, StorageDataType.USER_BOOKMARKS],
+      cancelSignal
+    ).catch((err) => err.message);
+
+    if (error) {
+      throw new Error(error);
+    }
+
+    database.dataListChanged$.next(browserHandler);
+
+    const local = await database.getDataByTitle(title);
+
+    if (!local?.id) {
+      throw new Error('Download finished but no local copy was found');
+    }
+
+    return local.id;
+  }
+
   async function onBookClick(bookId: number) {
     if (!operationAllowed()) {
       return;
@@ -208,11 +300,22 @@
           throw new Error('Book title not found');
         }
 
-        const isForBrowser = $storageSource$ === StorageKey.BROWSER;
+        const readSource = resolveReadSource(bookItem);
+
+        if (!operationAllowed(readSource)) {
+          dialogManager.dialogs$.next([]);
+          return;
+        }
+
+        const isForBrowser = readSource === StorageKey.BROWSER;
         const handler = getStorageHandler(
           window,
-          $storageSource$,
-          '',
+          readSource,
+          readSource === StorageKey.GDRIVE
+            ? $gDriveStorageSource$
+            : readSource === StorageKey.ONEDRIVE
+              ? $oneDriveStorageSource$
+              : '',
           isForBrowser,
           $cacheStorageData$,
           $replicationSaveBehavior$,
@@ -232,30 +335,43 @@
 
         idToOpen = await handler.prepareBookForReading();
 
-        if (!$hideExternalReadHint$ && handler instanceof ApiStorageHandler) {
-          const nextAction = await new Promise<string>((resolver) => {
-            dialogManager.dialogs$.next([
-              {
-                component: ExternalReadDialog,
-                props: { resolver },
-                disableCloseOnClick: true
-              }
-            ]);
-          });
+        if (handler instanceof ApiStorageHandler) {
+          const remembered = externalReadAction$.getValue();
+          const hasLocalCopy = (bookItem.sources || []).includes(StorageKey.BROWSER);
 
-          if (nextAction === 'cancel') {
-            return;
-          }
-
-          if (nextAction === 'export') {
-            selectedBookIds = cloneMutateSet(selectedBookIds, (set) => {
-              set.add(bookId);
+          if (remembered === 'download') {
+            idToOpen = await downloadCloudBookToBrowser(
+              handler,
+              bookItem.title,
+              bookItem.imagePath
+            );
+          } else if (remembered !== 'stream') {
+            const nextAction = await new Promise<'download' | 'continue' | 'cancel'>((resolver) => {
+              dialogManager.dialogs$.next([
+                {
+                  component: ExternalReadDialog,
+                  props: {
+                    resolver,
+                    bookTitle: bookItem.title,
+                    sourceLabel: sourceLabelFor(readSource),
+                    hasLocalCopy
+                  },
+                  disableCloseOnClick: true
+                }
+              ]);
             });
-            selectMode = true;
 
-            await tick();
+            if (nextAction === 'cancel') {
+              return;
+            }
 
-            return onReplicateData();
+            if (nextAction === 'download') {
+              idToOpen = await downloadCloudBookToBrowser(
+                handler,
+                bookItem.title,
+                bookItem.imagePath
+              );
+            }
           }
         }
 
@@ -291,9 +407,10 @@
     });
   }
 
-  function operationAllowed() {
+  function operationAllowed(source?: StorageKey) {
+    const effective = source ?? $storageSource$;
     const connectivityPass = !(
-      ($storageSource$ === StorageKey.GDRIVE || $storageSource$ === StorageKey.ONEDRIVE) &&
+      (effective === StorageKey.GDRIVE || effective === StorageKey.ONEDRIVE) &&
       !$isOnline$
     );
 
@@ -353,9 +470,9 @@
       document,
       getStorageHandler(
         window,
-        $storageSource$,
+        StorageKey.BROWSER,
         '',
-        $storageSource$ === StorageKey.BROWSER,
+        true,
         $cacheStorageData$,
         $replicationSaveBehavior$,
         $statisticsMergeMode$,
@@ -429,25 +546,40 @@
       return;
     }
 
-    const titlesToDelete = $bookCards$
-      .filter((card) => bookIds.includes(card.id))
-      .map((card) => card.title);
+    const cardsToDelete = $bookCards$.filter((card) => bookIds.includes(card.id));
+    const titlesToDelete = cardsToDelete.map((card) => card.title);
 
     if (!titlesToDelete.length) {
       return;
     }
 
-    const wasCanceled = await new Promise<boolean>((resolver) => {
+    const hasSources = cardsToDelete.some((card) => (card.sources || []).length > 0);
+    const localTitles = hasSources
+      ? cardsToDelete
+          .filter((card) => (card.sources || []).includes(StorageKey.BROWSER))
+          .map((card) => card.title)
+      : [...titlesToDelete];
+    const gDriveTitles = cardsToDelete
+      .filter((card) => (card.sources || []).includes(StorageKey.GDRIVE))
+      .map((card) => card.title);
+    const oneDriveTitles = cardsToDelete
+      .filter((card) => (card.sources || []).includes(StorageKey.ONEDRIVE))
+      .map((card) => card.title);
+    const cloudParts: string[] = [];
+    if (gDriveTitles.length) cloudParts.push(`GDrive (${gDriveTitles.length})`);
+    if (oneDriveTitles.length) cloudParts.push(`OneDrive (${oneDriveTitles.length})`);
+    const cloudSummary = cloudParts.join(', ');
+
+    const { canceled, deleteFromCloud } = await new Promise<{
+      canceled: boolean;
+      deleteFromCloud: boolean;
+    }>((resolver) => {
       dialogManager.dialogs$.next([
         {
-          component: ConfirmDialog,
+          component: DeleteBooksDialog,
           props: {
-            dialogHeader: `Delete ${pluralize(titlesToDelete.length, 'Book', false)}`,
-            dialogMessage:
-              titlesToDelete.length === 1
-                ? `Are you sure you want to delete "${titlesToDelete[0]}"?\n\nThis will permanently remove the book, your reading progress, and all saved bookmarks. This action cannot be undone.`
-                : `Are you sure you want to delete the selected ${titlesToDelete.length} books?\n\nThis will permanently remove the books, reading progress, and all saved bookmarks. This action cannot be undone.`,
-            contentStyles: 'white-space: pre-line; word-break: break-word;',
+            titles: titlesToDelete,
+            cloudSummary,
             resolver
           },
           disableCloseOnClick: true
@@ -455,11 +587,31 @@
       ]);
     });
 
-    if (wasCanceled) {
+    if (canceled) {
       return;
     }
 
     if (!operationAllowed()) {
+      return;
+    }
+
+    const effectiveDeleteFromCloud = deleteFromCloud && cloudSummary.length > 0;
+
+    if (effectiveDeleteFromCloud && !operationAllowed(StorageKey.GDRIVE) && gDriveTitles.length) {
+      return;
+    }
+
+    if (localTitles.length === 0 && !effectiveDeleteFromCloud) {
+      dialogManager.dialogs$.next([
+        {
+          component: MessageDialog,
+          props: {
+            title: 'Nothing to delete',
+            message:
+              'These books have no local copy. Check “Also delete from cloud” to remove them.'
+          }
+        }
+      ]);
       return;
     }
 
@@ -468,22 +620,64 @@
     initializeReplicationProgressData();
 
     const currentBookCount = $bookCards$.length;
-    const handler = getStorageHandler(window, $storageSource$, '');
-    const { error, deleted } = await handler.deleteBookData(
-      titlesToDelete,
-      cancelSignal,
-      $keepLocalStatisticsOnDeletion$
-    );
+    const deletedTitles = new Set<string>();
+    let error = '';
+
+    if (localTitles.length) {
+      const browserHandler = getStorageHandler(window, StorageKey.BROWSER, '');
+      const result = await browserHandler.deleteBookData(
+        localTitles,
+        cancelSignal,
+        $keepLocalStatisticsOnDeletion$
+      );
+      result.deleted.forEach((deletedId) => {
+        const match = $bookCards$.find((card) => card.id === deletedId);
+        if (match) deletedTitles.add(match.title);
+      });
+      localTitles.forEach((title) => {
+        if (!result.error) deletedTitles.add(title);
+      });
+      if (result.error) error += result.error;
+    }
+
+    if (effectiveDeleteFromCloud) {
+      const clouds: { source: StorageKey; titles: string[]; sourceName: string }[] = [
+        { source: StorageKey.GDRIVE, titles: gDriveTitles, sourceName: $gDriveStorageSource$ },
+        { source: StorageKey.ONEDRIVE, titles: oneDriveTitles, sourceName: $oneDriveStorageSource$ }
+      ];
+
+      for (const cloud of clouds) {
+        if (!cloud.titles.length) continue;
+        if (!operationAllowed(cloud.source)) continue;
+        const cloudHandler = getStorageHandler(window, cloud.source, cloud.sourceName);
+        const result = await cloudHandler.deleteBookData(
+          cloud.titles,
+          cancelSignal,
+          $keepLocalStatisticsOnDeletion$
+        );
+        if (!result.error) {
+          cloud.titles.forEach((title) => deletedTitles.add(title));
+        } else {
+          error += (error ? '\n' : '') + result.error;
+        }
+      }
+    }
+
+    database.dataListChanged$.next(undefined);
 
     resetProgress();
 
     await tick();
 
-    if (deleted.length === currentBookCount) {
+    const deletedBookIds = cardsToDelete
+      .filter((card) => deletedTitles.has(card.title))
+      .map((card) => card.id);
+
+    if (deletedTitles.size >= currentBookCount || $bookCards$.length === 0) {
       selectMode = false;
     } else {
       selectedBookIds = cloneMutateSet(selectedBookIds, (set) => {
-        deleted.forEach((deletedBookId) => set.delete(deletedBookId));
+        deletedBookIds.forEach((deletedBookId) => set.delete(deletedBookId));
       });
     }
 
@@ -515,7 +709,7 @@
         window,
         StorageKey.BACKUP,
         undefined,
-        $storageSource$ === StorageKey.BROWSER,
+        true,
         $cacheStorageData$,
         $replicationSaveBehavior$,
         $statisticsMergeMode$,
@@ -523,9 +717,9 @@
       ),
       getStorageHandler(
         window,
-        $storageSource$,
+        StorageKey.BROWSER,
         '',
-        $storageSource$ === StorageKey.BROWSER,
+        true,
         $cacheStorageData$,
         $replicationSaveBehavior$,
         $statisticsMergeMode$,
@@ -694,11 +888,17 @@
 
       initializeReplicationProgressData();
 
-      const handlers = [$storageSource$, $lastExportedTarget$].map((storageType) =>
+      const books = $bookCards$.filter((card) => selectedBookIds.has(card.id));
+      const exportSource = books.length > 0 ? resolveReadSource(books[0]) : $storageSource$;
+      const handlers = [exportSource, $lastExportedTarget$].map((storageType) =>
         getStorageHandler(
           window,
           storageType,
-          '',
+          storageType === StorageKey.GDRIVE
+            ? $gDriveStorageSource$
+            : storageType === StorageKey.ONEDRIVE
+              ? $oneDriveStorageSource$
+              : '',
           $lastExportedTarget$ === StorageKey.BROWSER,
           $cacheStorageData$,
           $replicationSaveBehavior$,
@@ -706,7 +906,6 @@
           $readingGoalsMergeMode$
         )
       );
-      const books = $bookCards$.filter((card) => selectedBookIds.has(card.id));
       const error = await replicateData(
         handlers[0],
         handlers[1],
