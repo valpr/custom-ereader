@@ -531,7 +531,7 @@
     }
   ];
 
-  let selectedReaderSection = 'all';
+  let selectedReaderSection = 'appearance';
   let mobileSelectedSection: string | null = null;
   $: currentActiveSection =
     mobileSelectedSection !== null ? mobileSelectedSection : selectedReaderSection;
