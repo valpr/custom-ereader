@@ -20,7 +20,7 @@
     Tabs
   } from '@custom-ereader/ui';
 
-  let currentTheme = 'stone';
+  let currentTheme = 'neutral';
   let readingDirection = 'vertical';
   let pageMode = 'paginated';
   let fontSize = 18;
@@ -118,11 +118,7 @@
         <span class="theme-label">Active Theme:</span>
         <SegmentedControl
           size="sm"
-          options={[
-            { value: 'neutral', label: 'Neutral' },
-            { value: 'stone', label: 'Stone (Reading)' },
-            { value: 'gothic', label: 'Gothic (OLED)' }
-          ]}
+          options={[{ value: 'neutral', label: 'Neutral' }]}
           bind:value={currentTheme}
         />
       </div>

@@ -32,7 +32,7 @@ export type CardRadius = 'sm' | 'md' | 'lg';
 
 export type TooltipPosition = 'top' | 'bottom' | 'left' | 'right';
 export type DialogSize = 'sm' | 'md' | 'lg' | 'full';
-export type AstryxTheme = 'neutral' | 'stone' | 'gothic';
+export type AstryxTheme = 'neutral';
 
 export type InputSize = 'sm' | 'md' | 'lg';
 export type InputVariant = 'outline' | 'filled' | 'underline';

@@ -6,9 +6,7 @@ Astryx-inspired component library designed for [reader](https://github.com/valpr
 
 - **Astryx Design Foundations**: Clean, calm, accessible UI with semantic design tokens (colors, radii, spacing, elevations, motion).
 - **Themes for E-Reading**:
-  - `neutral`: Clean, modern monochrome theme (default)
-  - `stone`: Warm paper & sandstone tones, easy on the eyes for extended reading
-  - `gothic`: High-contrast deep noir & true black for OLED/midnight reading
+  - `neutral`: Clean, modern monochrome theme (default) with light and dark variants
 - **Svelte Native**: First-class Svelte components with scoped styling and zero bundle overhead.
 - **Tailwind Interop**: Uses Astryx CSS variables under the hood with open `class` prop passthrough for optional Tailwind utilities.
 
@@ -37,8 +35,8 @@ In your global stylesheet (e.g. `apps/web/src/app.css`):
 Set the theme on any container or `<html>`:
 
 ```html
-<div data-astryx-theme="stone">
-  <!-- Warm sandstone e-reading experience -->
+<div data-astryx-theme="neutral">
+  <!-- Clean, modern e-reading experience -->
 </div>
 ```
 
