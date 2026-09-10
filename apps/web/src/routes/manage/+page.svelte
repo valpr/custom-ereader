@@ -58,7 +58,7 @@
     statisticsMergeMode$,
     syncTarget$
   } from '$lib/data/store';
-  import { reconnectAndSyncNow } from '$lib/functions/replication/cloud-reauth';
+  import { reconnectAndSync, reconnectAndSyncNow } from '$lib/functions/replication/cloud-reauth';
   import { cloneMutateSet } from '$lib/functions/clone-mutate-set';
   import { getDropEventFiles } from '$lib/functions/file-dom/get-drop-event-files';
   import { inputFile } from '$lib/functions/file-dom/input-file';
@@ -93,9 +93,9 @@
   import Fa from 'svelte-fa';
 
   // Local-first loading: the stream emits the Browser list immediately and
-  // re-emits as each cloud list arrives, so a slow cloud never holds up the
+  // re-emits as the primary cloud list arrives, so a slow cloud never holds up the
   // page. booksAreLoading$ only covers the local load; the template keeps
-  // rendering once local books arrive and merges cloud extras in place.
+  // rendering once local books arrive and merges primary-cloud extras in place.
   // The shared database.listLoading$ is poked (true) by every handler
   // getBookList call with the matching reset (false) emitted only by
   // database.dataList$'s own pipeline, so direct reads must not drive the
@@ -115,18 +115,22 @@
     database.dataListChanged$.pipe(startWith(undefined)),
     database.dataList$,
     gDriveStorageSource$,
-    oneDriveStorageSource$
+    oneDriveStorageSource$,
+    syncTarget$
   ]).pipe(
-    switchMap(([, , gDriveSource, oneDriveSource]) => {
+    switchMap(([, , gDriveSource, oneDriveSource, primary]) => {
       if (!browser || typeof window === 'undefined') return from([[]]);
       unifiedLoading$.next(true);
       // The first stream emission is always the local Browser list; later
-      // emissions merge cloud extras in. Loading clears on that first emit.
+      // emissions merge primary-cloud extras in. Loading clears on that first emit.
+      // Only the primary sync target is listed: the secondary cloud stays
+      // untouched until the user opens one of its books or switches targets.
       let localLoaded = false;
       return fetchUnifiedBookListsStream(window, {
         gDriveSourceName: gDriveSource,
         oneDriveSourceName: oneDriveSource,
-        includeClouds: true
+        includeClouds: true,
+        primarySourceName: primary || ''
       }).pipe(
         map((lists) => {
           if (!localLoaded) {
@@ -316,7 +320,7 @@
     return local.id;
   }
 
-  async function onBookClick(bookId: number) {
+  async function onBookClick(bookId: number, retried = false) {
     if (!operationAllowed()) {
       return;
     }
@@ -331,6 +335,7 @@
 
       let idToOpen = bookId;
       let failedBookTitle: string | undefined;
+      let failedReadSource: StorageKey | undefined;
 
       try {
         const bookItem = $bookCards$.find((book) => book.id === bookId);
@@ -342,6 +347,7 @@
         failedBookTitle = bookItem.title;
 
         const readSource = resolveReadSource(bookItem);
+        failedReadSource = readSource;
 
         if (!operationAllowed(readSource)) {
           dialogManager.dialogs$.next([]);
@@ -433,6 +439,25 @@
               unavailableBookTitles.add(key);
               unavailableBooksChanged$.next();
             }
+          }
+        }
+
+        // On-demand cloud access: opening a book stored on a cloud whose
+        // session expired fails here (the global banner only watches the
+        // primary target). Offer an inline reconnect for that cloud and retry
+        // the open once on success.
+        if (
+          !retried &&
+          /session expired|needs reconnect|reconnect/i.test(error?.message || '') &&
+          (failedReadSource === StorageKey.GDRIVE || failedReadSource === StorageKey.ONEDRIVE)
+        ) {
+          const sourceName =
+            failedReadSource === StorageKey.GDRIVE
+              ? $gDriveStorageSource$
+              : $oneDriveStorageSource$;
+          if (sourceName && (await reconnectAndSync(window, sourceName))) {
+            dialogManager.dialogs$.next([]);
+            return onBookClick(bookId, true);
           }
         }
 

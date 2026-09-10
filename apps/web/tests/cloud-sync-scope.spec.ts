@@ -12,6 +12,7 @@ const PRIMARY_SOURCE = 'trusted-gdrive';
 interface SeedSource {
   name: string;
   type: 'gdrive' | 'onedrive';
+  disconnected?: boolean;
 }
 
 async function seedStorageSources(page: Page, sources: SeedSource[]) {
@@ -41,6 +42,7 @@ async function seedStorageSources(page: Page, sources: SeedSource[]) {
             storedInManager: true,
             encryptionDisabled: false,
             data: new ArrayBuffer(0),
+            disconnected: source.disconnected ?? false,
             lastSourceModified: Date.now()
           });
         }
@@ -50,12 +52,12 @@ async function seedStorageSources(page: Page, sources: SeedSource[]) {
   );
 }
 
-test.describe('Cloud sync scope (multi-cloud)', () => {
-  test('labels the primary sync target with statistics scope', async ({ page }) => {
+test.describe('Cloud sync scope (primary-only)', () => {
+  test('labels the primary sync target with automatic-sync scope', async ({ page }) => {
     await page.goto('/settings/data');
 
     await expect(page.getByText('Statistics Sync Target')).toBeVisible();
-    await expect(page.getByText(/reading progress syncs to every connected cloud/)).toBeVisible();
+    await expect(page.getByText(/automatic sync runs only for this target/i)).toBeVisible();
   });
 
   test.describe('per-source connection status', () => {
@@ -119,6 +121,43 @@ test.describe('Cloud sync scope (multi-cloud)', () => {
           .getByText('Disconnected')
           .first()
       ).toBeVisible();
+    });
+  });
+
+  test.describe('disconnected sources', () => {
+    test.beforeEach(async ({ page }) => {
+      await seedStorageSources(page, [
+        { name: 'active-gdrive', type: 'gdrive' },
+        { name: 'old-onedrive', type: 'onedrive', disconnected: true }
+      ]);
+    });
+
+    test('disconnected custom sources show a warning sign in the sync target dropdown', async ({
+      page
+    }) => {
+      await page.goto('/settings/data');
+
+      await expect(
+        page.getByRole('option', { name: 'active-gdrive (Google Drive)' })
+      ).toBeAttached();
+      // Native <option> elements cannot render icons, so disconnected sources
+      // carry a text-style warning sign (U+26A0 U+FE0E) in their label.
+      await expect(
+        page.getByRole('option', { name: '⚠︎ old-onedrive (OneDrive)' })
+      ).toBeAttached();
+    });
+
+    test('disconnected custom sources offer reconnect in Advanced', async ({ page }) => {
+      await page.goto('/settings/data');
+
+      // Wait for the storage list to hydrate before opening Advanced.
+      await expect(
+        page.getByRole('option', { name: 'active-gdrive (Google Drive)' })
+      ).toBeAttached();
+      await page.getByRole('button', { name: /Advanced: Custom Credentials/ }).click();
+      const row = page.locator('.astryx-list-item', { hasText: 'Custom OneDrive' });
+      await expect(row.getByText('Disconnected').first()).toBeVisible();
+      await expect(page.getByTestId('reconnect-old-onedrive')).toBeVisible();
     });
   });
 

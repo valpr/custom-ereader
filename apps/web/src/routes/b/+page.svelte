@@ -164,11 +164,7 @@
   } from '$lib/functions/replication/replication-options';
   import { replicateData } from '$lib/functions/replication/replicator';
   import { reconnectAndSyncNow } from '$lib/functions/replication/cloud-reauth';
-  import {
-    BOOK_SCOPED_DATA_TYPES,
-    getConnectedCloudSyncTargets,
-    type CloudSyncTarget
-  } from '$lib/functions/replication/cloud-sync';
+  import { BOOK_SCOPED_DATA_TYPES } from '$lib/functions/replication/cloud-sync';
   import {
     StorageOAuthManager,
     getExpiredSyncTargets,
@@ -1213,56 +1209,24 @@
       StorageDataType.USER_BOOKMARKS
     ];
 
-    // Merge from every connected cloud. Non-primary sources only pull
-    // book-scoped data, so aggregate data (statistics / goals / profiles)
-    // can only ever come from the primary. The book's designated handler
-    // runs last so its own book-scoped data has the final word.
-    interface DownJob {
-      handler: BaseStorageHandler;
-      full: boolean;
-      started: boolean;
-    }
-    const jobs: DownJob[] = [];
-    const queued = new Set<string>([currentName]);
-
-    let targets: CloudSyncTarget[] = [];
-    try {
-      targets = await getConnectedCloudSyncTargets();
-    } catch {
-      // target discovery failure: fall back to the designated handler below
-    }
-
-    for (const target of targets) {
-      if (target.name === currentName) continue;
-      if (queued.has(target.name)) continue;
-      const handler = await getStorageHandlerByName(target.name).catch(() => undefined);
-      if (!handler) continue;
-      queued.add(target.name);
-      jobs.push({ handler, full: target.isPrimary, started: false });
-    }
-
-    jobs.push({ handler: storageHandler, full: currentName === primaryName, started: false });
-
-    for (const job of jobs) {
-      if (!job.started) {
-        job.handler.startContext(context);
-        job.started = true;
-      }
-      const dataTypes = job.full
+    // Primary-only sync: pull from the book's designated cloud alone.
+    // Aggregate data (statistics / goals / profiles) can only ever come from
+    // the primary target, so a secondary cloud pulls book-scoped data only.
+    const dataTypes =
+      currentName === primaryName
         ? FULL_DOWN_TYPES
         : FULL_DOWN_TYPES.filter((d) => BOOK_SCOPED_DATA_TYPES.includes(d));
 
-      const error = await replicateData(
-        job.handler,
-        localStorageHandler,
-        false,
-        [context],
-        dataTypes
-      );
+    const error = await replicateData(
+      storageHandler,
+      localStorageHandler,
+      false,
+      [context],
+      dataTypes
+    );
 
-      if (error) {
-        throw new Error(error);
-      }
+    if (error) {
+      throw new Error(error);
     }
   }
 
@@ -1612,59 +1576,23 @@
     const primaryName = $syncTarget$;
     const isPrimaryHandler = currentHandlerStorageSource === primaryName;
 
-    // Primary target receives everything; every other connected cloud receives
-    // only the book-scoped types (progress, user bookmarks).
-    interface ReplicationJob {
-      handler: BaseStorageHandler;
-      types: StorageDataType[];
-      refresh: boolean;
-    }
-    const jobs: ReplicationJob[] = [
-      {
-        handler: externalStorageHandler,
-        types: isPrimaryHandler
-          ? dataToReplicate
-          : dataToReplicate.filter((d) => BOOK_SCOPED_DATA_TYPES.includes(d)),
-        refresh: refreshDataList
-      }
-    ];
-    const queued = new Set<string>([externalStorageHandler.getCurrentStorageSource() || '']);
-
-    try {
-      const targets = await getConnectedCloudSyncTargets();
-      // Release order so the primary source runs last: it is the only one that
-      // replicates statistics / goals / profiles, and its book-scoped data wins
-      // in case of conflicts with other clouds.
-      const orderedTargets = [...targets].sort((a, b) => Number(a.isPrimary) - Number(b.isPrimary));
-
-      for (const target of orderedTargets) {
-        if (queued.has(target.name)) continue;
-        const handler = await getStorageHandlerByName(target.name).catch(() => undefined);
-        if (!handler || handler === externalStorageHandler) continue;
-        queued.add(target.name);
-        const types = target.isPrimary
-          ? dataToReplicate
-          : dataToReplicate.filter((d) => BOOK_SCOPED_DATA_TYPES.includes(d));
-        if (!types.length) continue;
-        jobs.push({ handler, types, refresh: false });
-      }
-    } catch {
-      // Target discovery failures never block the designated handler sync.
-    }
+    // Primary-only sync: the designated handler receives everything when it
+    // is the primary target, otherwise only the book-scoped types (progress,
+    // user bookmarks) so aggregate data stays on the primary. Secondary
+    // clouds are never touched by background sync; they sync on demand when
+    // one of their books is opened.
+    const types = isPrimaryHandler
+      ? dataToReplicate
+      : dataToReplicate.filter((d) => BOOK_SCOPED_DATA_TYPES.includes(d));
 
     let error: string | undefined;
-    for (const job of jobs) {
-      const jobError = await replicateData(
-        localStorageHandler,
-        job.handler,
-        job.refresh,
-        [context],
-        job.types
-      ).catch((err: any) => err.message);
-      if (jobError && !error) {
-        error = jobError;
-      }
-    }
+    error = await replicateData(
+      localStorageHandler,
+      externalStorageHandler,
+      refreshDataList,
+      [context],
+      types
+    ).catch((err: any) => err.message);
 
     externalStorageHandler.updateSettings(
       window,

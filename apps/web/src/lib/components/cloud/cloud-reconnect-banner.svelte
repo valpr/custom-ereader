@@ -21,7 +21,7 @@
 <div
   role="alert"
   data-testid="cloud-reconnect-banner"
-  class="mx-auto mt-2 flex w-full max-w-3xl flex-wrap items-center justify-between gap-2 rounded-lg border border-[var(--astryx-color-border-subtle,#e4e4e7)] bg-[var(--astryx-color-warning-subtle,rgba(245,158,11,0.12))] px-3 py-2 text-sm text-[var(--astryx-color-fg-primary,#18181b)]"
+  class="relative z-20 mx-auto mt-2 flex w-full max-w-3xl flex-wrap items-center justify-between gap-2 rounded-lg border border-[var(--astryx-color-border-subtle,#e4e4e7)] bg-[var(--astryx-color-warning-subtle,rgba(245,158,11,0.12))] px-3 py-2 text-sm text-[var(--astryx-color-fg-primary,#18181b)]"
 >
   <div class="flex min-w-0 items-center gap-2">
     <span class="text-[var(--astryx-color-warning,#b45309)]">

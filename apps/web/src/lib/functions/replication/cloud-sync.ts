@@ -14,13 +14,8 @@ import {
   markLastSync,
   readingGoalsMergeMode$,
   replicationSaveBehavior$,
-  statisticsMergeMode$,
-  syncTarget$
+  statisticsMergeMode$
 } from '$lib/data/store';
-import {
-  getConnectionState,
-  StorageConnectionState
-} from '$lib/data/storage/storage-oauth-manager';
 import { AutoReplicationType } from '$lib/functions/replication/replication-options';
 import { replicateData } from '$lib/functions/replication/replicator';
 import { logger } from '$lib/data/logger';
@@ -34,9 +29,10 @@ const SYNC_DATA_TYPES = [
 ];
 
 /**
- * Book-scoped data: safe to mirror to every connected cloud. These are the
- * per-book payloads (reading position, bookmarks, audio/subtitle blobs) that
- * respect each book's preferred storage source.
+ * Book-scoped data: mirrored only to the cloud a book is opened from during
+ * on-demand secondary access. These are the per-book payloads (reading
+ * position, bookmarks, audio/subtitle blobs) that respect each book's
+ * preferred storage source.
  */
 export const BOOK_SCOPED_DATA_TYPES = [
   StorageDataType.PROGRESS,
@@ -48,68 +44,9 @@ export const BOOK_SCOPED_DATA_TYPES = [
 /**
  * Aggregate data: kept on the primary sync target (`$syncTarget$`) only.
  * Statistics and reading goals describe global reading behaviour, not a single
- * book, so fanning them out to every cloud would produce conflicting merges.
+ * book, so they are never fanned out to a secondary cloud.
  */
 export const PRIMARY_ONLY_DATA_TYPES = [StorageDataType.STATISTICS, StorageDataType.READING_GOALS];
-
-function isCloudType(type: StorageKey) {
-  return type === StorageKey.GDRIVE || type === StorageKey.ONEDRIVE;
-}
-
-function isSourceConnected(source: BooksDbStorageSource | undefined | null) {
-  if (!source) return false;
-  if (source.disconnected) return false;
-  return getConnectionState(source.name, source) === StorageConnectionState.CONNECTED;
-}
-
-export interface CloudSyncTarget {
-  name: string;
-  source: BooksDbStorageSource;
-  isPrimary: boolean;
-}
-
-/**
- * Resolve the currently connected cloud sources, primary first. App-default
- * sources (ttu-gdrive-default / ttu-onedrive-default) have no DB record, so
- * they are included only when an in-memory token marks them CONNECTED.
- */
-export async function getConnectedCloudSyncTargets(
-  storageSources: BooksDbStorageSource[] = []
-): Promise<CloudSyncTarget[]> {
-  let sources = storageSources;
-  if (!sources.length) {
-    const db = await database.db;
-    sources = await db.getAll('storageSource');
-  }
-  const primary = syncTarget$.getValue();
-  const targets: CloudSyncTarget[] = [];
-  const seen = new Set<string>();
-
-  const pushTarget = (source: BooksDbStorageSource) => {
-    if (!isCloudType(source.type)) return;
-    if (source.disconnected) return;
-    if (!isSourceConnected(source)) return;
-    if (seen.has(source.name)) return;
-    seen.add(source.name);
-    targets.push({ name: source.name, source, isPrimary: source.name === primary });
-  };
-
-  for (const s of sources) {
-    pushTarget(s);
-  }
-
-  for (const def of [StorageSourceDefault.GDRIVE_DEFAULT, StorageSourceDefault.ONEDRIVE_DEFAULT]) {
-    if (seen.has(def)) continue;
-    const resolved = resolveSource(def, sources);
-    if (resolved && isSourceConnected(resolved)) {
-      seen.add(def);
-      targets.push({ name: def, source: resolved, isPrimary: def === primary });
-    }
-  }
-
-  // Primary first (callers may re-sort for apply order).
-  return targets.sort((a, b) => Number(b.isPrimary) - Number(a.isPrimary));
-}
 
 function resolveSource(
   sourceName: string,
@@ -143,7 +80,8 @@ function resolveSource(
 /**
  * Retry a cloud sync after re-authentication. Reads current store settings
  * so banner/header callers share one implementation with Settings.
- * Returns an error message (empty string on success).
+ * Syncs a single named source only — automatic sync never fans out to two
+ * clouds at once. Returns an error message (empty string on success).
  */
 export async function triggerCloudSync(
   window: Window,
@@ -222,38 +160,4 @@ export async function triggerCloudSync(
     logger.error(`Cloud sync retry failed for ${sourceName}: ${message}`);
     return message;
   }
-}
-
-/**
- * Sync every connected cloud: aggregate data (statistics, reading goals) goes
- * to the primary target only while book-scoped data (progress, bookmarks,
- * audio, subtitles) is mirrored to all connected clouds. Aggregates errors
- * per source. Returns an error message (empty string when every target
- * succeeded).
- *
- * Targets run sequentially, non-primary first and primary last. Sequential
- * execution keeps the shared local IndexedDB handler free of interleaved
- * transactions, and primary-last gives the primary target the final word on
- * book-scoped data when clouds disagree.
- */
-export async function triggerCloudSyncAll(
-  window: Window,
-  storageSources: BooksDbStorageSource[] = []
-): Promise<string> {
-  const targets = await getConnectedCloudSyncTargets(storageSources);
-  if (!targets.length) return 'No connected cloud sources';
-
-  const errors: string[] = [];
-  const sourceList = targets.map((t) => t.source);
-  const orderedTargets = [...targets].sort((a, b) => Number(a.isPrimary) - Number(b.isPrimary));
-
-  for (const target of orderedTargets) {
-    const types = target.isPrimary ? SYNC_DATA_TYPES : BOOK_SCOPED_DATA_TYPES;
-    const error = await triggerCloudSync(window, target.name, sourceList, types);
-    if (error) {
-      errors.push(`${target.name}: ${error}`);
-    }
-  }
-
-  return errors.length ? errors.join('; ') : '';
 }
