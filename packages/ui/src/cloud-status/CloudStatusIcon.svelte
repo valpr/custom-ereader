@@ -1,6 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
   import IconButton from '../button/IconButton.svelte';
+  import Tooltip from '../tooltip/Tooltip.svelte';
 
   export let label = 'Cloud sync needs attention';
   export let state: 'warning' | 'info' = 'warning';
@@ -9,9 +10,25 @@
 </script>
 
 <span class="astryx-cloud-status" data-state={state}>
-  <IconButton {label} size="sm" variant="ghost" on:click={(e) => dispatch('click', e.detail)}>
-    <slot />
-  </IconButton>
+  <Tooltip text={label}>
+    <IconButton
+      {label}
+      nativeTooltip={false}
+      size="sm"
+      variant="ghost"
+      on:click={(e) => dispatch('click', e.detail)}
+      on:pointerdown
+      on:pointerup
+      on:mouseenter
+      on:mouseleave
+      on:focus
+      on:blur
+      on:keydown
+      on:keyup
+    >
+      <slot />
+    </IconButton>
+  </Tooltip>
   <span class="astryx-cloud-status-dot" aria-hidden="true"></span>
 </span>
 

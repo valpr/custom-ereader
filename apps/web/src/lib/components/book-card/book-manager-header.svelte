@@ -343,16 +343,17 @@
           bind:this={importMenuElm}
         >
           <div slot="icon">
-            <Button
-              variant="ghost"
-              size="md"
-              class="gap-1.5 px-2.5 text-sm font-medium text-[var(--astryx-color-fg-secondary)] hover:text-[var(--astryx-color-fg-primary)]"
-              title="Import Books or Backup"
-            >
-              <Fa icon={mergeEntries.FILE_IMPORT.icon} class="text-sm opacity-80" />
-              <span>Import</span>
-              <Fa icon={faChevronDown} class="text-xs opacity-60" />
-            </Button>
+            <Tooltip text="Import Books or Backup">
+              <Button
+                variant="ghost"
+                size="md"
+                class="gap-1.5 px-2.5 text-sm font-medium text-[var(--astryx-color-fg-secondary)] hover:text-[var(--astryx-color-fg-primary)]"
+              >
+                <Fa icon={mergeEntries.FILE_IMPORT.icon} class="text-sm opacity-80" />
+                <span>Import</span>
+                <Fa icon={faChevronDown} class="text-xs opacity-60" />
+              </Button>
+            </Tooltip>
           </div>
           <div
             class="min-w-[12rem] rounded-lg border border-[var(--astryx-color-border-subtle,#e4e4e7)] bg-[var(--astryx-color-surface,#ffffff)] py-1 shadow-lg text-sm"
@@ -381,17 +382,18 @@
           bind:this={filterElm}
         >
           <div slot="icon">
-            <Button
-              variant="ghost"
-              size="md"
-              class="gap-1.5 px-2.5 text-sm font-medium text-[var(--astryx-color-fg-secondary)] hover:text-[var(--astryx-color-fg-primary)]"
-              title="Filter library by source"
-              aria-label="Filter library by source"
-            >
-              <Fa icon={faFilter} class="text-sm opacity-80" />
-              <span>{currentFilterLabel}</span>
-              <Fa icon={faChevronDown} class="text-xs opacity-60" />
-            </Button>
+            <Tooltip text="Filter library by source">
+              <Button
+                variant="ghost"
+                size="md"
+                class="gap-1.5 px-2.5 text-sm font-medium text-[var(--astryx-color-fg-secondary)] hover:text-[var(--astryx-color-fg-primary)]"
+                aria-label="Filter library by source"
+              >
+                <Fa icon={faFilter} class="text-sm opacity-80" />
+                <span>{currentFilterLabel}</span>
+                <Fa icon={faChevronDown} class="text-xs opacity-60" />
+              </Button>
+            </Tooltip>
           </div>
           <div
             class="min-w-[12rem] rounded-lg border border-[var(--astryx-color-border-subtle,#e4e4e7)] bg-[var(--astryx-color-surface,#ffffff)] py-1 shadow-lg text-sm"
@@ -443,16 +445,18 @@
           yOffset={4}
           bind:this={sortOptionsElm}
         >
-          <div
-            slot="icon"
-            class="flex h-9 w-9 cursor-pointer items-center justify-center rounded-[var(--astryx-radius-md,6px)] text-[var(--astryx-color-fg-muted)] transition-colors hover:bg-[var(--astryx-color-surface-hover)] hover:text-[var(--astryx-color-fg-primary)]"
-            title="Select Sort Options"
-          >
-            {#if $librarySortOption$.direction === SortDirection.ASC}
-              <Fa icon={faArrowDownShortWide} class="text-base" />
-            {:else}
-              <Fa icon={faArrowDownWideShort} class="text-base" />
-            {/if}
+          <div slot="icon">
+            <Tooltip text="Select Sort Options">
+              <div
+                class="flex h-9 w-9 cursor-pointer items-center justify-center rounded-[var(--astryx-radius-md,6px)] text-[var(--astryx-color-fg-muted)] transition-colors hover:bg-[var(--astryx-color-surface-hover)] hover:text-[var(--astryx-color-fg-primary)]"
+              >
+                {#if $librarySortOption$.direction === SortDirection.ASC}
+                  <Fa icon={faArrowDownShortWide} class="text-base" />
+                {:else}
+                  <Fa icon={faArrowDownWideShort} class="text-base" />
+                {/if}
+              </div>
+            </Tooltip>
           </div>
           <div
             class="min-w-[12rem] rounded-lg border border-[var(--astryx-color-border-subtle)] bg-[var(--astryx-color-surface)] py-1 shadow-lg"
@@ -593,20 +597,20 @@
   </TopBar>
 {:else}
   <TopBar bordered={true} density="compact">
-    <div
-      title="Cancel Operation"
-      class="mx-auto flex h-full w-full max-w-2xl items-center justify-between px-2"
-    >
+    <div class="mx-auto flex h-full w-full max-w-2xl items-center justify-between px-2">
       <Popover contentText={cancelTooltip} contentStyles={'padding: 0.75rem'} eventType="pointer">
-        <div
-          tabindex="0"
-          role="button"
-          class="flex h-9 w-9 cursor-pointer items-center justify-center rounded-[var(--astryx-radius-md,6px)] text-[var(--astryx-color-danger,#ef4444)] hover:bg-[var(--astryx-color-surface-hover)]"
-          on:click={() => dispatch('cancelReplication')}
-          on:keyup={dummyFn}
-        >
-          <Fa icon={faCircleXmark} class="text-lg" />
-        </div>
+        <Tooltip text="Cancel Operation">
+          <div
+            tabindex="0"
+            role="button"
+            aria-label="Cancel Operation"
+            class="flex h-9 w-9 cursor-pointer items-center justify-center rounded-[var(--astryx-radius-md,6px)] text-[var(--astryx-color-danger,#ef4444)] hover:bg-[var(--astryx-color-surface-hover)]"
+            on:click={() => dispatch('cancelReplication')}
+            on:keyup={dummyFn}
+          >
+            <Fa icon={faCircleXmark} class="text-lg" />
+          </div>
+        </Tooltip>
       </Popover>
       <div class="mx-4 flex-1">
         <progress

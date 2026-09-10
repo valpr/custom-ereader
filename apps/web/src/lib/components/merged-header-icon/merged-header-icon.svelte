@@ -109,9 +109,16 @@
       bind:this={menuElm}
     >
       <div slot="icon">
-        <IconButton variant="ghost" size="md" label={overflowEntry.title || 'More actions'}>
-          <Fa icon={overflowEntry.icon} />
-        </IconButton>
+        <Tooltip text={overflowEntry.title || 'More actions'}>
+          <IconButton
+            nativeTooltip={false}
+            variant="ghost"
+            size="md"
+            label={overflowEntry.title || 'More actions'}
+          >
+            <Fa icon={overflowEntry.icon} />
+          </IconButton>
+        </Tooltip>
       </div>
       <div
         class="w-48 py-1.5 rounded-lg border border-[var(--astryx-color-border-subtle,#e4e4e7)] bg-[var(--astryx-color-surface,#ffffff)] text-[var(--astryx-color-fg-primary,#18181b)] shadow-lg text-sm"

@@ -26,7 +26,7 @@ async function seedExpiredSession(page: Page, failedOps = 3) {
 }
 
 test.describe('Cloud re-auth deferred UX', () => {
-  test('manage banner shows pending count and survives reload', async ({ page }) => {
+  test('manage banner shows expired session and survives reload', async ({ page }) => {
     await seedExpiredSession(page, 3);
     await page.goto('/manage');
 
@@ -34,15 +34,58 @@ test.describe('Cloud re-auth deferred UX', () => {
     await expect(banner).toBeVisible();
     await expect(banner).toContainText(FRIENDLY_SOURCE);
     await expect(banner).not.toContainText(SOURCE);
-    await expect(banner).toContainText('3 operations will sync after reconnect');
+    await expect(banner).toContainText('Sync paused');
+    await expect(banner).not.toContainText('will sync after reconnect');
+    await expect(banner).not.toContainText('operations');
     await expect(banner.getByRole('button', { name: 'Reconnect' })).toBeEnabled();
 
     // Durable queue: banner persists across a full reload.
     await page.reload();
     await expect(page.getByTestId('cloud-reconnect-banner')).toBeVisible();
-    await expect(page.getByTestId('cloud-reconnect-banner')).toContainText(
-      '3 operations will sync after reconnect'
+    await expect(page.getByTestId('cloud-reconnect-banner')).toContainText('Sync paused');
+    await expect(page.getByTestId('cloud-reconnect-banner')).not.toContainText(
+      'will sync after reconnect'
     );
+  });
+
+  test('banner does not cover header dropdown menus', async ({ page }) => {
+    await seedExpiredSession(page, 3);
+    // Narrow viewport so the full-width banner sits under the Filter menu.
+    await page.setViewportSize({ width: 768, height: 800 });
+    await page.goto('/manage');
+    await page.waitForLoadState('networkidle');
+
+    const banner = page.getByTestId('cloud-reconnect-banner');
+    await expect(banner).toBeVisible();
+
+    const filterButton = page.getByRole('button', { name: 'Filter library by source' });
+    await expect(filterButton).toBeVisible();
+    await filterButton.click();
+    await expect(page.getByRole('button', { name: 'All sources' })).toBeVisible();
+
+    // The open menu must paint above the banner: pick a point where their
+    // boxes intersect and hit-test it — it must resolve inside the popover.
+    // (Bounding boxes intersect either way — only paint order distinguishes.)
+    const menuBox = await page.locator('div[data-popover].absolute').boundingBox();
+    const bannerBox = await banner.boundingBox();
+    expect(menuBox).not.toBeNull();
+    expect(bannerBox).not.toBeNull();
+    const x0 = Math.max(menuBox!.x, bannerBox!.x);
+    const x1 = Math.min(menuBox!.x + menuBox!.width, bannerBox!.x + bannerBox!.width);
+    const y0 = Math.max(menuBox!.y, bannerBox!.y);
+    const y1 = Math.min(menuBox!.y + menuBox!.height, bannerBox!.y + bannerBox!.height);
+    expect(x1 - x0).toBeGreaterThan(10);
+    expect(y1 - y0).toBeGreaterThan(10);
+    const hit = await page.evaluate(
+      ({ x, y }) => {
+        const target = document.elementFromPoint(x, y);
+        if (target?.closest('[data-testid="cloud-reconnect-banner"]')) return 'banner';
+        if (target?.closest('[data-popover]')) return 'menu';
+        return target?.tagName ?? 'none';
+      },
+      { x: (x0 + x1) / 2, y: (y0 + y1) / 2 }
+    );
+    expect(hit).toBe('menu');
   });
 
   test('layout exposes a polite live region announcing the expired session', async ({ page }) => {
@@ -51,6 +94,7 @@ test.describe('Cloud re-auth deferred UX', () => {
 
     const status = page.locator('div[role="status"][aria-live="polite"]');
     await expect(status.first()).toContainText(/Sync paused.*GDrive Default/);
+    await expect(status.first()).not.toContainText('will sync after reconnect');
   });
 
   test('no banner for a secondary cloud with an expired session', async ({ page }) => {

@@ -2,7 +2,7 @@
   import { goto } from '$app/navigation';
   import { pagePath } from '$lib/data/env';
   import { formatPageTitle } from '$lib/functions/format-page-title';
-  import { IconButton, TopBar } from '@custom-ereader/ui';
+  import { IconButton, Tooltip, TopBar } from '@custom-ereader/ui';
   import {
     faArrowLeft,
     faBookOpen,
@@ -35,9 +35,17 @@
   <div class="fixed inset-x-0 top-0 z-20">
     <TopBar bordered={true} density="compact">
       <div slot="start" class="flex items-center gap-2">
-        <IconButton label="Go back" size="md" variant="ghost" on:click={goBack}>
-          <Fa icon={faArrowLeft} />
-        </IconButton>
+        <Tooltip text="Go back">
+          <IconButton
+            nativeTooltip={false}
+            label="Go back"
+            size="md"
+            variant="ghost"
+            on:click={goBack}
+          >
+            <Fa icon={faArrowLeft} />
+          </IconButton>
+        </Tooltip>
         <span
           class="text-sm font-semibold tracking-tight text-[var(--astryx-color-fg-primary,#18181b)]"
         >
