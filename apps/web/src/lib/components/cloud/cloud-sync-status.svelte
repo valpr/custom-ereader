@@ -4,6 +4,7 @@
     storageConnectionStates$
   } from '$lib/data/storage/storage-oauth-manager';
   import { lastSyncTimestamp$, pendingCloudSync$, syncTarget$ } from '$lib/data/store';
+  import { getFriendlyStorageSourceName } from '$lib/data/storage/storage-types';
   import { onDestroy } from 'svelte';
 
   let syncToast: string | null = null;
@@ -36,7 +37,11 @@
       if ($lastSyncTimestamp$ > lastSeenSync) {
         lastSeenSync = $lastSyncTimestamp$;
         if (count > 0 || Date.now() - pendingClearedAt < 60000) {
-          showToast(count === 1 ? `Sync complete (${keys[0]})` : 'Sync complete');
+          showToast(
+            count === 1
+              ? `Sync complete (${getFriendlyStorageSourceName(keys[0])})`
+              : 'Sync complete'
+          );
         }
       }
       prevPendingCount = count;
@@ -63,7 +68,7 @@
 -->
 <div role="status" aria-live="polite" class="sr-only">
   {#if expiredSource}
-    Sync paused. Session expired for {expiredSource}
+    Sync paused. Session expired for {getFriendlyStorageSourceName(expiredSource)}
     {#if expiredSources.length > 1}(+{expiredSources.length - 1} more){/if}
     .{#if failedOps > 0}
       {failedOps}

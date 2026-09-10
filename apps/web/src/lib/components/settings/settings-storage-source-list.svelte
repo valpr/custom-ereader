@@ -52,7 +52,8 @@
   import {
     StorageDataType,
     StorageKey,
-    StorageSourceDefault
+    StorageSourceDefault,
+    getFriendlyStorageSourceName
   } from '$lib/data/storage/storage-types';
   import { getStorageIconData } from '$lib/data/storage/storage-view';
   import {
@@ -121,8 +122,14 @@
 
   $: dropdownOptions = [
     { value: '', label: 'None (Local Storage Only)' },
-    { value: StorageSourceDefault.GDRIVE_DEFAULT, label: 'Google Drive' },
-    { value: StorageSourceDefault.ONEDRIVE_DEFAULT, label: 'OneDrive' },
+    {
+      value: StorageSourceDefault.GDRIVE_DEFAULT,
+      label: getFriendlyStorageSourceName(StorageSourceDefault.GDRIVE_DEFAULT)
+    },
+    {
+      value: StorageSourceDefault.ONEDRIVE_DEFAULT,
+      label: getFriendlyStorageSourceName(StorageSourceDefault.ONEDRIVE_DEFAULT)
+    },
     ...(fileSystemAvailable && storageSources
       ? storageSources
           .filter((s) => s.type === StorageKey.FS)
@@ -247,8 +254,11 @@
 
   function getProviderDisplayName(source: BooksDbStorageSource | null) {
     if (!source) return 'None';
-    if (source.name === StorageSourceDefault.GDRIVE_DEFAULT) return 'Google Drive';
-    if (source.name === StorageSourceDefault.ONEDRIVE_DEFAULT) return 'OneDrive';
+    if (
+      source.name === StorageSourceDefault.GDRIVE_DEFAULT ||
+      source.name === StorageSourceDefault.ONEDRIVE_DEFAULT
+    )
+      return getFriendlyStorageSourceName(source.name);
     return source.name;
   }
 

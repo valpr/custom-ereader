@@ -24,10 +24,10 @@ test.describe('Cloud Storage Settings & Single Source Selection', () => {
 
     // Verify options exist
     const options = select.locator('option');
-    await expect(options).toHaveCount(3); // None, Google Drive, OneDrive
+    await expect(options).toHaveCount(3); // None, GDrive Default, OneDrive Default
     await expect(options.nth(0)).toHaveText('None (Local Storage Only)');
-    await expect(options.nth(1)).toHaveText('Google Drive');
-    await expect(options.nth(2)).toHaveText('OneDrive');
+    await expect(options.nth(1)).toHaveText('GDrive Default');
+    await expect(options.nth(2)).toHaveText('OneDrive Default');
   });
 
   test('displays Local Storage Only card when None is selected', async ({ page }) => {
@@ -44,10 +44,10 @@ test.describe('Cloud Storage Settings & Single Source Selection', () => {
 
   test('displays Google Drive provider card with opt-in switch when selected', async ({ page }) => {
     const select = page.locator('#cloud-storage-select');
-    await select.selectOption({ label: 'Google Drive' });
+    await select.selectOption({ label: 'GDrive Default' });
 
     // Active provider card header
-    const providerCard = page.locator('.astryx-card').filter({ hasText: 'Google Drive' });
+    const providerCard = page.locator('.astryx-card').filter({ hasText: 'GDrive Default' });
     await expect(providerCard).toBeVisible();
 
     // Status shows Setup Required when unconfigured
@@ -62,27 +62,31 @@ test.describe('Cloud Storage Settings & Single Source Selection', () => {
     ).toBeVisible();
 
     // Connect button is present
-    await expect(providerCard.getByRole('button', { name: 'Connect Google Drive' })).toBeVisible();
+    await expect(
+      providerCard.getByRole('button', { name: 'Connect GDrive Default' })
+    ).toBeVisible();
   });
 
   test('displays OneDrive provider card when selected', async ({ page }) => {
     const select = page.locator('#cloud-storage-select');
-    await select.selectOption({ label: 'OneDrive' });
+    await select.selectOption({ label: 'OneDrive Default' });
 
-    const providerCard = page.locator('.astryx-card').filter({ hasText: 'OneDrive' });
+    const providerCard = page.locator('.astryx-card').filter({ hasText: 'OneDrive Default' });
     await expect(providerCard).toBeVisible();
     await expect(providerCard.getByText('Setup Required', { exact: true })).toBeVisible();
-    await expect(providerCard.getByRole('button', { name: 'Connect OneDrive' })).toBeVisible();
+    await expect(
+      providerCard.getByRole('button', { name: 'Connect OneDrive Default' })
+    ).toBeVisible();
   });
 
   test('clicking connect on unconfigured provider shows setup dialog without hanging', async ({
     page
   }) => {
     const select = page.locator('#cloud-storage-select');
-    await select.selectOption({ label: 'Google Drive' });
+    await select.selectOption({ label: 'GDrive Default' });
 
-    const providerCard = page.locator('.astryx-card').filter({ hasText: 'Google Drive' });
-    const connectBtn = providerCard.getByRole('button', { name: 'Connect Google Drive' });
+    const providerCard = page.locator('.astryx-card').filter({ hasText: 'GDrive Default' });
+    const connectBtn = providerCard.getByRole('button', { name: 'Connect GDrive Default' });
     await connectBtn.click();
 
     // Verify dialog pops up promptly explaining setup requirement

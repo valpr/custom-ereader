@@ -26,8 +26,16 @@
     getExpiredSyncTargets,
     storageConnectionStates$
   } from '$lib/data/storage/storage-oauth-manager';
-  import { StorageDataType, StorageKey } from '$lib/data/storage/storage-types';
-  import { fetchUnifiedBookListsStream, mergeBookLists } from '$lib/data/storage/unified-library';
+  import {
+    StorageDataType,
+    StorageKey,
+    getFriendlyStorageSourceName
+  } from '$lib/data/storage/storage-types';
+  import {
+    fetchUnifiedBookListsStream,
+    mergeBookLists,
+    normalizeTitle
+  } from '$lib/data/storage/unified-library';
   import { storageSource$ } from '$lib/data/storage/storage-view';
   import {
     cacheStorageData$,
@@ -137,11 +145,18 @@
     share()
   );
 
+  // Titles whose backing data is gone (opening failed with "No local ...
+  // book data found"). They are hidden from the visible list without forcing
+  // a full list refetch; a fresh reload re-derives the list from its sources.
+  let unavailableBookTitles = new Set<string>();
+  const unavailableBooksChanged$ = new Subject<void>();
+
   const bookCards$: Observable<BookCardProps[]> = combineLatest([
     unifiedLists$,
     database.bookmarks$,
     librarySortOption$,
-    librarySourceFilter$
+    librarySourceFilter$,
+    unavailableBooksChanged$.pipe(startWith(undefined))
   ]).pipe(
     map(([lists, bookmarks, sortProp]) => {
       const isTitleSort = sortProp.property === 'title';
@@ -159,6 +174,7 @@
       return [
         ...filtered
           .filter((d) => $showExternalPlaceholder$ || !d.isPlaceholder)
+          .filter((d) => !unavailableBookTitles.has(normalizeTitle(d.title)))
           .map((d) => ({
             ...d,
             ...((d.sources || []).includes(StorageKey.BROWSER)
@@ -314,6 +330,7 @@
       ]);
 
       let idToOpen = bookId;
+      let failedBookTitle: string | undefined;
 
       try {
         const bookItem = $bookCards$.find((book) => book.id === bookId);
@@ -321,6 +338,8 @@
         if (!bookItem) {
           throw new Error('Book title not found');
         }
+
+        failedBookTitle = bookItem.title;
 
         const readSource = resolveReadSource(bookItem);
 
@@ -359,15 +378,17 @@
 
         if (handler instanceof ApiStorageHandler) {
           const remembered = externalReadAction$.getValue();
+          // Books that also exist locally open from Browser via resolveReadSource,
+          // so reaching here with a local copy means no sync-first warning: just continue.
           const hasLocalCopy = (bookItem.sources || []).includes(StorageKey.BROWSER);
 
-          if (remembered === 'download') {
+          if (remembered === 'download' && !hasLocalCopy) {
             idToOpen = await downloadCloudBookToBrowser(
               handler,
               bookItem.title,
               bookItem.imagePath
             );
-          } else if (remembered !== 'stream') {
+          } else if (remembered !== 'stream' && !hasLocalCopy) {
             const nextAction = await new Promise<'download' | 'continue' | 'cancel'>((resolver) => {
               dialogManager.dialogs$.next([
                 {
@@ -375,8 +396,7 @@
                   props: {
                     resolver,
                     bookTitle: bookItem.title,
-                    sourceLabel: sourceLabelFor(readSource),
-                    hasLocalCopy
+                    sourceLabel: sourceLabelFor(readSource)
                   },
                   disableCloseOnClick: true
                 }
@@ -402,6 +422,19 @@
         const message = `Error opening book: ${error.message}`;
 
         logger.warn(message);
+
+        // The list advertised a book whose data is gone locally and externally:
+        // drop it from the visible list so it can't be opened again.
+        if (/No local (or external )?book data found/.test(error?.message || '')) {
+          const missingTitle = failedBookTitle;
+          if (missingTitle) {
+            const key = normalizeTitle(missingTitle);
+            if (!unavailableBookTitles.has(key)) {
+              unavailableBookTitles.add(key);
+              unavailableBooksChanged$.next();
+            }
+          }
+        }
 
         dialogManager.dialogs$.next([
           {
@@ -975,7 +1008,7 @@
     {replicationProgressRemaining}
     showCloudWarning={!!expiredSyncTarget}
     cloudWarningLabel={expiredSyncTarget
-      ? `Cloud session expired for ${expiredSyncTarget}. Reconnect to resume syncing.`
+      ? `Cloud session expired for ${getFriendlyStorageSourceName(expiredSyncTarget)}. Reconnect to resume syncing.`
       : 'Cloud session expired. Reconnect to resume syncing.'}
     bind:selectMode
     on:selectAllClick={onSelectAllBooks}
