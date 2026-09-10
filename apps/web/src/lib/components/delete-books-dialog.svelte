@@ -7,9 +7,11 @@
 
   export let titles: string[] = [];
   export let cloudSummary = '';
+  export let hasLocalCopy = true;
+  export let initialDeleteFromCloud = false;
   export let resolver: (result: { canceled: boolean; deleteFromCloud: boolean }) => void;
 
-  let deleteFromCloud = false;
+  let deleteFromCloud = initialDeleteFromCloud;
 
   const dispatch = createEventDispatcher<{
     close: void;
@@ -34,10 +36,19 @@
   <svelte:fragment slot="content">
     <p style="white-space: pre-line; word-break: break-word;">
       {#if titles.length === 1}
-        This removes the local browser copy, reading progress, and manual bookmarks for “{singleTitle}”.
+        {#if hasLocalCopy}
+          This removes the local browser copy, reading progress, and manual bookmarks for “{singleTitle}”.
+        {:else}
+          “{singleTitle}” has no local browser copy. This removes it from the cloud source(s) below.
+        {/if}
       {:else}
-        This removes the local browser copies, reading progress, and manual bookmarks for the
-        selected books.
+        {#if hasLocalCopy}
+          This removes the local browser copies, reading progress, and manual bookmarks for the
+          selected books.
+        {:else}
+          The selected books have no local browser copies. This removes them from the cloud
+          source(s) below.
+        {/if}
       {/if}
       {#if cloudSummary}
         <br /><br />Also on: {cloudSummary}.
@@ -61,7 +72,11 @@
       <Ripple />
     </button>
     <button class={buttonClasses} on:click={() => closeDialog(false)}>
-      {deleteFromCloud ? 'Delete everywhere' : 'Delete local copy'}
+      {deleteFromCloud
+        ? 'Delete everywhere'
+        : hasLocalCopy
+          ? 'Delete local copy'
+          : 'Delete from cloud'}
       <Ripple />
     </button>
   </div>

@@ -726,7 +726,21 @@ export abstract class ApiStorageHandler extends BaseStorageHandler {
           try {
             throwIfAborted(cancelSignal);
 
-            const externalId = this.titleToId.get(bookToDelete);
+            // The in-memory id map is only populated by getBookList(). A
+            // cloud-only book (or a stale singleton after source switch)
+            // may not have an entry, so resolve it from the remote before
+            // treating the title as deleted. Otherwise we would clear the
+            // local cache while the remote folder survives, and the next
+            // server fetch resurrects the book.
+            let externalId = this.titleToId.get(bookToDelete);
+
+            if (!externalId && this.rootId) {
+              try {
+                externalId = await this.ensureTitle(bookToDelete, this.rootId, true);
+              } catch {
+                externalId = undefined;
+              }
+            }
 
             if (externalId) {
               await this.executeDelete(externalId);
@@ -756,6 +770,13 @@ export abstract class ApiStorageHandler extends BaseStorageHandler {
     );
 
     await Promise.all(deleteTasks).catch(() => {});
+
+    // Force the next getBookList() to verify against the server instead of
+    // serving the just-mutated cache. If a remote delete failed, the refetch
+    // re-adds the title so the library reflects server truth.
+    if (!error) {
+      this.dataListFetched = false;
+    }
 
     return { error, deleted };
   }
