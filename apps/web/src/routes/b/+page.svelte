@@ -149,7 +149,8 @@
   import {
     StorageDataType,
     StorageSourceDefault,
-    StorageKey
+    StorageKey,
+    getFriendlyStorageSourceName
   } from '$lib/data/storage/storage-types';
   import { storageSource$ } from '$lib/data/storage/storage-view';
   import { availableThemes } from '$lib/data/theme-option';
@@ -2085,7 +2086,7 @@
       on:bookManagerClick={() => leaveReader(mergeEntries.MANAGE.routeId)}
       showCloudWarning={!!expiredSyncTarget}
       cloudWarningLabel={expiredSyncTarget
-        ? `Cloud session expired for ${expiredSyncTarget}. Reconnect to resume syncing.`
+        ? `Cloud session expired for ${getFriendlyStorageSourceName(expiredSyncTarget)}. Reconnect to resume syncing.`
         : 'Cloud session expired. Reconnect to resume syncing.'}
       on:cloudReconnectClick={handleCloudReconnect}
     />

@@ -7,6 +7,7 @@
 import ConfirmDialog from '$lib/components/confirm-dialog.svelte';
 import MessageDialog from '$lib/components/message-dialog.svelte';
 import { dialogManager } from '$lib/data/dialog-manager';
+import { getFriendlyStorageSourceName } from '$lib/data/storage/storage-types';
 import { StorageOAuthManager } from '$lib/data/storage/storage-oauth-manager';
 import type { BooksDbStorageSource } from '$lib/data/database/books-db/versions/books-db';
 import { triggerCloudSync } from '$lib/functions/replication/cloud-sync';
@@ -67,7 +68,7 @@ export async function reconnectAndSync(
         component: ConfirmDialog,
         props: {
           dialogHeader: 'Session Expired',
-          dialogMessage: `Syncing with "${sourceName}" is paused because the session expired.\n\nReconnect now to resume syncing? Your local progress is safe and will sync after reconnecting.`,
+          dialogMessage: `Syncing with "${getFriendlyStorageSourceName(sourceName)}" is paused because the session expired.\n\nReconnect now to resume syncing? Your local progress is safe and will sync after reconnecting.`,
           contentStyles: 'white-space: pre-line;',
           resolver: resolve
         },

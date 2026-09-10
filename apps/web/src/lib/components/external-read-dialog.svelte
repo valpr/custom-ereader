@@ -8,7 +8,6 @@
   export let resolver: (action: 'download' | 'continue' | 'cancel') => void;
   export let bookTitle = '';
   export let sourceLabel = '';
-  export let hasLocalCopy = false;
 
   let rememberChoice = true;
 
@@ -30,9 +29,7 @@
   <svelte:fragment slot="content">
     {#if bookTitle}
       <p class="my-2">
-        “{bookTitle}” is stored on {sourceLabel || 'an external source'}{hasLocalCopy
-          ? ' (a newer version is available there)'
-          : ''}.
+        “{bookTitle}” is stored on {sourceLabel || 'an external source'}.
       </p>
     {:else}
       <p class="my-2">You are opening a book from an external storage source.</p>

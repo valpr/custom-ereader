@@ -8,6 +8,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { seedReaderBook } from './fixtures/book-fixture';
 
 const SOURCE = 'ttu-gdrive-default';
+const FRIENDLY_SOURCE = 'GDrive Default';
 
 async function seedExpiredSession(page: Page, failedOps = 3) {
   await page.addInitScript(
@@ -31,7 +32,8 @@ test.describe('Cloud re-auth deferred UX', () => {
 
     const banner = page.getByTestId('cloud-reconnect-banner');
     await expect(banner).toBeVisible();
-    await expect(banner).toContainText(SOURCE);
+    await expect(banner).toContainText(FRIENDLY_SOURCE);
+    await expect(banner).not.toContainText(SOURCE);
     await expect(banner).toContainText('3 operations will sync after reconnect');
     await expect(banner.getByRole('button', { name: 'Reconnect' })).toBeEnabled();
 
@@ -48,7 +50,7 @@ test.describe('Cloud re-auth deferred UX', () => {
     await page.goto('/manage');
 
     const status = page.locator('div[role="status"][aria-live="polite"]');
-    await expect(status.first()).toContainText(/Sync paused.*ttu-gdrive-default/);
+    await expect(status.first()).toContainText(/Sync paused.*GDrive Default/);
   });
 
   test('no banner or live announcement when session is healthy', async ({ page }) => {

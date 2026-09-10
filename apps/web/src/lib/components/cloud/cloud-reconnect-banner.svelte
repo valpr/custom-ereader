@@ -7,10 +7,13 @@
     faSpinner,
     faTriangleExclamation
   } from '@fortawesome/free-solid-svg-icons';
+  import { getFriendlyStorageSourceName } from '$lib/data/storage/storage-types';
 
   export let sourceName = '';
   export let busy = false;
   export let failedOps = 0;
+
+  $: friendlySourceName = getFriendlyStorageSourceName(sourceName);
 
   const dispatch = createEventDispatcher<{ reconnect: void }>();
 </script>
@@ -25,7 +28,7 @@
       <Fa icon={faTriangleExclamation} />
     </span>
     <span class="truncate">
-      Sync paused — session expired for <strong>{sourceName}</strong>.{#if failedOps > 0}
+      Sync paused — session expired for <strong>{friendlySourceName}</strong>.{#if failedOps > 0}
         {failedOps} {failedOps === 1 ? 'operation' : 'operations'} will sync after reconnect.{:else}
         Changes will sync after reconnect.{/if}
     </span>
