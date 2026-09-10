@@ -45,6 +45,59 @@ export enum StorageConnectionState {
 
 export const storageConnectionStates$ = writableSubject<Record<string, StorageConnectionState>>({});
 
+/**
+ * True while cloud sessions are being silently re-validated at app start.
+ * Connection state, tokens, and refresh timers live in memory only, so after
+ * a refresh the persisted refresh tokens in IndexedDB are used to converge
+ * each source to CONNECTED / NEEDS_RECONNECT instead of flashing DISCONNECTED.
+ */
+export const sessionsRestoring$ = writableSubject<boolean>(false);
+
+let inFlightRestore: Promise<void> | null = null;
+
+/**
+ * Silently re-validate persisted cloud sessions on app start / reconnect.
+ * Never interactive: no popups or unlock dialogs. Sources with a fresh cached
+ * token or a working persisted refresh token converge to CONNECTED; genuinely
+ * expired sessions are surfaced as NEEDS_RECONNECT by the refresh attempt.
+ * Idempotent: concurrent calls share one run, and it may be re-invoked after
+ * the app comes back online.
+ */
+export function restoreCloudSessions(): Promise<void> {
+  if (inFlightRestore) return inFlightRestore;
+  sessionsRestoring$.next(true);
+  inFlightRestore = restoreAllCloudSessions().finally(() => {
+    sessionsRestoring$.next(false);
+    inFlightRestore = null;
+  });
+  return inFlightRestore;
+}
+
+async function restoreAllCloudSessions(): Promise<void> {
+  try {
+    const db = await database.db;
+    const sources = await db.getAll('storageSource');
+    await Promise.allSettled(
+      sources
+        .filter(
+          (s) => !s.disconnected && (s.type === StorageKey.GDRIVE || s.type === StorageKey.ONEDRIVE)
+        )
+        .map(async (s) => {
+          try {
+            const ok = await StorageOAuthManager.trySilentRefresh(s.name);
+            if (ok) {
+              scheduleProactiveRefresh(s.name);
+            }
+          } catch {
+            // trySilentRefresh already swallows and logs errors; stay resilient
+          }
+        })
+    );
+  } catch (error: any) {
+    logger.error(`Cloud session restore failed: ${error?.message}`);
+  }
+}
+
 export function setConnectionState(storageSourceName: string, state: StorageConnectionState) {
   const current = storageConnectionStates$.getValue();
   if (current[storageSourceName] !== state) {

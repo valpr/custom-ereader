@@ -8,6 +8,7 @@
   import { dialogManager, type Dialog } from '$lib/data/dialog-manager';
   import { userFontsCacheName, type UserFont } from '$lib/data/fonts';
   import { appThemeMode$, fontFamilyGroupOne$, isOnline$, userFonts$ } from '$lib/data/store';
+  import { restoreCloudSessions } from '$lib/data/storage/storage-oauth-manager';
   import {
     startProactiveRefresh,
     stopProactiveRefresh
@@ -98,9 +99,21 @@
   });
 
   onMount(() => {
-    if (browser) {
-      startProactiveRefresh();
+    if (!browser) {
+      return;
     }
+
+    startProactiveRefresh();
+
+    // Session state is in-memory, so after a refresh we silently re-validate
+    // each persisted cloud source using its stored refresh token. Skipped
+    // while offline; retried once the browser reports connectivity again.
+    const handleOnline = () => void restoreCloudSessions();
+    if (isOnline$.getValue()) {
+      handleOnline();
+    }
+    window.addEventListener('online', handleOnline);
+    return () => window.removeEventListener('online', handleOnline);
   });
 
   onDestroy(() => {

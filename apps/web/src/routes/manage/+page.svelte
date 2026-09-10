@@ -172,12 +172,19 @@
   let executionStart: number;
   let cloudReconnecting = false;
 
-  $: expiredSyncTarget =
-    $syncTarget$ &&
-    ($storageConnectionStates$[$syncTarget$] === StorageConnectionState.NEEDS_RECONNECT ||
-      $pendingCloudSync$[$syncTarget$])
-      ? $syncTarget$
-      : '';
+  $: expiredSyncTarget = (() => {
+    const target = $syncTarget$;
+    const expired = (name: string) =>
+      !!name &&
+      ($storageConnectionStates$[name] === StorageConnectionState.NEEDS_RECONNECT ||
+        !!$pendingCloudSync$[name]);
+    if (expired(target)) return target;
+    const flagged = Object.keys($storageConnectionStates$).find(
+      (name) => $storageConnectionStates$[name] === StorageConnectionState.NEEDS_RECONNECT
+    );
+    if (flagged) return flagged;
+    return Object.keys($pendingCloudSync$)[0] || '';
+  })();
   $: expiredFailedOps =
     (expiredSyncTarget && $pendingCloudSync$[expiredSyncTarget]?.failedOps) || 0;
 
