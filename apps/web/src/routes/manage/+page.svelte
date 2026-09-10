@@ -27,7 +27,7 @@
     storageConnectionStates$
   } from '$lib/data/storage/storage-oauth-manager';
   import { StorageDataType, StorageKey } from '$lib/data/storage/storage-types';
-  import { fetchUnifiedBookLists, mergeBookLists } from '$lib/data/storage/unified-library';
+  import { fetchUnifiedBookListsStream, mergeBookLists } from '$lib/data/storage/unified-library';
   import { storageSource$ } from '$lib/data/storage/storage-view';
   import {
     cacheStorageData$,
@@ -70,6 +70,7 @@
   import { browser } from '$app/environment';
   import {
     combineLatest,
+    catchError,
     finalize,
     from,
     map,
@@ -83,10 +84,14 @@
   import { onDestroy, tick } from 'svelte';
   import Fa from 'svelte-fa';
 
-  // Loading state owned by the unified pipeline below. The shared
-  // database.listLoading$ is poked (true) by every handler getBookList call
-  // with the matching reset (false) emitted only by database.dataList$'s own
-  // pipeline, so direct reads must not drive the template from it.
+  // Local-first loading: the stream emits the Browser list immediately and
+  // re-emits as each cloud list arrives, so a slow cloud never holds up the
+  // page. booksAreLoading$ only covers the local load; the template keeps
+  // rendering once local books arrive and merges cloud extras in place.
+  // The shared database.listLoading$ is poked (true) by every handler
+  // getBookList call with the matching reset (false) emitted only by
+  // database.dataList$'s own pipeline, so direct reads must not drive the
+  // template from it.
   const unifiedLoading$ = new Subject<boolean>();
   const booksAreLoading$ = unifiedLoading$.pipe(startWith(false), share());
 
@@ -107,13 +112,27 @@
     switchMap(([, , gDriveSource, oneDriveSource]) => {
       if (!browser || typeof window === 'undefined') return from([[]]);
       unifiedLoading$.next(true);
-      return from(
-        fetchUnifiedBookLists(window, {
-          gDriveSourceName: gDriveSource,
-          oneDriveSourceName: oneDriveSource,
-          includeClouds: true
-        }).catch(() => [])
-      ).pipe(finalize(() => unifiedLoading$.next(false)));
+      // The first stream emission is always the local Browser list; later
+      // emissions merge cloud extras in. Loading clears on that first emit.
+      let localLoaded = false;
+      return fetchUnifiedBookListsStream(window, {
+        gDriveSourceName: gDriveSource,
+        oneDriveSourceName: oneDriveSource,
+        includeClouds: true
+      }).pipe(
+        map((lists) => {
+          if (!localLoaded) {
+            localLoaded = true;
+            unifiedLoading$.next(false);
+          }
+          return lists;
+        }),
+        catchError(() => {
+          unifiedLoading$.next(false);
+          return from([[]]);
+        }),
+        finalize(() => unifiedLoading$.next(false))
+      );
     }),
     share()
   );
