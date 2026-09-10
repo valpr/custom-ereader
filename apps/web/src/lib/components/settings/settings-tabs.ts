@@ -41,11 +41,12 @@ export function isReaderSection(value: string | undefined | null): value is Read
 
 /**
  * Builds the canonical URL for a settings tab, optionally with a Reader section.
- * The `all` Reader section maps to the bare `/settings/reader` URL.
+ * The bare `/settings/reader` URL defaults to the appearance section (see +page.ts).
+ * Every explicit section (including `all`) maps to `/settings/reader/<section>`.
  */
 export function settingsUrl(tab: string, section?: string | null): string {
   const slug = settingsTabToSlug(tab);
   const normalizedSection = section?.toLowerCase();
-  const suffix = normalizedSection && normalizedSection !== 'all' ? `/${normalizedSection}` : '';
+  const suffix = normalizedSection ? `/${normalizedSection}` : '';
   return `${pagePath}/settings/${slug}${suffix}`;
 }

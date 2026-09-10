@@ -16,6 +16,8 @@ test.describe('Astryx Tooltip Component & Settings Page Tooltips', () => {
 
     // Ensure Reader Profiles section is loaded
     await expect(page.locator('text=Reader Profiles').first()).toBeVisible({ timeout: 10000 });
+    // Tooltips require JS hydration
+    await page.waitForLoadState('networkidle');
 
     // Find Rename profile button on the default profile card
     const renameButton = page.getByRole('button', { name: 'Rename profile' }).first();
@@ -58,6 +60,8 @@ test.describe('Astryx Tooltip Component & Settings Page Tooltips', () => {
     await page.goto('/settings/reader');
 
     await expect(page.locator('text=Reader Profiles').first()).toBeVisible({ timeout: 10000 });
+    // Tooltips require JS hydration
+    await page.waitForLoadState('networkidle');
 
     const duplicateButton = page.getByRole('button', { name: 'Duplicate profile' }).first();
     await expect(duplicateButton).toBeVisible();
