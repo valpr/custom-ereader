@@ -99,28 +99,22 @@ async function restoreAllCloudSessions(): Promise<void> {
 }
 
 /**
- * Resolve every cloud source needing attention, primary first: the primary
- * sync target when it needs reconnect or has a deferred sync, then any other
- * NEEDS_RECONNECT source, then any other source with a deferred sync. Shared
- * by the header / manage / reader banners so they can't drift apart.
+ * Resolve the primary sync target when it needs attention: the primary target
+ * only, when it needs reconnect or has a deferred sync. Global surfaces
+ * (library banner, reader icon, live announcement) stay primary-only so two
+ * clouds can never compete for attention; per-source status in Settings still
+ * reflects every source, and secondary clouds sync on demand when opened.
  */
 export function getExpiredSyncTargets(
   syncTarget: string,
   states: Record<string, StorageConnectionState>,
   pending: Record<string, unknown>
 ): string[] {
-  const list: string[] = [];
-  const add = (name: string) => {
-    if (name && !list.includes(name)) list.push(name);
-  };
-  const expired = (name: string) =>
-    !!name && (states[name] === StorageConnectionState.NEEDS_RECONNECT || !!pending[name]);
-  if (expired(syncTarget)) add(syncTarget);
-  Object.keys(states).forEach((name) => {
-    if (states[name] === StorageConnectionState.NEEDS_RECONNECT) add(name);
-  });
-  Object.keys(pending).forEach(add);
-  return list;
+  if (!syncTarget) return [];
+  if (states[syncTarget] === StorageConnectionState.NEEDS_RECONNECT || !!pending[syncTarget]) {
+    return [syncTarget];
+  }
+  return [];
 }
 
 export function setConnectionState(storageSourceName: string, state: StorageConnectionState) {

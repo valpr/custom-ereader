@@ -30,7 +30,8 @@
   import {
     StorageDataType,
     StorageKey,
-    StorageSourceDefault
+    StorageSourceDefault,
+    getFriendlyStorageSourceName
   } from '$lib/data/storage/storage-types';
   import {
     fetchUnifiedBookListsStream,
@@ -59,7 +60,7 @@
     statisticsMergeMode$,
     syncTarget$
   } from '$lib/data/store';
-  import { reconnectAndSyncNow } from '$lib/functions/replication/cloud-reauth';
+  import { reconnectAndSync, reconnectAndSyncNow } from '$lib/functions/replication/cloud-reauth';
   import { cloneMutateSet } from '$lib/functions/clone-mutate-set';
   import { getDropEventFiles } from '$lib/functions/file-dom/get-drop-event-files';
   import { inputFile } from '$lib/functions/file-dom/input-file';
@@ -94,9 +95,9 @@
   import Fa from 'svelte-fa';
 
   // Local-first loading: the stream emits the Browser list immediately and
-  // re-emits as each cloud list arrives, so a slow cloud never holds up the
+  // re-emits as the primary cloud list arrives, so a slow cloud never holds up the
   // page. booksAreLoading$ only covers the local load; the template keeps
-  // rendering once local books arrive and merges cloud extras in place.
+  // rendering once local books arrive and merges primary-cloud extras in place.
   // The shared database.listLoading$ is poked (true) by every handler
   // getBookList call with the matching reset (false) emitted only by
   // database.dataList$'s own pipeline, so direct reads must not drive the
@@ -116,18 +117,22 @@
     database.dataListChanged$.pipe(startWith(undefined)),
     database.dataList$,
     gDriveStorageSource$,
-    oneDriveStorageSource$
+    oneDriveStorageSource$,
+    syncTarget$
   ]).pipe(
-    switchMap(([, , gDriveSource, oneDriveSource]) => {
+    switchMap(([, , gDriveSource, oneDriveSource, primary]) => {
       if (!browser || typeof window === 'undefined') return from([[]]);
       unifiedLoading$.next(true);
       // The first stream emission is always the local Browser list; later
-      // emissions merge cloud extras in. Loading clears on that first emit.
+      // emissions merge primary-cloud extras in. Loading clears on that first emit.
+      // Only the primary sync target is listed: the secondary cloud stays
+      // untouched until the user opens one of its books or switches targets.
       let localLoaded = false;
       return fetchUnifiedBookListsStream(window, {
         gDriveSourceName: gDriveSource,
         oneDriveSourceName: oneDriveSource,
-        includeClouds: true
+        includeClouds: true,
+        primarySourceName: primary || ''
       }).pipe(
         map((lists) => {
           if (!localLoaded) {
@@ -146,11 +151,18 @@
     share()
   );
 
+  // Titles whose backing data is gone (opening failed with "No local ...
+  // book data found"). They are hidden from the visible list without forcing
+  // a full list refetch; a fresh reload re-derives the list from its sources.
+  let unavailableBookTitles = new Set<string>();
+  const unavailableBooksChanged$ = new Subject<void>();
+
   const bookCards$: Observable<BookCardProps[]> = combineLatest([
     unifiedLists$,
     database.bookmarks$,
     librarySortOption$,
-    librarySourceFilter$
+    librarySourceFilter$,
+    unavailableBooksChanged$.pipe(startWith(undefined))
   ]).pipe(
     map(([lists, bookmarks, sortProp]) => {
       const isTitleSort = sortProp.property === 'title';
@@ -168,6 +180,7 @@
       return [
         ...filtered
           .filter((d) => $showExternalPlaceholder$ || !d.isPlaceholder)
+          .filter((d) => !unavailableBookTitles.has(normalizeTitle(d.title)))
           .map((d) => ({
             ...d,
             ...((d.sources || []).includes(StorageKey.BROWSER)
@@ -309,7 +322,7 @@
     return local.id;
   }
 
-  async function onBookClick(bookId: number) {
+  async function onBookClick(bookId: number, retried = false) {
     if (!operationAllowed()) {
       return;
     }
@@ -323,6 +336,8 @@
       ]);
 
       let idToOpen = bookId;
+      let failedBookTitle: string | undefined;
+      let failedReadSource: StorageKey | undefined;
 
       try {
         const bookItem = $bookCards$.find((book) => book.id === bookId);
@@ -331,7 +346,10 @@
           throw new Error('Book title not found');
         }
 
+        failedBookTitle = bookItem.title;
+
         const readSource = resolveReadSource(bookItem);
+        failedReadSource = readSource;
 
         if (!operationAllowed(readSource)) {
           dialogManager.dialogs$.next([]);
@@ -368,15 +386,17 @@
 
         if (handler instanceof ApiStorageHandler) {
           const remembered = externalReadAction$.getValue();
+          // Books that also exist locally open from Browser via resolveReadSource,
+          // so reaching here with a local copy means no sync-first warning: just continue.
           const hasLocalCopy = (bookItem.sources || []).includes(StorageKey.BROWSER);
 
-          if (remembered === 'download') {
+          if (remembered === 'download' && !hasLocalCopy) {
             idToOpen = await downloadCloudBookToBrowser(
               handler,
               bookItem.title,
               bookItem.imagePath
             );
-          } else if (remembered !== 'stream') {
+          } else if (remembered !== 'stream' && !hasLocalCopy) {
             const nextAction = await new Promise<'download' | 'continue' | 'cancel'>((resolver) => {
               dialogManager.dialogs$.next([
                 {
@@ -384,8 +404,7 @@
                   props: {
                     resolver,
                     bookTitle: bookItem.title,
-                    sourceLabel: sourceLabelFor(readSource),
-                    hasLocalCopy
+                    sourceLabel: sourceLabelFor(readSource)
                   },
                   disableCloseOnClick: true
                 }
@@ -411,6 +430,38 @@
         const message = `Error opening book: ${error.message}`;
 
         logger.warn(message);
+
+        // The list advertised a book whose data is gone locally and externally:
+        // drop it from the visible list so it can't be opened again.
+        if (/No local (or external )?book data found/.test(error?.message || '')) {
+          const missingTitle = failedBookTitle;
+          if (missingTitle) {
+            const key = normalizeTitle(missingTitle);
+            if (!unavailableBookTitles.has(key)) {
+              unavailableBookTitles.add(key);
+              unavailableBooksChanged$.next();
+            }
+          }
+        }
+
+        // On-demand cloud access: opening a book stored on a cloud whose
+        // session expired fails here (the global banner only watches the
+        // primary target). Offer an inline reconnect for that cloud and retry
+        // the open once on success.
+        if (
+          !retried &&
+          /session expired|needs reconnect|reconnect/i.test(error?.message || '') &&
+          (failedReadSource === StorageKey.GDRIVE || failedReadSource === StorageKey.ONEDRIVE)
+        ) {
+          const sourceName =
+            failedReadSource === StorageKey.GDRIVE
+              ? $gDriveStorageSource$
+              : $oneDriveStorageSource$;
+          if (sourceName && (await reconnectAndSync(window, sourceName))) {
+            dialogManager.dialogs$.next([]);
+            return onBookClick(bookId, true);
+          }
+        }
 
         dialogManager.dialogs$.next([
           {
@@ -1130,7 +1181,7 @@
     {replicationProgressRemaining}
     showCloudWarning={!!expiredSyncTarget}
     cloudWarningLabel={expiredSyncTarget
-      ? `Cloud session expired for ${expiredSyncTarget}. Reconnect to resume syncing.`
+      ? `Cloud session expired for ${getFriendlyStorageSourceName(expiredSyncTarget)}. Reconnect to resume syncing.`
       : 'Cloud session expired. Reconnect to resume syncing.'}
     bind:selectMode
     on:selectAllClick={onSelectAllBooks}

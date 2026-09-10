@@ -3,11 +3,18 @@
     getExpiredSyncTargets,
     storageConnectionStates$
   } from '$lib/data/storage/storage-oauth-manager';
-  import { lastSyncTimestamp$, pendingCloudSync$, syncTarget$ } from '$lib/data/store';
+  import {
+    lastSyncBySource$,
+    lastSyncTimestamp$,
+    pendingCloudSync$,
+    syncTarget$
+  } from '$lib/data/store';
+  import { getFriendlyStorageSourceName } from '$lib/data/storage/storage-types';
   import { onDestroy } from 'svelte';
 
   let syncToast: string | null = null;
   let toastTimer: ReturnType<typeof setTimeout> | undefined;
+  let toastDebounce: ReturnType<typeof setTimeout> | undefined;
   let lastSeenSync = 0;
   let pendingClearedAt = 0;
   let prevPendingCount = 0;
@@ -15,13 +22,22 @@
 
   $: states = $storageConnectionStates$;
   $: pending = $pendingCloudSync$;
-  $: expiredSources = getExpiredSyncTargets($syncTarget$, states, pending);
-  $: expiredSource = expiredSources[0] || '';
-  $: failedOps = expiredSources.reduce((sum, name) => sum + (pending[name]?.failedOps || 0), 0);
+  // Primary-only: global announcements never fire for a secondary cloud.
+  // Secondary sessions surface in Settings per-source status and reconnect
+  // on demand when one of their books is opened.
+  $: expiredSource = getExpiredSyncTargets($syncTarget$, states, pending)[0] || '';
+  $: failedOps = (expiredSource && pending[expiredSource]?.failedOps) || 0;
 
   // "Sync complete" toast: fires when a sync lands while a pending sync
   // existed or was cleared moments ago (reconnect clears pending on
   // CONNECTED just before the retry finishes, hence the grace window).
+  // The label defaults to the primary sync target. Only when a per-source
+  // sync just recorded itself (manual / retry paths bump the global stamp
+  // and lastSyncBySource together via markLastSync) is that source shown
+  // instead. Background syncs bump only the global stamp, so a stale
+  // freshest entry for the other cloud must never win — otherwise a GDrive
+  // sync completes while the toast names OneDrive. Label resolution is
+  // deferred a tick so markLastSync's back-to-back store updates land first.
   $: {
     const keys = Object.keys(pending);
     const count = keys.length;
@@ -36,7 +52,26 @@
       if ($lastSyncTimestamp$ > lastSeenSync) {
         lastSeenSync = $lastSyncTimestamp$;
         if (count > 0 || Date.now() - pendingClearedAt < 60000) {
-          showToast(count === 1 ? `Sync complete (${keys[0]})` : 'Sync complete');
+          if (toastDebounce) clearTimeout(toastDebounce);
+          toastDebounce = setTimeout(() => {
+            const bySource = lastSyncBySource$.getValue();
+            const target = syncTarget$.getValue();
+            let latestName = '';
+            let latest = -1;
+            for (const [name, at] of Object.entries(bySource)) {
+              if (typeof at === 'number' && at > latest) {
+                latest = at;
+                latestName = name;
+              }
+            }
+            const completedSource =
+              latestName && Math.abs(lastSeenSync - latest) < 2000 ? latestName : target;
+            showToast(
+              completedSource
+                ? `Sync complete (${getFriendlyStorageSourceName(completedSource)})`
+                : 'Sync complete'
+            );
+          }, 150);
         }
       }
       prevPendingCount = count;
@@ -44,6 +79,7 @@
   }
 
   onDestroy(() => {
+    if (toastDebounce) clearTimeout(toastDebounce);
     if (toastTimer) clearTimeout(toastTimer);
   });
 
@@ -63,8 +99,7 @@
 -->
 <div role="status" aria-live="polite" class="sr-only">
   {#if expiredSource}
-    Sync paused. Session expired for {expiredSource}
-    {#if expiredSources.length > 1}(+{expiredSources.length - 1} more){/if}
+    Sync paused. Session expired for {getFriendlyStorageSourceName(expiredSource)}
     .{#if failedOps > 0}
       {failedOps}
       {failedOps === 1 ? 'operation' : 'operations'} will sync after reconnect.{/if}

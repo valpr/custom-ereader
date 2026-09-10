@@ -44,3 +44,14 @@ export const defaultStorageSources = [
   { name: StorageSourceDefault.GDRIVE_DEFAULT, type: StorageKey.GDRIVE },
   { name: StorageSourceDefault.ONEDRIVE_DEFAULT, type: StorageKey.ONEDRIVE }
 ];
+
+/**
+ * User-facing label for a storage source name. App-default cloud sources use
+ * friendly names ("GDrive Default" / "OneDrive Default") instead of leaking
+ * internal IDs like "ttu-gdrive-default". Custom sources keep their own name.
+ */
+export function getFriendlyStorageSourceName(name: string | undefined | null): string {
+  if (name === StorageSourceDefault.GDRIVE_DEFAULT) return 'GDrive Default';
+  if (name === StorageSourceDefault.ONEDRIVE_DEFAULT) return 'OneDrive Default';
+  return name || '';
+}

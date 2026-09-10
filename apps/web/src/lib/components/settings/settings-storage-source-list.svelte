@@ -52,7 +52,8 @@
   import {
     StorageDataType,
     StorageKey,
-    StorageSourceDefault
+    StorageSourceDefault,
+    getFriendlyStorageSourceName
   } from '$lib/data/storage/storage-types';
   import { getStorageIconData } from '$lib/data/storage/storage-view';
   import {
@@ -71,10 +72,6 @@
     syncTarget$
   } from '$lib/data/store';
   import { AutoReplicationType } from '$lib/functions/replication/replication-options';
-  import {
-    BOOK_SCOPED_DATA_TYPES,
-    getConnectedCloudSyncTargets
-  } from '$lib/functions/replication/cloud-sync';
   import { replicateData } from '$lib/functions/replication/replicator';
   import { getStorageHandler } from '$lib/data/storage/storage-handler-factory';
   import { formatRelativeTime } from '$lib/functions/time-util';
@@ -89,6 +86,10 @@
   let isSyncing = false;
   let enableAutoSyncOnConnect = true;
   let showAdvanced = false;
+  // Remount key for the sync-target dropdown: the Astryx Select keeps its
+  // own copy of the chosen value, so cancelling the switch confirm must
+  // force a remount to show the still-active target again.
+  let selectKey = 0;
 
   $: if (storageSources) {
     listLoading = false;
@@ -121,8 +122,14 @@
 
   $: dropdownOptions = [
     { value: '', label: 'None (Local Storage Only)' },
-    { value: StorageSourceDefault.GDRIVE_DEFAULT, label: 'Google Drive' },
-    { value: StorageSourceDefault.ONEDRIVE_DEFAULT, label: 'OneDrive' },
+    {
+      value: StorageSourceDefault.GDRIVE_DEFAULT,
+      label: getFriendlyStorageSourceName(StorageSourceDefault.GDRIVE_DEFAULT)
+    },
+    {
+      value: StorageSourceDefault.ONEDRIVE_DEFAULT,
+      label: getFriendlyStorageSourceName(StorageSourceDefault.ONEDRIVE_DEFAULT)
+    },
     ...(fileSystemAvailable && storageSources
       ? storageSources
           .filter((s) => s.type === StorageKey.FS)
@@ -130,10 +137,13 @@
       : []),
     ...(storageSources
       ? storageSources
+          // Disconnected sources stay selectable (selecting one shows its
+          // Connect button) but carry a text-style warning sign, since native
+          // <option> elements cannot render the icon used elsewhere.
           .filter((s) => !isAppDefault(s.name) && s.type !== StorageKey.FS)
           .map((s) => ({
             value: s.name,
-            label: `${s.name} (${s.type === StorageKey.GDRIVE ? 'Google Drive' : 'OneDrive'})`
+            label: `${s.disconnected ? '⚠︎ ' : ''}${s.name} (${s.type === StorageKey.GDRIVE ? 'Google Drive' : 'OneDrive'})`
           }))
       : [])
   ];
@@ -233,6 +243,7 @@
       });
 
       if (!confirmed) {
+        selectKey += 1;
         return;
       }
     }
@@ -247,8 +258,11 @@
 
   function getProviderDisplayName(source: BooksDbStorageSource | null) {
     if (!source) return 'None';
-    if (source.name === StorageSourceDefault.GDRIVE_DEFAULT) return 'Google Drive';
-    if (source.name === StorageSourceDefault.ONEDRIVE_DEFAULT) return 'OneDrive';
+    if (
+      source.name === StorageSourceDefault.GDRIVE_DEFAULT ||
+      source.name === StorageSourceDefault.ONEDRIVE_DEFAULT
+    )
+      return getFriendlyStorageSourceName(source.name);
     return source.name;
   }
 
@@ -426,39 +440,9 @@
 
       markLastSync(sourceName);
 
-      // Book-scoped types also mirror to every other connected cloud so a
-      // single "Sync Now" keeps reading progress consistent everywhere while
-      // statistics / goals stay on the statistics sync target.
-      try {
-        const targets = await getConnectedCloudSyncTargets(storageSources);
-        for (const target of targets) {
-          if (target.name === sourceName) continue;
-          const otherHandler = getStorageHandler(
-            window,
-            target.source.type,
-            target.name,
-            true,
-            $cacheStorageData$,
-            $replicationSaveBehavior$,
-            $statisticsMergeMode$,
-            $readingGoalsMergeMode$
-          );
-          const otherTypes = syncDataTypes.filter((d) => BOOK_SCOPED_DATA_TYPES.includes(d));
-          if (!otherTypes.length) continue;
-          const otherError = await replicateData(
-            localStorageHandler,
-            otherHandler,
-            false,
-            contexts,
-            otherTypes
-          );
-          if (!otherError) {
-            markLastSync(target.name);
-          }
-        }
-      } catch (err: any) {
-        logger.error(`Secondary cloud sync failed: ${err?.message || err}`);
-      }
+      // Single-target sync: only the selected target is synced. The other
+      // cloud is left untouched and syncs on demand when one of its books is
+      // opened (you will be asked to reconnect first if its session expired).
 
       updateRelativeTime();
     } catch (err: any) {
@@ -603,24 +587,26 @@
 
 <ListSection
   title="Cloud & Storage Sync"
-  description="Select your active cloud synchronization service to keep your books, reading progress, and statistics synchronized across devices."
+  description="Select your primary cloud sync target. Automatic sync runs only against this target — reading progress, statistics, goals, and bookmarks stay on one provider so two clouds can never conflict. Your library shows local books plus books on this target; the other cloud is only touched when you open one of its books, and you will be asked to reconnect first if its session expired."
 >
   <ListItem layout="stacked">
     <div class="flex flex-col gap-4 w-full">
       <!-- Dropdown Selector -->
       <div class="w-full">
-        <Select
-          id="cloud-storage-select"
-          label="Statistics Sync Target"
-          helperText="Statistics, reading goals, and profiles sync here; reading progress syncs to every connected cloud"
-          options={dropdownOptions}
-          value={$syncTarget$}
-          on:change={handleDropdownChange}
-        />
+        {#key selectKey}
+          <Select
+            id="cloud-storage-select"
+            label="Statistics Sync Target"
+            helperText="Automatic sync runs only for this target; the other cloud syncs on demand when you open one of its books"
+            options={dropdownOptions}
+            value={$syncTarget$}
+            on:change={handleDropdownChange}
+          />
+        {/key}
         {#if $syncTarget$}
           <p class="text-xs text-zinc-500 dark:text-zinc-400 mt-1.5">
             Tip: To continue reading seamlessly across devices, select the same Sync Target on both
-            your phone and computer.
+            your phone and computer. Switch targets to browse and sync the other cloud's books.
           </p>
         {/if}
       </div>
@@ -1002,6 +988,26 @@
                             Disconnected
                           </span>
                         {/if}
+                      {/if}
+
+                      {#if isCloudRow && sourceState !== StorageConnectionState.CONNECTED && !checkingRow}
+                        <Tooltip content="Reconnect source">
+                          <IconButton
+                            nativeTooltip={false}
+                            size="sm"
+                            variant="ghost"
+                            label="Reconnect source"
+                            data-testid={`reconnect-${storageSource.name}`}
+                            disabled={!!actionLoading[storageSource.name]}
+                            on:click={() => reconnectStorageSource(storageSource)}
+                          >
+                            {#if actionLoading[storageSource.name]}
+                              <Fa icon={faSpinner} spin />
+                            {:else}
+                              <Fa icon={faArrowsRotate} />
+                            {/if}
+                          </IconButton>
+                        </Tooltip>
                       {/if}
 
                       <Tooltip content="Edit source credentials">
