@@ -36,6 +36,7 @@
     storageOAuthTokens,
     storageConnectionStates$,
     getConnectionState,
+    sessionsRestoring$,
     StorageConnectionState
   } from '$lib/data/storage/storage-oauth-manager';
   import {
@@ -61,7 +62,8 @@
     fsStorageSource$,
     gDriveStorageSource$,
     isOnline$,
-    lastSyncTimestamp$,
+    lastSyncBySource$,
+    markLastSync,
     oneDriveStorageSource$,
     readingGoalsMergeMode$,
     replicationSaveBehavior$,
@@ -69,6 +71,10 @@
     syncTarget$
   } from '$lib/data/store';
   import { AutoReplicationType } from '$lib/functions/replication/replication-options';
+  import {
+    BOOK_SCOPED_DATA_TYPES,
+    getConnectedCloudSyncTargets
+  } from '$lib/functions/replication/cloud-sync';
   import { replicateData } from '$lib/functions/replication/replicator';
   import { getStorageHandler } from '$lib/data/storage/storage-handler-factory';
   import { formatRelativeTime } from '$lib/functions/time-util';
@@ -94,10 +100,11 @@
   let timeInterval: ReturnType<typeof setInterval> | undefined;
 
   function updateRelativeTime() {
-    relativeSyncTime = formatRelativeTime($lastSyncTimestamp$);
+    const sourceTime = activeSource ? $lastSyncBySource$[activeSource.name] : 0;
+    relativeSyncTime = formatRelativeTime(sourceTime || 0);
   }
 
-  $: if ($lastSyncTimestamp$ !== undefined) {
+  $: if (activeSource && $lastSyncBySource$[activeSource.name] !== undefined) {
     updateRelativeTime();
   }
 
@@ -156,6 +163,11 @@
     ? $storageConnectionStates$[activeSource.name] ||
       getConnectionState(activeSource.name, activeSource)
     : StorageConnectionState.DISCONNECTED;
+  $: checkingConnection =
+    $sessionsRestoring$ &&
+    (activeSource?.type === StorageKey.GDRIVE || activeSource?.type === StorageKey.ONEDRIVE) &&
+    activeConnectionState !== StorageConnectionState.CONNECTED &&
+    activeConnectionState !== StorageConnectionState.NEEDS_RECONNECT;
   $: isCloudSource =
     activeSource?.type === StorageKey.GDRIVE || activeSource?.type === StorageKey.ONEDRIVE;
   $: isSourceConfigured =
@@ -245,6 +257,13 @@
       return storageSource.data.accountEmail || '';
     }
     return '';
+  }
+
+  function getSourceConnectionState(storageSource: BooksDbStorageSource) {
+    return (
+      $storageConnectionStates$[storageSource.name] ||
+      getConnectionState(storageSource.name, storageSource)
+    );
   }
 
   function isFSHandle(
@@ -405,7 +424,42 @@
         await replicateData(targetHandler, localStorageHandler, false, contexts, syncDataTypes);
       }
 
-      lastSyncTimestamp$.next(Date.now());
+      markLastSync(sourceName);
+
+      // Book-scoped types also mirror to every other connected cloud so a
+      // single "Sync Now" keeps reading progress consistent everywhere while
+      // statistics / goals stay on the statistics sync target.
+      try {
+        const targets = await getConnectedCloudSyncTargets(storageSources);
+        for (const target of targets) {
+          if (target.name === sourceName) continue;
+          const otherHandler = getStorageHandler(
+            window,
+            target.source.type,
+            target.name,
+            true,
+            $cacheStorageData$,
+            $replicationSaveBehavior$,
+            $statisticsMergeMode$,
+            $readingGoalsMergeMode$
+          );
+          const otherTypes = syncDataTypes.filter((d) => BOOK_SCOPED_DATA_TYPES.includes(d));
+          if (!otherTypes.length) continue;
+          const otherError = await replicateData(
+            localStorageHandler,
+            otherHandler,
+            false,
+            contexts,
+            otherTypes
+          );
+          if (!otherError) {
+            markLastSync(target.name);
+          }
+        }
+      } catch (err: any) {
+        logger.error(`Secondary cloud sync failed: ${err?.message || err}`);
+      }
+
       updateRelativeTime();
     } catch (err: any) {
       logger.error(`Manual sync failed: ${err.message}`);
@@ -557,8 +611,8 @@
       <div class="w-full">
         <Select
           id="cloud-storage-select"
-          label="Active Cloud Storage Source"
-          helperText="Choose a cloud provider or keep reading progress strictly on this device"
+          label="Statistics Sync Target"
+          helperText="Statistics, reading goals, and profiles sync here; reading progress syncs to every connected cloud"
           options={dropdownOptions}
           value={$syncTarget$}
           on:change={handleDropdownChange}
@@ -598,6 +652,8 @@
                           {activeEmail ? `Connected as ${activeEmail}` : 'Connected'}
                         {:else if activeConnectionState === StorageConnectionState.NEEDS_RECONNECT}
                           Session Expired — Reconnect required
+                        {:else if checkingConnection}
+                          Checking connection…
                         {:else if !isSourceConfigured}
                           OAuth Client ID not configured
                         {:else}
@@ -626,6 +682,12 @@
                       >
                         <Fa icon={faTriangleExclamation} />
                         Needs Reconnect
+                      </span>
+                    {:else if checkingConnection}
+                      <span
+                        class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-sky-100 dark:bg-sky-950/60 text-sky-700 dark:text-sky-400"
+                      >
+                        Checking
                       </span>
                     {:else if !isSourceConfigured}
                       <span
@@ -888,6 +950,15 @@
                 {#each customSources as storageSource (storageSource.name)}
                   {@const icon = getStorageIconData(storageSource.type)}
                   {@const isSourceSyncTarget = storageSource.name === $syncTarget$}
+                  {@const sourceState = getSourceConnectionState(storageSource)}
+                  {@const isCloudRow =
+                    storageSource.type === StorageKey.GDRIVE ||
+                    storageSource.type === StorageKey.ONEDRIVE}
+                  {@const checkingRow =
+                    $sessionsRestoring$ &&
+                    isCloudRow &&
+                    sourceState !== StorageConnectionState.CONNECTED &&
+                    sourceState !== StorageConnectionState.NEEDS_RECONNECT}
                   <ListItem
                     headline={storageSource.name}
                     description={storageSource.type === StorageKey.FS
@@ -904,6 +975,35 @@
                     </div>
 
                     <div slot="suffix" class="flex items-center gap-1">
+                      {#if isCloudRow}
+                        {#if sourceState === StorageConnectionState.CONNECTED}
+                          <span
+                            class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400"
+                          >
+                            Connected
+                          </span>
+                        {:else if sourceState === StorageConnectionState.NEEDS_RECONNECT}
+                          <span
+                            class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400"
+                          >
+                            <Fa icon={faTriangleExclamation} />
+                            Needs Reconnect
+                          </span>
+                        {:else if checkingRow}
+                          <span
+                            class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-sky-100 dark:bg-sky-950/60 text-sky-700 dark:text-sky-400"
+                          >
+                            Checking
+                          </span>
+                        {:else}
+                          <span
+                            class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400"
+                          >
+                            Disconnected
+                          </span>
+                        {/if}
+                      {/if}
+
                       <Tooltip content="Edit source credentials">
                         <IconButton
                           nativeTooltip={false}

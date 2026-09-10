@@ -15,24 +15,30 @@
 
   $: states = $storageConnectionStates$;
   $: pending = $pendingCloudSync$;
-  $: expiredSource = (() => {
+  $: expiredSources = (() => {
     const target = $syncTarget$;
-    if (target && (states[target] === StorageConnectionState.NEEDS_RECONNECT || pending[target])) {
-      return target;
-    }
-    const flagged = Object.keys(states).find(
-      (name) => states[name] === StorageConnectionState.NEEDS_RECONNECT
-    );
-    if (flagged) return flagged;
-    return Object.keys(pending)[0] || '';
+    const list: string[] = [];
+    const add = (name: string) => {
+      if (name && !list.includes(name)) list.push(name);
+    };
+    const expired = (name: string) =>
+      !!name && (states[name] === StorageConnectionState.NEEDS_RECONNECT || !!pending[name]);
+    if (expired(target)) add(target);
+    Object.keys(states).forEach((name) => {
+      if (states[name] === StorageConnectionState.NEEDS_RECONNECT) add(name);
+    });
+    Object.keys(pending).forEach(add);
+    return list;
   })();
-  $: failedOps = (expiredSource && pending[expiredSource]?.failedOps) || 0;
+  $: expiredSource = expiredSources[0] || '';
+  $: failedOps = expiredSources.reduce((sum, name) => sum + (pending[name]?.failedOps || 0), 0);
 
   // "Sync complete" toast: fires when a sync lands while a pending sync
   // existed or was cleared moments ago (reconnect clears pending on
   // CONNECTED just before the retry finishes, hence the grace window).
   $: {
-    const count = Object.keys(pending).length;
+    const keys = Object.keys(pending);
+    const count = keys.length;
     if (!initialized) {
       lastSeenSync = $lastSyncTimestamp$;
       prevPendingCount = count;
@@ -44,7 +50,7 @@
       if ($lastSyncTimestamp$ > lastSeenSync) {
         lastSeenSync = $lastSyncTimestamp$;
         if (count > 0 || Date.now() - pendingClearedAt < 60000) {
-          showToast('Sync complete');
+          showToast(count === 1 ? `Sync complete (${keys[0]})` : 'Sync complete');
         }
       }
       prevPendingCount = count;
@@ -71,7 +77,9 @@
 -->
 <div role="status" aria-live="polite" class="sr-only">
   {#if expiredSource}
-    Sync paused. Session expired for {expiredSource}.{#if failedOps > 0}
+    Sync paused. Session expired for {expiredSource}
+    {#if expiredSources.length > 1}(+{expiredSources.length - 1} more){/if}
+    .{#if failedOps > 0}
       {failedOps}
       {failedOps === 1 ? 'operation' : 'operations'} will sync after reconnect.{/if}
   {/if}
