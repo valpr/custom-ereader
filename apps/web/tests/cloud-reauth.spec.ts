@@ -53,6 +53,30 @@ test.describe('Cloud re-auth deferred UX', () => {
     await expect(status.first()).toContainText(/Sync paused.*GDrive Default/);
   });
 
+  test('no banner for a secondary cloud with an expired session', async ({ page }) => {
+    // Primary target is healthy; only the secondary cloud has pending ops.
+    // Global banners stay primary-only — secondary sessions reconnect on
+    // demand when one of their books is opened.
+    await page.addInitScript(() => {
+      window.localStorage.setItem('syncTarget', 'ttu-gdrive-default');
+      window.localStorage.setItem(
+        'pendingCloudSync',
+        JSON.stringify({
+          'ttu-onedrive-default': {
+            at: Date.now(),
+            reason: 'session expired (test)',
+            failedOps: 2
+          }
+        })
+      );
+    });
+    await page.goto('/manage');
+
+    await expect(page.getByTestId('cloud-reconnect-banner')).toHaveCount(0);
+    const status = page.locator('div[role="status"][aria-live="polite"]');
+    await expect(status.first()).not.toContainText('Sync paused');
+  });
+
   test('no banner or live announcement when session is healthy', async ({ page }) => {
     await page.goto('/manage');
 

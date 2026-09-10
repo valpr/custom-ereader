@@ -288,8 +288,9 @@ export const lastSyncTimestamp$ = writableNumberLocalStorageSubject()('lastSyncT
 
 /**
  * Per-source last successful sync time (ms epoch), keyed by storage source
- * name. Kept alongside the global `lastSyncTimestamp$` so multi-cloud sync can
- * show and toast per-target freshness.
+ * name. Kept alongside the global `lastSyncTimestamp$` so Settings can show
+ * per-target freshness even though automatic sync runs against the primary
+ * target only.
  */
 export const lastSyncBySource$ = writableObjectLocalStorageSubject<Record<string, number>>()(
   'lastSyncBySource',

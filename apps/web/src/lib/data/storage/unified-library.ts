@@ -75,6 +75,14 @@ export interface UnifiedFetchOptions {
   gDriveSourceName?: string;
   oneDriveSourceName?: string;
   includeClouds?: boolean;
+  /**
+   * Primary-only listing: when defined, only the cloud whose source name
+   * matches is fetched. Pass the `$syncTarget$` value (or '' for local-only)
+   * so the secondary cloud is never touched by background listing — it is
+   * fetched on demand only when the user opens one of its books or switches
+   * targets. `undefined` (legacy) includes every available cloud.
+   */
+  primarySourceName?: string;
 }
 
 export interface SourceBookList {
@@ -83,9 +91,12 @@ export interface SourceBookList {
 }
 
 /**
- * Fetches Browser + connected cloud lists in parallel. Unavailable/failed
+ * Fetches Browser + primary cloud lists in parallel. Unavailable/failed
  * sources resolve to [] so one offline cloud never breaks the whole library.
- * FS is intentionally excluded in v1.
+ * FS is intentionally excluded in v1. The secondary cloud is excluded unless
+ * `primarySourceName` is left undefined (legacy): pass `$syncTarget$` so only
+ * the primary target is listed and background listing never touches — and can
+ * never expire — a secondary session.
  *
  * Background refresh: askForStorageUnlock=false so an expired cloud session
  * defers to the reconnect banner instead of popping an unlock modal, and the
@@ -96,7 +107,12 @@ export async function fetchUnifiedBookLists(
   window: Window,
   options: UnifiedFetchOptions = {}
 ): Promise<{ source: StorageKey; cards: BookCardProps[] }[]> {
-  const { gDriveSourceName = '', oneDriveSourceName = '', includeClouds = true } = options;
+  const {
+    gDriveSourceName = '',
+    oneDriveSourceName = '',
+    includeClouds = true,
+    primarySourceName
+  } = options;
 
   const browserPromise = getStorageHandler(
     window,
@@ -119,7 +135,14 @@ export async function fetchUnifiedBookLists(
 
   const cloudTasks: Promise<{ source: StorageKey; cards: BookCardProps[] }>[] = [];
 
-  if (isStorageSourceAvailable(StorageKey.GDRIVE, gDriveSourceName, window)) {
+  const includeGDrive =
+    !!gDriveSourceName &&
+    (primarySourceName === undefined || gDriveSourceName === primarySourceName);
+  const includeOneDrive =
+    !!oneDriveSourceName &&
+    (primarySourceName === undefined || oneDriveSourceName === primarySourceName);
+
+  if (includeGDrive && isStorageSourceAvailable(StorageKey.GDRIVE, gDriveSourceName, window)) {
     cloudTasks.push(
       getStorageHandler(
         window,
@@ -138,7 +161,10 @@ export async function fetchUnifiedBookLists(
     );
   }
 
-  if (isStorageSourceAvailable(StorageKey.ONEDRIVE, oneDriveSourceName, window)) {
+  if (
+    includeOneDrive &&
+    isStorageSourceAvailable(StorageKey.ONEDRIVE, oneDriveSourceName, window)
+  ) {
     cloudTasks.push(
       getStorageHandler(
         window,
@@ -162,16 +188,23 @@ export async function fetchUnifiedBookLists(
 
 /**
  * Streaming variant of fetchUnifiedBookLists: emits the local Browser list
- * first so the library renders immediately, then re-emits as each connected
+ * first so the library renders immediately, then re-emits as the primary
  * cloud list arrives. A slow or offline cloud can no longer hold up the page.
  * Each emission is the full set of lists known so far; failed sources resolve
  * to [] just like the batched version. Emits at least once and completes.
+ * Pass `primarySourceName: $syncTarget$` to list Browser + primary only; the
+ * secondary cloud is never fetched in the background.
  */
 export function fetchUnifiedBookListsStream(
   window: Window,
   options: UnifiedFetchOptions = {}
 ): Observable<SourceBookList[]> {
-  const { gDriveSourceName = '', oneDriveSourceName = '', includeClouds = true } = options;
+  const {
+    gDriveSourceName = '',
+    oneDriveSourceName = '',
+    includeClouds = true,
+    primarySourceName
+  } = options;
 
   return new Observable<SourceBookList[]>((subscriber) => {
     let cancelled = false;
@@ -208,7 +241,17 @@ export function fetchUnifiedBookListsStream(
 
         const cloudTasks: Promise<SourceBookList>[] = [];
 
-        if (isStorageSourceAvailable(StorageKey.GDRIVE, gDriveSourceName, window)) {
+        const includeGDrive =
+          !!gDriveSourceName &&
+          (primarySourceName === undefined || gDriveSourceName === primarySourceName);
+        const includeOneDrive =
+          !!oneDriveSourceName &&
+          (primarySourceName === undefined || oneDriveSourceName === primarySourceName);
+
+        if (
+          includeGDrive &&
+          isStorageSourceAvailable(StorageKey.GDRIVE, gDriveSourceName, window)
+        ) {
           cloudTasks.push(
             getStorageHandler(
               window,
@@ -227,7 +270,10 @@ export function fetchUnifiedBookListsStream(
           );
         }
 
-        if (isStorageSourceAvailable(StorageKey.ONEDRIVE, oneDriveSourceName, window)) {
+        if (
+          includeOneDrive &&
+          isStorageSourceAvailable(StorageKey.ONEDRIVE, oneDriveSourceName, window)
+        ) {
           cloudTasks.push(
             getStorageHandler(
               window,
