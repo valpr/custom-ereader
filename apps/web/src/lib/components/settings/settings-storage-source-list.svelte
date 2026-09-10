@@ -86,6 +86,10 @@
   let isSyncing = false;
   let enableAutoSyncOnConnect = true;
   let showAdvanced = false;
+  // Remount key for the sync-target dropdown: the Astryx Select keeps its
+  // own copy of the chosen value, so cancelling the switch confirm must
+  // force a remount to show the still-active target again.
+  let selectKey = 0;
 
   $: if (storageSources) {
     listLoading = false;
@@ -239,6 +243,7 @@
       });
 
       if (!confirmed) {
+        selectKey += 1;
         return;
       }
     }
@@ -588,14 +593,16 @@
     <div class="flex flex-col gap-4 w-full">
       <!-- Dropdown Selector -->
       <div class="w-full">
-        <Select
-          id="cloud-storage-select"
-          label="Statistics Sync Target"
-          helperText="Automatic sync runs only for this target; the other cloud syncs on demand when you open one of its books"
-          options={dropdownOptions}
-          value={$syncTarget$}
-          on:change={handleDropdownChange}
-        />
+        {#key selectKey}
+          <Select
+            id="cloud-storage-select"
+            label="Statistics Sync Target"
+            helperText="Automatic sync runs only for this target; the other cloud syncs on demand when you open one of its books"
+            options={dropdownOptions}
+            value={$syncTarget$}
+            on:change={handleDropdownChange}
+          />
+        {/key}
         {#if $syncTarget$}
           <p class="text-xs text-zinc-500 dark:text-zinc-400 mt-1.5">
             Tip: To continue reading seamlessly across devices, select the same Sync Target on both
