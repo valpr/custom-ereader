@@ -3,7 +3,12 @@
     getExpiredSyncTargets,
     storageConnectionStates$
   } from '$lib/data/storage/storage-oauth-manager';
-  import { lastSyncTimestamp$, pendingCloudSync$, syncTarget$ } from '$lib/data/store';
+  import {
+    lastSyncBySource$,
+    lastSyncTimestamp$,
+    pendingCloudSync$,
+    syncTarget$
+  } from '$lib/data/store';
   import { getFriendlyStorageSourceName } from '$lib/data/storage/storage-types';
   import { onDestroy } from 'svelte';
 
@@ -25,6 +30,10 @@
   // "Sync complete" toast: fires when a sync lands while a pending sync
   // existed or was cleared moments ago (reconnect clears pending on
   // CONNECTED just before the retry finishes, hence the grace window).
+  // The label uses the source that actually synced (freshest
+  // lastSyncBySource entry, falling back to the primary sync target) —
+  // never an arbitrary pending entry, which may hold a stale failure for
+  // the other cloud.
   $: {
     const keys = Object.keys(pending);
     const count = keys.length;
@@ -39,9 +48,18 @@
       if ($lastSyncTimestamp$ > lastSeenSync) {
         lastSeenSync = $lastSyncTimestamp$;
         if (count > 0 || Date.now() - pendingClearedAt < 60000) {
+          const bySource = $lastSyncBySource$;
+          let completedSource = $syncTarget$;
+          let latest = -1;
+          for (const [name, at] of Object.entries(bySource)) {
+            if (typeof at === 'number' && at > latest) {
+              latest = at;
+              completedSource = name;
+            }
+          }
           showToast(
-            count === 1
-              ? `Sync complete (${getFriendlyStorageSourceName(keys[0])})`
+            completedSource
+              ? `Sync complete (${getFriendlyStorageSourceName(completedSource)})`
               : 'Sync complete'
           );
         }
