@@ -1,6 +1,7 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   import { faUpload } from '@fortawesome/free-solid-svg-icons';
+  import BookCardDetailsDialog from '$lib/components/book-card/book-card-details-dialog.svelte';
   import BookCardList from '$lib/components/book-card/book-card-list.svelte';
   import type { BookCardProps } from '$lib/components/book-card/book-card-props';
   import BookManagerHeader from '$lib/components/book-card/book-manager-header.svelte';
@@ -29,6 +30,7 @@
   import {
     StorageDataType,
     StorageKey,
+    StorageSourceDefault,
     getFriendlyStorageSourceName
   } from '$lib/data/storage/storage-types';
   import {
@@ -771,6 +773,152 @@
     }
   }
 
+  async function resolvePrimaryCloud(): Promise<{ type: StorageKey; name: string } | null> {
+    const primaryName = syncTarget$.getValue();
+
+    if (!primaryName) {
+      return null;
+    }
+
+    if (
+      primaryName === $gDriveStorageSource$ ||
+      primaryName === StorageSourceDefault.GDRIVE_DEFAULT
+    ) {
+      return { type: StorageKey.GDRIVE, name: primaryName };
+    }
+
+    if (
+      primaryName === $oneDriveStorageSource$ ||
+      primaryName === StorageSourceDefault.ONEDRIVE_DEFAULT
+    ) {
+      return { type: StorageKey.ONEDRIVE, name: primaryName };
+    }
+
+    const sources = await database.getStorageSources().catch(() => []);
+    const found = (sources || []).find((source) => source.name === primaryName);
+
+    if (found && (found.type === StorageKey.GDRIVE || found.type === StorageKey.ONEDRIVE)) {
+      return { type: found.type, name: primaryName };
+    }
+
+    return null;
+  }
+
+  async function onUploadBookToPrimary(bookId: number) {
+    const card = $bookCards$.find((book) => book.id === bookId);
+
+    if (!card) {
+      return;
+    }
+
+    const primary = await resolvePrimaryCloud();
+
+    if (!primary) {
+      dialogManager.dialogs$.next([
+        {
+          component: MessageDialog,
+          props: {
+            title: 'No primary cloud',
+            message: 'Set a primary cloud sync target in Settings to upload books.'
+          }
+        }
+      ]);
+      return;
+    }
+
+    if (!operationAllowed(primary.type)) {
+      return;
+    }
+
+    if (!(card.sources || []).includes(StorageKey.BROWSER)) {
+      dialogManager.dialogs$.next([
+        {
+          component: MessageDialog,
+          props: {
+            title: 'Nothing to upload',
+            message: `“${card.title}” has no local browser copy to upload.`
+          }
+        }
+      ]);
+      return;
+    }
+
+    cancelTooltip = `Cancels the current Upload\nAlready uploaded data will not be removed`;
+
+    initializeReplicationProgressData();
+
+    const sourceHandler = getStorageHandler(
+      window,
+      StorageKey.BROWSER,
+      '',
+      true,
+      $cacheStorageData$,
+      $replicationSaveBehavior$,
+      $statisticsMergeMode$,
+      $readingGoalsMergeMode$
+    );
+    const targetHandler = getStorageHandler(
+      window,
+      primary.type,
+      primary.name,
+      false,
+      $cacheStorageData$,
+      $replicationSaveBehavior$,
+      $statisticsMergeMode$,
+      $readingGoalsMergeMode$
+    );
+    const error = await replicateData(
+      sourceHandler,
+      targetHandler,
+      false,
+      [{ title: card.title, imagePath: card.imagePath }],
+      [StorageDataType.DATA, StorageDataType.PROGRESS, StorageDataType.USER_BOOKMARKS],
+      cancelSignal
+    ).catch((err) => err.message);
+
+    resetProgress();
+
+    database.dataListChanged$.next(undefined);
+
+    if (error) {
+      showError('Upload failed', error, 'Error(s) occurred during upload');
+      return;
+    }
+
+    dialogManager.dialogs$.next([
+      {
+        component: MessageDialog,
+        props: {
+          title: 'Upload complete',
+            message: `“${card.title}” was uploaded to your primary cloud (${primary.name}).`
+        }
+      }
+    ]);
+  }
+
+  function onShowBookDetails(bookId: number) {
+    const card = $bookCards$.find((book) => book.id === bookId);
+
+    if (!card) {
+      return;
+    }
+
+    dialogManager.dialogs$.next([
+      {
+        component: BookCardDetailsDialog,
+        props: {
+          title: card.title,
+          characters: card.characters,
+          progress: card.progress,
+          lastBookOpen: card.lastBookOpen,
+          lastBookmarkModified: card.lastBookmarkModified,
+          lastBookModified: card.lastBookModified,
+          sources: card.sources || []
+        }
+      }
+    ]);
+  }
+
   async function onImportBackup(file: File) {
     if (!operationAllowed()) {
       return;
@@ -1090,6 +1238,8 @@
         bookCards={$bookCards$}
         on:bookClick={(ev) => onBookClick(ev.detail.id)}
         on:removeBookClick={(ev) => removeBooks([ev.detail.id])}
+        on:uploadBookClick={(ev) => onUploadBookToPrimary(ev.detail.id)}
+        on:detailsClick={(ev) => onShowBookDetails(ev.detail.id)}
       />
     {:else}
       <div
