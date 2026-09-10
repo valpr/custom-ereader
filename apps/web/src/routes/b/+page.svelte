@@ -164,9 +164,14 @@
   import { replicateData } from '$lib/functions/replication/replicator';
   import { reconnectAndSyncNow } from '$lib/functions/replication/cloud-reauth';
   import {
+    BOOK_SCOPED_DATA_TYPES,
+    getConnectedCloudSyncTargets,
+    type CloudSyncTarget
+  } from '$lib/functions/replication/cloud-sync';
+  import {
     StorageOAuthManager,
-    storageConnectionStates$,
-    StorageConnectionState
+    getExpiredSyncTargets,
+    storageConnectionStates$
   } from '$lib/data/storage/storage-oauth-manager';
   import { readableToObservable } from '$lib/functions/rxjs/readable-to-observable';
   import { reduceToEmptyString } from '$lib/functions/rxjs/reduce-to-empty-string';
@@ -1184,25 +1189,74 @@
     }
 
     if (
-      localStorageHandler &&
-      storageHandler &&
-      ($autoReplication$ === AutoReplicationType.Down ||
-        $autoReplication$ === AutoReplicationType.All)
+      !localStorageHandler ||
+      !storageHandler ||
+      !(
+        $autoReplication$ === AutoReplicationType.Down ||
+        $autoReplication$ === AutoReplicationType.All
+      )
     ) {
+      return;
+    }
+
+    const currentName = storageHandler.getCurrentStorageSource() || '';
+    const primaryName = $syncTarget$;
+
+    const FULL_DOWN_TYPES = [
+      StorageDataType.PROGRESS,
+      StorageDataType.STATISTICS,
+      StorageDataType.READING_GOALS,
+      StorageDataType.PROFILES,
+      StorageDataType.AUDIOBOOK,
+      StorageDataType.SUBTITLE,
+      StorageDataType.USER_BOOKMARKS
+    ];
+
+    // Merge from every connected cloud. Non-primary sources only pull
+    // book-scoped data, so aggregate data (statistics / goals / profiles)
+    // can only ever come from the primary. The book's designated handler
+    // runs last so its own book-scoped data has the final word.
+    interface DownJob {
+      handler: BaseStorageHandler;
+      full: boolean;
+      started: boolean;
+    }
+    const jobs: DownJob[] = [];
+    const queued = new Set<string>([currentName]);
+
+    let targets: CloudSyncTarget[] = [];
+    try {
+      targets = await getConnectedCloudSyncTargets();
+    } catch {
+      // target discovery failure: fall back to the designated handler below
+    }
+
+    for (const target of targets) {
+      if (target.name === currentName) continue;
+      if (queued.has(target.name)) continue;
+      const handler = await getStorageHandlerByName(target.name).catch(() => undefined);
+      if (!handler) continue;
+      queued.add(target.name);
+      jobs.push({ handler, full: target.isPrimary, started: false });
+    }
+
+    jobs.push({ handler: storageHandler, full: currentName === primaryName, started: false });
+
+    for (const job of jobs) {
+      if (!job.started) {
+        job.handler.startContext(context);
+        job.started = true;
+      }
+      const dataTypes = job.full
+        ? FULL_DOWN_TYPES
+        : FULL_DOWN_TYPES.filter((d) => BOOK_SCOPED_DATA_TYPES.includes(d));
+
       const error = await replicateData(
-        storageHandler,
+        job.handler,
         localStorageHandler,
         false,
         [context],
-        [
-          StorageDataType.PROGRESS,
-          StorageDataType.STATISTICS,
-          StorageDataType.READING_GOALS,
-          StorageDataType.PROFILES,
-          StorageDataType.AUDIOBOOK,
-          StorageDataType.SUBTITLE,
-          StorageDataType.USER_BOOKMARKS
-        ]
+        dataTypes
       );
 
       if (error) {
@@ -1547,19 +1601,69 @@
       currentHandlerStorageSource
     );
 
-    const error = await replicateData(
-      localStorageHandler,
-      externalStorageHandler,
-      !isSilent && $storageSource$ === externalStorageHandler.storageType,
-      [
-        {
-          id: $rawBookData$.id,
-          title: $rawBookData$.title,
-          imagePath: $rawBookData$.coverImage
-        }
-      ],
-      dataToReplicate
-    ).catch((err: any) => err.message);
+    const context = {
+      id: $rawBookData$.id,
+      title: $rawBookData$.title,
+      imagePath: $rawBookData$.coverImage
+    };
+    const refreshDataList = !isSilent && $storageSource$ === externalStorageHandler.storageType;
+
+    const primaryName = $syncTarget$;
+    const isPrimaryHandler = currentHandlerStorageSource === primaryName;
+
+    // Primary target receives everything; every other connected cloud receives
+    // only the book-scoped types (progress, user bookmarks).
+    interface ReplicationJob {
+      handler: BaseStorageHandler;
+      types: StorageDataType[];
+      refresh: boolean;
+    }
+    const jobs: ReplicationJob[] = [
+      {
+        handler: externalStorageHandler,
+        types: isPrimaryHandler
+          ? dataToReplicate
+          : dataToReplicate.filter((d) => BOOK_SCOPED_DATA_TYPES.includes(d)),
+        refresh: refreshDataList
+      }
+    ];
+    const queued = new Set<string>([externalStorageHandler.getCurrentStorageSource() || '']);
+
+    try {
+      const targets = await getConnectedCloudSyncTargets();
+      // Release order so the primary source runs last: it is the only one that
+      // replicates statistics / goals / profiles, and its book-scoped data wins
+      // in case of conflicts with other clouds.
+      const orderedTargets = [...targets].sort((a, b) => Number(a.isPrimary) - Number(b.isPrimary));
+
+      for (const target of orderedTargets) {
+        if (queued.has(target.name)) continue;
+        const handler = await getStorageHandlerByName(target.name).catch(() => undefined);
+        if (!handler || handler === externalStorageHandler) continue;
+        queued.add(target.name);
+        const types = target.isPrimary
+          ? dataToReplicate
+          : dataToReplicate.filter((d) => BOOK_SCOPED_DATA_TYPES.includes(d));
+        if (!types.length) continue;
+        jobs.push({ handler, types, refresh: false });
+      }
+    } catch {
+      // Target discovery failures never block the designated handler sync.
+    }
+
+    let error: string | undefined;
+    for (const job of jobs) {
+      const jobError = await replicateData(
+        localStorageHandler,
+        job.handler,
+        job.refresh,
+        [context],
+        job.types
+      ).catch((err: any) => err.message);
+      if (jobError && !error) {
+        error = jobError;
+      }
+    }
 
     externalStorageHandler.updateSettings(
       window,
@@ -1872,11 +1976,7 @@
   let cloudReconnecting = false;
 
   $: expiredSyncTarget =
-    $syncTarget$ &&
-    ($storageConnectionStates$[$syncTarget$] === StorageConnectionState.NEEDS_RECONNECT ||
-      $pendingCloudSync$[$syncTarget$])
-      ? $syncTarget$
-      : '';
+    getExpiredSyncTargets($syncTarget$, $storageConnectionStates$, $pendingCloudSync$)[0] || '';
 
   async function handleCloudReconnect() {
     if (!expiredSyncTarget || cloudReconnecting) return;

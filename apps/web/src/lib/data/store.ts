@@ -286,6 +286,24 @@ export const syncTarget$ = writableStringLocalStorageSubject()('syncTarget', '')
 
 export const lastSyncTimestamp$ = writableNumberLocalStorageSubject()('lastSyncTimestamp', 0);
 
+/**
+ * Per-source last successful sync time (ms epoch), keyed by storage source
+ * name. Kept alongside the global `lastSyncTimestamp$` so multi-cloud sync can
+ * show and toast per-target freshness.
+ */
+export const lastSyncBySource$ = writableObjectLocalStorageSubject<Record<string, number>>()(
+  'lastSyncBySource',
+  {}
+);
+
+export function markLastSync(sourceName: string) {
+  if (!sourceName) return;
+  const now = Date.now();
+  lastSyncTimestamp$.next(now);
+  const current = lastSyncBySource$.getValue();
+  lastSyncBySource$.next({ ...current, [sourceName]: now });
+}
+
 export const keepLocalStatisticsOnDeletion$ = writableBooleanLocalStorageSubject()(
   'keepLocalStatisticsOnDeletion',
   true
@@ -617,6 +635,11 @@ if (browser) {
     if (!seeded || !seeded.property) {
       const legacy = booklistSortOptions$.getValue()?.[StorageKey.BROWSER];
       if (legacy?.property) librarySortOption$.next(legacy);
+    }
+    const seededSync = lastSyncBySource$.getValue();
+    if (!Object.keys(seededSync).length && lastSyncTimestamp$.getValue()) {
+      const target = syncTarget$.getValue();
+      if (target) lastSyncBySource$.next({ [target]: lastSyncTimestamp$.getValue() });
     }
   } catch {
     // Ignore migration errors (e.g. storage unavailable)
