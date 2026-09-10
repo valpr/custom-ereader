@@ -170,8 +170,8 @@
   } from '$lib/functions/replication/cloud-sync';
   import {
     StorageOAuthManager,
-    storageConnectionStates$,
-    StorageConnectionState
+    getExpiredSyncTargets,
+    storageConnectionStates$
   } from '$lib/data/storage/storage-oauth-manager';
   import { readableToObservable } from '$lib/functions/rxjs/readable-to-observable';
   import { reduceToEmptyString } from '$lib/functions/rxjs/reduce-to-empty-string';
@@ -1212,9 +1212,10 @@
       StorageDataType.USER_BOOKMARKS
     ];
 
-    // Merge from every connected cloud. Non-primary sources run first and
-    // only pull book-scoped data; the primary source runs last so its
-    // statistics / goals / profiles win.
+    // Merge from every connected cloud. Non-primary sources only pull
+    // book-scoped data, so aggregate data (statistics / goals / profiles)
+    // can only ever come from the primary. The book's designated handler
+    // runs last so its own book-scoped data has the final word.
     interface DownJob {
       handler: BaseStorageHandler;
       full: boolean;
@@ -1974,19 +1975,8 @@
 
   let cloudReconnecting = false;
 
-  $: expiredSyncTarget = (() => {
-    const target = $syncTarget$;
-    const expired = (name: string) =>
-      !!name &&
-      ($storageConnectionStates$[name] === StorageConnectionState.NEEDS_RECONNECT ||
-        !!$pendingCloudSync$[name]);
-    if (expired(target)) return target;
-    const flagged = Object.keys($storageConnectionStates$).find(
-      (name) => $storageConnectionStates$[name] === StorageConnectionState.NEEDS_RECONNECT
-    );
-    if (flagged) return flagged;
-    return Object.keys($pendingCloudSync$)[0] || '';
-  })();
+  $: expiredSyncTarget =
+    getExpiredSyncTargets($syncTarget$, $storageConnectionStates$, $pendingCloudSync$)[0] || '';
 
   async function handleCloudReconnect() {
     if (!expiredSyncTarget || cloudReconnecting) return;

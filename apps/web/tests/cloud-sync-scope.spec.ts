@@ -5,6 +5,7 @@
  */
 
 import { expect, test, type Page } from '@playwright/test';
+import { currentDbVersion } from '../src/lib/data/database/books-db/versions/books-db';
 
 const PRIMARY_SOURCE = 'trusted-gdrive';
 
@@ -15,35 +16,38 @@ interface SeedSource {
 
 async function seedStorageSources(page: Page, sources: SeedSource[]) {
   await page.goto('/');
-  await page.evaluate(async (list) => {
-    const db = await new Promise<IDBDatabase>((resolve, reject) => {
-      const request = indexedDB.open('books', 7);
-      request.onupgradeneeded = () => {
-        const d = request.result;
-        if (!d.objectStoreNames.contains('storageSource')) {
-          d.createObjectStore('storageSource', { keyPath: 'name' });
-        }
-      };
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
-    });
+  await page.evaluate(
+    async ({ list, version }) => {
+      const db = await new Promise<IDBDatabase>((resolve, reject) => {
+        const request = indexedDB.open('books', version);
+        request.onupgradeneeded = () => {
+          const d = request.result;
+          if (!d.objectStoreNames.contains('storageSource')) {
+            d.createObjectStore('storageSource', { keyPath: 'name' });
+          }
+        };
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
 
-    await new Promise<void>((resolve, reject) => {
-      const tx = db.transaction('storageSource', 'readwrite');
-      tx.oncomplete = () => resolve();
-      tx.onerror = () => reject(tx.error);
-      for (const source of list) {
-        tx.objectStore('storageSource').put({
-          name: source.name,
-          type: source.type,
-          storedInManager: true,
-          encryptionDisabled: false,
-          data: new ArrayBuffer(0),
-          lastSourceModified: Date.now()
-        });
-      }
-    });
-  }, sources);
+      await new Promise<void>((resolve, reject) => {
+        const tx = db.transaction('storageSource', 'readwrite');
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+        for (const source of list) {
+          tx.objectStore('storageSource').put({
+            name: source.name,
+            type: source.type,
+            storedInManager: true,
+            encryptionDisabled: false,
+            data: new ArrayBuffer(0),
+            lastSourceModified: Date.now()
+          });
+        }
+      });
+    },
+    { list: sources, version: currentDbVersion }
+  );
 }
 
 test.describe('Cloud sync scope (multi-cloud)', () => {

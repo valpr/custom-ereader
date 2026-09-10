@@ -1,7 +1,7 @@
 <script lang="ts">
   import {
-    storageConnectionStates$,
-    StorageConnectionState
+    getExpiredSyncTargets,
+    storageConnectionStates$
   } from '$lib/data/storage/storage-oauth-manager';
   import { lastSyncTimestamp$, pendingCloudSync$, syncTarget$ } from '$lib/data/store';
   import { onDestroy } from 'svelte';
@@ -15,21 +15,7 @@
 
   $: states = $storageConnectionStates$;
   $: pending = $pendingCloudSync$;
-  $: expiredSources = (() => {
-    const target = $syncTarget$;
-    const list: string[] = [];
-    const add = (name: string) => {
-      if (name && !list.includes(name)) list.push(name);
-    };
-    const expired = (name: string) =>
-      !!name && (states[name] === StorageConnectionState.NEEDS_RECONNECT || !!pending[name]);
-    if (expired(target)) add(target);
-    Object.keys(states).forEach((name) => {
-      if (states[name] === StorageConnectionState.NEEDS_RECONNECT) add(name);
-    });
-    Object.keys(pending).forEach(add);
-    return list;
-  })();
+  $: expiredSources = getExpiredSyncTargets($syncTarget$, states, pending);
   $: expiredSource = expiredSources[0] || '';
   $: failedOps = expiredSources.reduce((sum, name) => sum + (pending[name]?.failedOps || 0), 0);
 

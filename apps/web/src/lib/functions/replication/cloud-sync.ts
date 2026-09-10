@@ -35,10 +35,15 @@ const SYNC_DATA_TYPES = [
 
 /**
  * Book-scoped data: safe to mirror to every connected cloud. These are the
- * per-book reading position / bookmark payloads that respect each book's
- * preferred storage source.
+ * per-book payloads (reading position, bookmarks, audio/subtitle blobs) that
+ * respect each book's preferred storage source.
  */
-export const BOOK_SCOPED_DATA_TYPES = [StorageDataType.PROGRESS, StorageDataType.USER_BOOKMARKS];
+export const BOOK_SCOPED_DATA_TYPES = [
+  StorageDataType.PROGRESS,
+  StorageDataType.USER_BOOKMARKS,
+  StorageDataType.AUDIOBOOK,
+  StorageDataType.SUBTITLE
+];
 
 /**
  * Aggregate data: kept on the primary sync target (`$syncTarget$`) only.
@@ -221,9 +226,15 @@ export async function triggerCloudSync(
 
 /**
  * Sync every connected cloud: aggregate data (statistics, reading goals) goes
- * to the primary target only while book-scoped data (progress, user bookmarks)
- * is mirrored to all connected clouds. Aggregates errors per source.
- * Returns an error message (empty string when every target succeeded).
+ * to the primary target only while book-scoped data (progress, bookmarks,
+ * audio, subtitles) is mirrored to all connected clouds. Aggregates errors
+ * per source. Returns an error message (empty string when every target
+ * succeeded).
+ *
+ * Targets run sequentially, non-primary first and primary last. Sequential
+ * execution keeps the shared local IndexedDB handler free of interleaved
+ * transactions, and primary-last gives the primary target the final word on
+ * book-scoped data when clouds disagree.
  */
 export async function triggerCloudSyncAll(
   window: Window,
@@ -234,16 +245,15 @@ export async function triggerCloudSyncAll(
 
   const errors: string[] = [];
   const sourceList = targets.map((t) => t.source);
+  const orderedTargets = [...targets].sort((a, b) => Number(a.isPrimary) - Number(b.isPrimary));
 
-  await Promise.allSettled(
-    targets.map(async (target) => {
-      const types = target.isPrimary ? SYNC_DATA_TYPES : BOOK_SCOPED_DATA_TYPES;
-      const error = await triggerCloudSync(window, target.name, sourceList, types);
-      if (error) {
-        errors.push(`${target.name}: ${error}`);
-      }
-    })
-  );
+  for (const target of orderedTargets) {
+    const types = target.isPrimary ? SYNC_DATA_TYPES : BOOK_SCOPED_DATA_TYPES;
+    const error = await triggerCloudSync(window, target.name, sourceList, types);
+    if (error) {
+      errors.push(`${target.name}: ${error}`);
+    }
+  }
 
   return errors.length ? errors.join('; ') : '';
 }

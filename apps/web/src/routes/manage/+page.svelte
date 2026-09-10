@@ -23,8 +23,8 @@
   import { getStorageHandler } from '$lib/data/storage/storage-handler-factory';
   import {
     StorageOAuthManager,
-    storageConnectionStates$,
-    StorageConnectionState
+    getExpiredSyncTargets,
+    storageConnectionStates$
   } from '$lib/data/storage/storage-oauth-manager';
   import { StorageDataType, StorageKey } from '$lib/data/storage/storage-types';
   import { fetchUnifiedBookLists, mergeBookLists } from '$lib/data/storage/unified-library';
@@ -172,19 +172,8 @@
   let executionStart: number;
   let cloudReconnecting = false;
 
-  $: expiredSyncTarget = (() => {
-    const target = $syncTarget$;
-    const expired = (name: string) =>
-      !!name &&
-      ($storageConnectionStates$[name] === StorageConnectionState.NEEDS_RECONNECT ||
-        !!$pendingCloudSync$[name]);
-    if (expired(target)) return target;
-    const flagged = Object.keys($storageConnectionStates$).find(
-      (name) => $storageConnectionStates$[name] === StorageConnectionState.NEEDS_RECONNECT
-    );
-    if (flagged) return flagged;
-    return Object.keys($pendingCloudSync$)[0] || '';
-  })();
+  $: expiredSyncTarget =
+    getExpiredSyncTargets($syncTarget$, $storageConnectionStates$, $pendingCloudSync$)[0] || '';
   $: expiredFailedOps =
     (expiredSyncTarget && $pendingCloudSync$[expiredSyncTarget]?.failedOps) || 0;
 
