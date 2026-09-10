@@ -591,6 +591,7 @@
     if (gDriveTitles.length) cloudParts.push(`GDrive (${gDriveTitles.length})`);
     if (oneDriveTitles.length) cloudParts.push(`OneDrive (${oneDriveTitles.length})`);
     const cloudSummary = cloudParts.join(', ');
+    const hasLocalCopy = localTitles.length > 0;
 
     const { canceled, deleteFromCloud } = await new Promise<{
       canceled: boolean;
@@ -602,6 +603,10 @@
           props: {
             titles: titlesToDelete,
             cloudSummary,
+            hasLocalCopy,
+            // Cloud-only books have no local copy to delete, so default to
+            // cloud deletion instead of forcing a second confirmation round.
+            initialDeleteFromCloud: !hasLocalCopy && cloudSummary.length > 0,
             resolver
           },
           disableCloseOnClick: true
