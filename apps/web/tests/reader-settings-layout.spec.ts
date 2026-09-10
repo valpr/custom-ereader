@@ -12,6 +12,7 @@ test.describe('Reader Settings Astryx List Layout', () => {
       await page.setViewportSize({ width: 1280, height: 800 });
       await page.goto('/settings/reader');
       await expect(page.locator('text=Reader Profiles').first()).toBeVisible({ timeout: 10000 });
+      await page.waitForLoadState('networkidle');
     });
 
     test('renders Astryx list sidebar', async ({ page }) => {

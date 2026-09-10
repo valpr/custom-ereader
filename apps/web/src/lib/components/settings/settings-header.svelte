@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { goto } from '$app/navigation';
   import MergedHeaderIcon from '$lib/components/merged-header-icon/merged-header-icon.svelte';
   import { settingsUrl } from '$lib/components/settings/settings-tabs';
   import { TopBar, Tabs } from '@custom-ereader/ui';
@@ -7,18 +6,23 @@
   export let leavePageLink: string;
   export let activeSettings: string;
 
-  const settingItems = [
+  // Anchor-backed tabs: native href navigation works before JS hydration
+  // (full page load) and is SvelteKit-enhanced to SPA navigation after.
+  $: settingItems = [
     {
       id: 'Reader',
-      label: 'Reader'
+      label: 'Reader',
+      href: settingsUrl('Reader')
     },
     {
       id: 'Data',
-      label: 'Data'
+      label: 'Data',
+      href: settingsUrl('Data')
     },
     {
       id: 'Statistics',
-      label: 'Statistics'
+      label: 'Statistics',
+      href: settingsUrl('Statistics')
     }
   ];
 </script>
@@ -29,13 +33,7 @@
   </div>
 
   <div class="flex items-center justify-center w-full max-w-xs sm:max-w-sm">
-    <Tabs
-      items={settingItems}
-      activeId={activeSettings}
-      on:change={(e) => goto(settingsUrl(e.detail.id))}
-      variant="pill"
-      size="sm"
-    />
+    <Tabs items={settingItems} activeId={activeSettings} variant="pill" size="sm" />
   </div>
 
   <div slot="end" class="flex items-center">

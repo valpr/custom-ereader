@@ -751,9 +751,8 @@
             <ListItem
               headline={section.headline}
               description={section.description}
-              clickable={true}
               selected={selectedReaderSection === section.id}
-              on:click={() => goto(settingsUrl('Reader', section.id))}
+              href={settingsUrl('Reader', section.id)}
             >
               <svelte:fragment slot="prefix">
                 <div class="w-5 text-center text-zinc-500 dark:text-zinc-400">
