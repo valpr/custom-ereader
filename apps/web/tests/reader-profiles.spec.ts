@@ -12,6 +12,8 @@ test.describe('Reader Profiles System', () => {
     // Ensure we are on the Reader tab and Svelte has mounted
     await expect(page.locator('text=Reader Profiles').first()).toBeVisible({ timeout: 10000 });
     await expect(page.locator('text=Active').first()).toBeVisible({ timeout: 10000 });
+    // Wait for JS hydration so profile actions (modal, sliders) are interactive
+    await page.waitForLoadState('networkidle');
   });
 
   test('displays default reader profiles and active indicator', async ({ page }) => {
@@ -50,6 +52,15 @@ test.describe('Reader Profiles System', () => {
   });
 
   test('auto-saves modifications to active profile locally without a banner', async ({ page }) => {
+    // Font size slider lives in the Typography section (bare /settings/reader
+    // defaults to the appearance section, which has no sliders).
+    await page.goto('/settings/reader/typography');
+    await expect(
+      page
+        .getByTestId('reader-settings-content-panel')
+        .getByRole('heading', { name: 'Typography & Fonts' })
+    ).toBeVisible();
+    await page.waitForLoadState('networkidle');
     // Modify font size slider by triggering an input change or pressing arrow key
     const slider = page.locator('input[type="range"]').first();
     await slider.focus();

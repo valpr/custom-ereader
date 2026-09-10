@@ -56,6 +56,9 @@ export interface TabItem {
   icon?: any;
   badge?: string | number;
   disabled?: boolean;
+  /** Optional link target. When set, the tab renders as an anchor so navigation
+   * works before JS hydration (progressive enhancement, e.g. SvelteKit routes). */
+  href?: string;
 }
 export type TabVariant = 'pill' | 'underline' | 'bar';
 export type TabSize = 'sm' | 'md' | 'lg';

@@ -124,6 +124,7 @@ test.describe('Settings tab URLs', () => {
 
     test('section deep-link opens the detail view directly', async ({ page }) => {
       await page.goto('/settings/reader/typography');
+      await page.waitForLoadState('networkidle');
       await expect(page.getByTestId('reader-settings-sidebar')).toBeHidden();
       const contentPanel = page.getByTestId('reader-settings-content-panel');
       await expect(contentPanel).toBeVisible();
