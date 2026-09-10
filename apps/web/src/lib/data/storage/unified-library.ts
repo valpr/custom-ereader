@@ -10,6 +10,7 @@ import { StorageKey } from '$lib/data/storage/storage-types';
 import { isStorageSourceAvailable } from '$lib/data/storage/storage-view';
 import { MergeMode } from '$lib/data/merge-mode';
 import { ReplicationSaveBehavior } from '$lib/functions/replication/replication-options';
+import { Observable } from 'rxjs';
 
 export const UNIFIED_SOURCES: StorageKey[] = [
   StorageKey.BROWSER,
@@ -74,6 +75,11 @@ export interface UnifiedFetchOptions {
   gDriveSourceName?: string;
   oneDriveSourceName?: string;
   includeClouds?: boolean;
+}
+
+export interface SourceBookList {
+  source: StorageKey;
+  cards: BookCardProps[];
 }
 
 /**
@@ -152,4 +158,128 @@ export async function fetchUnifiedBookLists(
   }
 
   return Promise.all([browserPromise, ...cloudTasks]);
+}
+
+/**
+ * Streaming variant of fetchUnifiedBookLists: emits the local Browser list
+ * first so the library renders immediately, then re-emits as each connected
+ * cloud list arrives. A slow or offline cloud can no longer hold up the page.
+ * Each emission is the full set of lists known so far; failed sources resolve
+ * to [] just like the batched version. Emits at least once and completes.
+ */
+export function fetchUnifiedBookListsStream(
+  window: Window,
+  options: UnifiedFetchOptions = {}
+): Observable<SourceBookList[]> {
+  const { gDriveSourceName = '', oneDriveSourceName = '', includeClouds = true } = options;
+
+  return new Observable<SourceBookList[]>((subscriber) => {
+    let cancelled = false;
+    const lists: SourceBookList[] = [];
+    const emit = () => {
+      if (!cancelled) subscriber.next([...lists]);
+    };
+
+    const browserPromise = getStorageHandler(
+      window,
+      StorageKey.BROWSER,
+      '',
+      true,
+      false,
+      ReplicationSaveBehavior.NewOnly,
+      MergeMode.MERGE,
+      MergeMode.MERGE,
+      false
+    )
+      .getBookList()
+      .catch(() => [] as BookCardProps[])
+      .then((cards) => ({ source: StorageKey.BROWSER as StorageKey, cards }));
+
+    browserPromise.then(
+      (browserList) => {
+        if (cancelled) return;
+        lists.push(browserList);
+        emit();
+
+        if (!includeClouds) {
+          subscriber.complete();
+          return;
+        }
+
+        const cloudTasks: Promise<SourceBookList>[] = [];
+
+        if (isStorageSourceAvailable(StorageKey.GDRIVE, gDriveSourceName, window)) {
+          cloudTasks.push(
+            getStorageHandler(
+              window,
+              StorageKey.GDRIVE,
+              gDriveSourceName,
+              false,
+              false,
+              ReplicationSaveBehavior.NewOnly,
+              MergeMode.MERGE,
+              MergeMode.MERGE,
+              false
+            )
+              .getBookList()
+              .catch(() => [] as BookCardProps[])
+              .then((cards) => ({ source: StorageKey.GDRIVE as StorageKey, cards }))
+          );
+        }
+
+        if (isStorageSourceAvailable(StorageKey.ONEDRIVE, oneDriveSourceName, window)) {
+          cloudTasks.push(
+            getStorageHandler(
+              window,
+              StorageKey.ONEDRIVE,
+              oneDriveSourceName,
+              false,
+              false,
+              ReplicationSaveBehavior.NewOnly,
+              MergeMode.MERGE,
+              MergeMode.MERGE,
+              false
+            )
+              .getBookList()
+              .catch(() => [] as BookCardProps[])
+              .then((cards) => ({ source: StorageKey.ONEDRIVE as StorageKey, cards }))
+          );
+        }
+
+        if (!cloudTasks.length) {
+          subscriber.complete();
+          return;
+        }
+
+        // Emit incrementally as each cloud arrives; never reject the stream.
+        let pending = cloudTasks.length;
+        cloudTasks.forEach((task) => {
+          task.then(
+            (entry) => {
+              if (cancelled) return;
+              lists.push(entry);
+              emit();
+              pending -= 1;
+              if (pending === 0) subscriber.complete();
+            },
+            () => {
+              if (cancelled) return;
+              pending -= 1;
+              if (pending === 0) subscriber.complete();
+            }
+          );
+        });
+      },
+      () => {
+        if (cancelled) return;
+        lists.push({ source: StorageKey.BROWSER as StorageKey, cards: [] });
+        emit();
+        subscriber.complete();
+      }
+    );
+
+    return () => {
+      cancelled = true;
+    };
+  });
 }
