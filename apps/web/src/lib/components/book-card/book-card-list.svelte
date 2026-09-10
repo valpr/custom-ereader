@@ -1,9 +1,17 @@
 <script lang="ts">
-  import { faCheckCircle, faCircleInfo } from '@fortawesome/free-solid-svg-icons';
+  import {
+    faCheckCircle,
+    faCircleInfo,
+    faCloudArrowUp,
+    faEllipsisVertical
+  } from '@fortawesome/free-solid-svg-icons';
   import BookCard from '$lib/components/book-card/book-card.svelte';
   import type { BookCardProps } from '$lib/components/book-card/book-card-props';
+  import { getCardDateInfo, getSourceLabel } from '$lib/components/book-card/book-card-info';
   import Popover from '$lib/components/popover/popover.svelte';
+  import { CLOSE_POPOVER } from '$lib/data/events';
   import { dummyFn } from '$lib/functions/utils';
+  import { IconButton, List, ListItem } from '@custom-ereader/ui';
   import { createEventDispatcher } from 'svelte';
   import Fa from 'svelte-fa';
 
@@ -18,6 +26,12 @@
     removeBookClick: {
       id: number;
     };
+    uploadBookClick: {
+      id: number;
+    };
+    detailsClick: {
+      id: number;
+    };
   }>();
 
   let hoveringBookId: number | undefined;
@@ -26,21 +40,27 @@
     dispatch('bookClick', { id });
   }
 
-  function getCardDateInfo(dateTime: number) {
-    return dateTime ? new Date(dateTime).toLocaleString() : 'No Data';
+  function closeMenu(event: CustomEvent<MouseEvent>) {
+    const target = event.detail?.target;
+    if (target instanceof Element) {
+      target.dispatchEvent(new CustomEvent(CLOSE_POPOVER, { bubbles: true }));
+    }
   }
 
-  function getSourceLabel(source: string): string {
-    if (source === 'browser') return 'Browser';
-    if (source === 'gdrive') return 'GDrive';
-    if (source === 'onedrive') return 'OneDrive';
-    if (source === 'fs') return 'FS';
-    return source;
+  function onUploadMenuClick(id: number, event: CustomEvent<MouseEvent>) {
+    closeMenu(event);
+    dispatch('uploadBookClick', { id });
+  }
+
+  function onDetailsMenuClick(id: number, event: CustomEvent<MouseEvent>) {
+    closeMenu(event);
+    dispatch('detailsClick', { id });
   }
 </script>
 
 <div class="grid grid-cols-3 justify-between gap-5 pb-4 md:grid-cols-4 lg:grid-cols-5">
   {#each bookCards as bookCard (bookCard.title)}
+    {@const isSelected = selectedBookIds.has(bookCard.id)}
     <div
       role="banner"
       class="relative"
@@ -51,37 +71,79 @@
       <div
         class="mdc-elevation--z1 hover:mdc-elevation--z8 mdc-elevation-transition relative overflow-hidden"
         class:rounded-tl-xl={bookCard.id === currentBookId}
-        class:mdc-elevation--z4={selectedBookIds.has(bookCard.id) || bookCard.id === currentBookId}
+        class:mdc-elevation--z4={isSelected || bookCard.id === currentBookId}
       >
         <BookCard {...bookCard} on:click={() => onBookCardClick(bookCard.id)} />
-
-        {#if bookCard.sources && bookCard.sources.length > 0}
-          <div class="absolute left-1.5 top-1.5 flex flex-wrap gap-1">
-            {#each bookCard.sources as source (source)}
-              <span
-                class="rounded-full bg-[var(--astryx-color-surface,#ffffff)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--astryx-color-fg-secondary,#52525b)] shadow"
-                title={getSourceLabel(source)}
-              >
-                {getSourceLabel(source)}
-              </span>
-            {/each}
-          </div>
-        {/if}
-
-        {#if selectedBookIds.has(bookCard.id)}
-          <div
-            tabindex="0"
-            role="button"
-            title="Book selected"
-            class="absolute inset-0 bg-[var(--astryx-color-overlay,rgba(0,0,0,0.15))]"
-            on:click={() => onBookCardClick(bookCard.id)}
-            on:keyup={dummyFn}
-          >
-            <Fa class="absolute left-2 top-2 flex text-xl text-white" icon={faCheckCircle} />
-          </div>
-        {/if}
       </div>
-      {#if selectedBookIds.has(bookCard.id)}
+
+      {#if !isSelected}
+        <div class="absolute left-1.5 top-1.5" data-testid="book-card-menu-{bookCard.id}">
+          <Popover placement="bottom-start" fallbackPlacements={['bottom', 'right']} yOffset={5}>
+            <span slot="icon">
+              <IconButton
+                label="Book options for {bookCard.title}"
+                variant="secondary"
+                size="sm"
+                shape="circle"
+                class="mdc-elevation--z2 shadow"
+              >
+                <Fa icon={faEllipsisVertical} />
+              </IconButton>
+            </span>
+            <div slot="content" class="w-56 py-1">
+              <List density="compact" divided={false}>
+                <ListItem
+                  clickable
+                  headline="Upload to primary cloud"
+                  description="Copy this book to your sync target"
+                  on:click={(event) => onUploadMenuClick(bookCard.id, event)}
+                >
+                  <svelte:fragment slot="prefix">
+                    <Fa icon={faCloudArrowUp} />
+                  </svelte:fragment>
+                </ListItem>
+                <ListItem
+                  clickable
+                  headline="View details"
+                  description="Sources, progress and timestamps"
+                  on:click={(event) => onDetailsMenuClick(bookCard.id, event)}
+                >
+                  <svelte:fragment slot="prefix">
+                    <Fa icon={faCircleInfo} />
+                  </svelte:fragment>
+                </ListItem>
+              </List>
+            </div>
+          </Popover>
+        </div>
+      {/if}
+
+      {#if bookCard.sources && bookCard.sources.length > 0}
+        <div class="mt-1 flex flex-wrap gap-1">
+          {#each bookCard.sources as source (source)}
+            <span
+              class="rounded-full bg-[var(--astryx-color-surface,#ffffff)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--astryx-color-fg-secondary,#52525b)] shadow"
+              title={getSourceLabel(source)}
+            >
+              {getSourceLabel(source)}
+            </span>
+          {/each}
+        </div>
+      {/if}
+
+      {#if isSelected}
+        <div
+          tabindex="0"
+          role="button"
+          title="Book selected"
+          class="absolute inset-0 bg-[var(--astryx-color-overlay,rgba(0,0,0,0.15))]"
+          on:click={() => onBookCardClick(bookCard.id)}
+          on:keyup={dummyFn}
+        >
+          <Fa class="absolute left-2 top-2 flex text-xl text-white" icon={faCheckCircle} />
+        </div>
+      {/if}
+      {#if isSelected}
         <div class="absolute top-10 left-2" title="Click to open details">
           <Popover placement="right" fallbackPlacements={['bottom']} yOffset={5}>
             <Fa
