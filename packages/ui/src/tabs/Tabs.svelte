@@ -30,6 +30,14 @@
     dispatch('change', { id });
   }
 
+  function selectLink(item: { id: string; disabled?: boolean }) {
+    // Anchor tabs navigate via href (native + SvelteKit-enhanced). Update local
+    // selection instantly for feedback; no `change` dispatch to avoid double
+    // navigation when parents also listen for `change`.
+    if (item.disabled || activeId === item.id) return;
+    activeId = item.id;
+  }
+
   function handleKeyDown(e: KeyboardEvent, index: number) {
     let nextIndex = -1;
     if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
@@ -58,37 +66,70 @@
 >
   {#each normalizedItems as item, idx (item.id)}
     {@const isSelected = activeId === item.id}
-    <button
-      type="button"
-      role="tab"
-      id={`tab-${item.id}`}
-      aria-selected={isSelected}
-      aria-controls={`tabpanel-${item.id}`}
-      tabindex={isSelected ? 0 : -1}
-      disabled={item.disabled}
-      class="astryx-tab-btn"
-      class:is-active={isSelected}
-      on:click={() => selectTab(item.id, item.disabled)}
-      on:keydown={(e) => handleKeyDown(e, idx)}
-    >
-      {#if item.icon}
-        <span class="astryx-tab-icon" aria-hidden="true">
-          {#if typeof item.icon === 'string'}
-            {@html item.icon}
-          {:else}
-            <svelte:component this={item.icon} />
-          {/if}
-        </span>
-      {:else}
-        <slot name="icon" {item} />
-      {/if}
+    {#if item.href && !item.disabled}
+      <a
+        role="tab"
+        id={`tab-${item.id}`}
+        href={item.href}
+        aria-selected={isSelected}
+        aria-controls={`tabpanel-${item.id}`}
+        tabindex={isSelected ? 0 : -1}
+        class="astryx-tab-btn"
+        class:is-active={isSelected}
+        on:click={() => selectLink(item)}
+        on:keydown={(e) => handleKeyDown(e, idx)}
+      >
+        {#if item.icon}
+          <span class="astryx-tab-icon" aria-hidden="true">
+            {#if typeof item.icon === 'string'}
+              {@html item.icon}
+            {:else}
+              <svelte:component this={item.icon} />
+            {/if}
+          </span>
+        {:else}
+          <slot name="icon" {item} />
+        {/if}
 
-      <span class="astryx-tab-label">{item.label}</span>
+        <span class="astryx-tab-label">{item.label}</span>
 
-      {#if item.badge !== undefined && item.badge !== null}
-        <span class="astryx-tab-badge" class:is-active={isSelected}>{item.badge}</span>
-      {/if}
-    </button>
+        {#if item.badge !== undefined && item.badge !== null}
+          <span class="astryx-tab-badge" class:is-active={isSelected}>{item.badge}</span>
+        {/if}
+      </a>
+    {:else}
+      <button
+        type="button"
+        role="tab"
+        id={`tab-${item.id}`}
+        aria-selected={isSelected}
+        aria-controls={`tabpanel-${item.id}`}
+        tabindex={isSelected ? 0 : -1}
+        disabled={item.disabled}
+        class="astryx-tab-btn"
+        class:is-active={isSelected}
+        on:click={() => selectTab(item.id, item.disabled)}
+        on:keydown={(e) => handleKeyDown(e, idx)}
+      >
+        {#if item.icon}
+          <span class="astryx-tab-icon" aria-hidden="true">
+            {#if typeof item.icon === 'string'}
+              {@html item.icon}
+            {:else}
+              <svelte:component this={item.icon} />
+            {/if}
+          </span>
+        {:else}
+          <slot name="icon" {item} />
+        {/if}
+
+        <span class="astryx-tab-label">{item.label}</span>
+
+        {#if item.badge !== undefined && item.badge !== null}
+          <span class="astryx-tab-badge" class:is-active={isSelected}>{item.badge}</span>
+        {/if}
+      </button>
+    {/if}
   {/each}
 </div>
 

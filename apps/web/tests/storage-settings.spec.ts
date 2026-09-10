@@ -9,12 +9,9 @@ import { test, expect } from '@playwright/test';
 test.describe('Cloud Storage Settings & Single Source Selection', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/settings/data');
-    // Switch to Data tab and ensure it is selected
-    const dataTab = page.getByRole('tab', { name: 'Data' });
-    await expect(async () => {
-      await dataTab.click();
-      await expect(dataTab).toHaveAttribute('aria-selected', 'true');
-    }).toPass();
+    // Deep link renders the Data tab selected via SSR; no click needed.
+    await expect(page.getByRole('tab', { name: 'Data' })).toHaveAttribute('aria-selected', 'true');
+    await page.waitForLoadState('networkidle');
   });
 
   test('renders Cloud & Storage Sync section and dropdown selector', async ({ page }) => {
