@@ -75,7 +75,7 @@ test.describe('Navigation Performance & Mechanisms', () => {
   });
 
   test('settings lazy-renders inactive tabs to minimize initial DOM overhead', async ({ page }) => {
-    await page.goto('/settings');
+    await page.goto('/settings/reader');
 
     // Reader settings (active by default) must be rendered
     await expect(page.getByText('Appearance & Themes')).toBeVisible();

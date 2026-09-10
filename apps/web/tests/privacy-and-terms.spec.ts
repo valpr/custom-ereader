@@ -50,7 +50,7 @@ test.describe('Privacy Policy & Terms of Service', () => {
   });
 
   test('settings page has links to privacy policy and terms of service', async ({ page }) => {
-    await page.goto('/settings');
+    await page.goto('/settings/reader');
 
     // Navigate to Data tab
     const dataTab = page.getByRole('tab', { name: 'Data' });

@@ -36,7 +36,7 @@ export const mergeEntries = {
     title: 'Astryx UI Components Showcase'
   },
   SETTINGS: {
-    routeId: '/settings',
+    routeId: '/settings/reader',
     label: 'Settings',
     icon: faCog,
     title: 'Go to Reader Settings'

@@ -8,7 +8,7 @@ import { expect, test } from '@playwright/test';
 
 test.describe('Reader Profiles System', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/settings');
+    await page.goto('/settings/reader');
     // Ensure we are on the Reader tab and Svelte has mounted
     await expect(page.locator('text=Reader Profiles').first()).toBeVisible({ timeout: 10000 });
     await expect(page.locator('text=Active').first()).toBeVisible({ timeout: 10000 });
@@ -137,7 +137,7 @@ test.describe('Reader Profiles System', () => {
   }) => {
     // Resize viewport to mobile screen (iPhone SE: 375x667)
     await page.setViewportSize({ width: 375, height: 667 });
-    await page.goto('/settings');
+    await page.goto('/settings/reader');
     await page.waitForLoadState('networkidle');
 
     // Verify "Profile Backup & Transfer" description is rendered with wide text width (not crushed)

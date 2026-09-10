@@ -1,0 +1,263 @@
+<script lang="ts">
+  import { onMount, onDestroy } from 'svelte';
+  import { tap } from 'rxjs';
+  import { afterNavigate, beforeNavigate } from '$app/navigation';
+  import SettingsContent from '$lib/components/settings/settings-content.svelte';
+  import SettingsHeader from '$lib/components/settings/settings-header.svelte';
+  import { pxScreen } from '$lib/css-classes';
+  import { syncProfilesToCloudTarget } from '$lib/data/profiles/profile-manager';
+  import {
+    addCharactersOnCompletion$,
+    adjustStatisticsAfterIdleTime$,
+    appThemeMode$,
+    autoBookmark$,
+    autoBookmarkTime$,
+    autosaveHistoryEnabled$,
+    autosaveHistoryInterval$,
+    autosaveHistoryMaxCount$,
+    autoPositionOnResize$,
+    autoReplication$,
+    avoidPageBreak$,
+    cacheStorageData$,
+    confirmClose$,
+    customReadingPointEnabled$,
+    disableWheelNavigation$,
+    enableFontVPAL$,
+    enableReaderWakeLock$,
+    enableTapEdgeToFlip$,
+    enableTextJustification$,
+    enableTextWrapPretty$,
+    enableVerticalFontKerning$,
+    firstDimensionMargin$,
+    fontFamilyGroupOne$,
+    fontFamilyGroupTwo$,
+    fontSize$,
+    fontWeight$,
+    furiganaStyle$,
+    externalReadAction$,
+    hideFurigana$,
+    hideSpoilerImage$,
+    importHTMLFixMode$,
+    lastProfilesModified$,
+    lineHeight$,
+    manualBookmark$,
+    keepLocalStatisticsOnDeletion$,
+    openTrackerOnCompletion$,
+    overwriteBookCompletion$,
+    pageColumns$,
+    pauseTrackerOnCustomPointChange$,
+    prioritizeReaderStyles$,
+    replicationSaveBehavior$,
+    restrictImportFixToAnchor$,
+    secondDimensionMaxValue$,
+    selectionToBookmarkEnabled$,
+    showCharacterCounter$,
+    showPercentage$,
+    showFooterChapterCharacterCounter$,
+    showFooterChapterPercentage$,
+    startDayHoursForTracker$,
+    statisticsEnabled$,
+    statisticsMergeMode$,
+    swipeThreshold$,
+    textIndentation$,
+    textMarginMode$,
+    textMarginValue$,
+    theme$,
+    trackerAutoPause$,
+    trackerBackwardSkipThreshold$,
+    trackerForwardSkipThreshold$,
+    trackerAutostartTime$,
+    trackerIdleTime$,
+    trackerPopupDetection$,
+    trackerSkipThresholdAction$,
+    verticalTextOrientation$,
+    viewMode$,
+    writingMode$,
+    readingGoalsMergeMode$,
+    hideSpoilerImageMode$
+  } from '$lib/data/store';
+  import { mergeEntries } from '$lib/components/merged-header-icon/merged-entries';
+  import type { PageData } from './$types';
+  import { pagePath } from '$lib/data/env';
+  import { storage } from '$lib/data/window/navigator/storage';
+  import { formatPageTitle } from '$lib/functions/format-page-title';
+  import { writableSubject } from '$lib/functions/svelte/store';
+  import { reduceToEmptyString } from '$lib/functions/rxjs/reduce-to-empty-string';
+
+  export let data: PageData;
+
+  const persistentStorage$ = writableSubject(false);
+  let persistentStorageReactive = false;
+
+  let initialProfilesModified = 0;
+
+  onMount(() => {
+    initialProfilesModified = lastProfilesModified$.getValue() || 0;
+    storage.persisted().then(setPersistentStorage);
+
+    setStorageQuota();
+  });
+
+  function checkAndSyncProfiles() {
+    const currentModified = lastProfilesModified$.getValue() || 0;
+    if (currentModified > initialProfilesModified) {
+      initialProfilesModified = currentModified;
+      syncProfilesToCloudTarget();
+    }
+  }
+
+  beforeNavigate(() => {
+    checkAndSyncProfiles();
+  });
+
+  onDestroy(() => {
+    checkAndSyncProfiles();
+  });
+
+  let prevPage = `${pagePath}${mergeEntries.MANAGE.routeId}`;
+
+  $: activeSettings = data.tab;
+  $: activeReaderSection = data.section ?? 'appearance';
+  $: activeReaderSectionExplicit = data.sectionParam !== null;
+
+  $: settingsTitle =
+    activeSettings === 'Reader' && activeReaderSection !== 'all'
+      ? `Settings – Reader – ${activeReaderSection.charAt(0).toUpperCase()}${activeReaderSection.slice(1)}`
+      : `Settings – ${activeSettings}`;
+
+  let storageQuota = '';
+
+  afterNavigate((navigation) => {
+    const { from, to } = navigation;
+    if (!from) return;
+    // Tab/section switches stay inside settings and must not clobber the back target.
+    if (from.route?.id?.startsWith('/settings') && to?.route?.id?.startsWith('/settings')) {
+      return;
+    }
+    prevPage = `${from.url.pathname}${from.url.search}`;
+  });
+
+  const setPersistentStorage$ = persistentStorage$.pipe(
+    tap((value) => {
+      if (!persistentStorageReactive) return;
+      if (!value) {
+        setPersistentStorage(true);
+        return;
+      }
+
+      storage.persist().then(setPersistentStorage).finally(setStorageQuota);
+    }),
+    reduceToEmptyString()
+  );
+
+  function setPersistentStorage(value: boolean) {
+    persistentStorageReactive = false;
+    persistentStorage$.next(value);
+    persistentStorageReactive = true;
+  }
+
+  function setStorageQuota() {
+    storage
+      .estimate()
+      .then((storageData) => {
+        const { usage, quota } = storageData;
+
+        if (usage === undefined || quota === undefined) {
+          return;
+        }
+
+        storageQuota = `${Math.round(((usage / quota) * 100 + Number.EPSILON) * 100) / 100} % used`;
+      })
+      .catch(() => {
+        // no-op
+      });
+  }
+</script>
+
+<svelte:head>
+  <title>{formatPageTitle(settingsTitle)}</title>
+</svelte:head>
+
+<div class="elevation-4 fixed inset-x-0 top-0 z-30">
+  <SettingsHeader leavePageLink={prevPage} {activeSettings} />
+</div>
+
+<div class="{pxScreen} h-full pt-16 xl:pt-14">
+  <div class="w-full max-w-6xl mx-auto">
+    <SettingsContent
+      {activeSettings}
+      {activeReaderSection}
+      {activeReaderSectionExplicit}
+      {storageQuota}
+      bind:appThemeMode={$appThemeMode$}
+      bind:selectedTheme={$theme$}
+      bind:fontFamilyGroupOne={$fontFamilyGroupOne$}
+      bind:fontFamilyGroupTwo={$fontFamilyGroupTwo$}
+      bind:fontWeight={$fontWeight$}
+      bind:fontSize={$fontSize$}
+      bind:lineHeight={$lineHeight$}
+      bind:textIndentation={$textIndentation$}
+      bind:textMarginValue={$textMarginValue$}
+      bind:blurImage={$hideSpoilerImage$}
+      bind:blurImageMode={$hideSpoilerImageMode$}
+      bind:hideFurigana={$hideFurigana$}
+      bind:furiganaStyle={$furiganaStyle$}
+      bind:writingMode={$writingMode$}
+      bind:enableFontKerning={$enableVerticalFontKerning$}
+      bind:enableFontVPAL={$enableFontVPAL$}
+      bind:verticalTextOrientation={$verticalTextOrientation$}
+      bind:prioritizeReaderStyles={$prioritizeReaderStyles$}
+      bind:enableTextJustification={$enableTextJustification$}
+      bind:enableTextWrapPretty={$enableTextWrapPretty$}
+      bind:textMarginMode={$textMarginMode$}
+      bind:enableReaderWakeLock={$enableReaderWakeLock$}
+      bind:showCharacterCounter={$showCharacterCounter$}
+      bind:showPercentage={$showPercentage$}
+      bind:showFooterChapterCharacterCounter={$showFooterChapterCharacterCounter$}
+      bind:showFooterChapterPercentage={$showFooterChapterPercentage$}
+      bind:viewMode={$viewMode$}
+      bind:secondDimensionMaxValue={$secondDimensionMaxValue$}
+      bind:firstDimensionMargin={$firstDimensionMargin$}
+      bind:swipeThreshold={$swipeThreshold$}
+      bind:disableWheelNavigation={$disableWheelNavigation$}
+      bind:autoPositionOnResize={$autoPositionOnResize$}
+      bind:avoidPageBreak={$avoidPageBreak$}
+      bind:pauseTrackerOnCustomPointChange={$pauseTrackerOnCustomPointChange$}
+      bind:customReadingPointEnabled={$customReadingPointEnabled$}
+      bind:selectionToBookmarkEnabled={$selectionToBookmarkEnabled$}
+      bind:enableTapEdgeToFlip={$enableTapEdgeToFlip$}
+      bind:pageColumns={$pageColumns$}
+      bind:persistentStorage={$persistentStorage$}
+      bind:externalReadAction={$externalReadAction$}
+      bind:confirmClose={$confirmClose$}
+      bind:manualBookmark={$manualBookmark$}
+      bind:autoBookmark={$autoBookmark$}
+      bind:autoBookmarkTime={$autoBookmarkTime$}
+      bind:autosaveHistoryEnabled={$autosaveHistoryEnabled$}
+      bind:autosaveHistoryInterval={$autosaveHistoryInterval$}
+      bind:autosaveHistoryMaxCount={$autosaveHistoryMaxCount$}
+      bind:importHTMLFixMode={$importHTMLFixMode$}
+      bind:restrictImportFixToAnchor={$restrictImportFixToAnchor$}
+      bind:cacheStorageData={$cacheStorageData$}
+      bind:replicationSaveBehavior={$replicationSaveBehavior$}
+      bind:autoReplication={$autoReplication$}
+      bind:keepLocalStatisticsOnDeletion={$keepLocalStatisticsOnDeletion$}
+      bind:overwriteBookCompletion={$overwriteBookCompletion$}
+      bind:startDayHoursForTracker={$startDayHoursForTracker$}
+      bind:statisticsMergeMode={$statisticsMergeMode$}
+      bind:readingGoalsMergeMode={$readingGoalsMergeMode$}
+      bind:statisticsEnabled={$statisticsEnabled$}
+      bind:trackerAutoPause={$trackerAutoPause$}
+      bind:openTrackerOnCompletion={$openTrackerOnCompletion$}
+      bind:addCharactersOnCompletion={$addCharactersOnCompletion$}
+      bind:trackerAutoStartTime={$trackerAutostartTime$}
+      bind:trackerIdleTime={$trackerIdleTime$}
+      bind:trackerForwardSkipThreshold={$trackerForwardSkipThreshold$}
+      bind:trackerBackwardSkipThreshold={$trackerBackwardSkipThreshold$}
+      bind:trackerSkipThresholdAction={$trackerSkipThresholdAction$}
+      bind:trackerPopupDetection={$trackerPopupDetection$}
+      bind:adjustStatisticsAfterIdleTime={$adjustStatisticsAfterIdleTime$}
+    />
+  </div>
+</div>
+{$setPersistentStorage$ ?? ''}

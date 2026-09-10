@@ -12,7 +12,7 @@ test.describe('Astryx Tooltip Component & Settings Page Tooltips', () => {
     page
   }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
-    await page.goto('/settings');
+    await page.goto('/settings/reader');
 
     // Ensure Reader Profiles section is loaded
     await expect(page.locator('text=Reader Profiles').first()).toBeVisible({ timeout: 10000 });
@@ -55,7 +55,7 @@ test.describe('Astryx Tooltip Component & Settings Page Tooltips', () => {
     page
   }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
-    await page.goto('/settings');
+    await page.goto('/settings/reader');
 
     await expect(page.locator('text=Reader Profiles').first()).toBeVisible({ timeout: 10000 });
 
@@ -84,7 +84,7 @@ test.describe('Astryx Tooltip Component & Settings Page Tooltips', () => {
     page
   }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
-    await page.goto('/settings');
+    await page.goto('/settings/reader');
 
     // Find "Manage Installed Web Fonts" button if available in the DOM
     const fontButton = page.getByRole('button', { name: 'Manage Installed Web Fonts' }).first();
