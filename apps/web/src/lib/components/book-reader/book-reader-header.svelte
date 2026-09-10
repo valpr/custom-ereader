@@ -210,12 +210,13 @@
       {/if}
 
       {#if $viewMode$ === ViewMode.Continuous && !$isMobile$}
-        <span
-          class="ml-1 flex items-center rounded-full bg-[var(--astryx-color-surface-hover)] px-2 py-0.5 text-xs font-semibold text-[var(--astryx-color-fg-muted)]"
-          title="Current Autoscroll Speed"
-        >
-          {autoScrollMultiplier}x
-        </span>
+        <Tooltip text="Current Autoscroll Speed">
+          <span
+            class="ml-1 flex items-center rounded-full bg-[var(--astryx-color-surface-hover)] px-2 py-0.5 text-xs font-semibold text-[var(--astryx-color-fg-muted)]"
+          >
+            {autoScrollMultiplier}x
+          </span>
+        </Tooltip>
       {/if}
     </div>
 
@@ -296,12 +297,14 @@
               yOffset={4}
               bind:this={customReadingPointMenuElm}
             >
-              <div
-                slot="icon"
-                class="flex h-9 w-9 cursor-pointer items-center justify-center rounded-[var(--astryx-radius-md,6px)] text-[var(--astryx-color-fg-muted)] transition-colors hover:bg-[var(--astryx-color-surface-hover)] hover:text-[var(--astryx-color-fg-primary)]"
-                title="Open Custom Point Actions"
-              >
-                <Fa icon={faCrosshairs} class="text-base" />
+              <div slot="icon">
+                <Tooltip text="Open Custom Point Actions">
+                  <div
+                    class="flex h-9 w-9 cursor-pointer items-center justify-center rounded-[var(--astryx-radius-md,6px)] text-[var(--astryx-color-fg-muted)] transition-colors hover:bg-[var(--astryx-color-surface-hover)] hover:text-[var(--astryx-color-fg-primary)]"
+                  >
+                    <Fa icon={faCrosshairs} class="text-base" />
+                  </div>
+                </Tooltip>
               </div>
               <div
                 class="min-w-[8.5rem] rounded-lg border border-[var(--astryx-color-border-subtle)] bg-[var(--astryx-color-surface)] py-1 shadow-lg"
@@ -389,9 +392,11 @@
               bind:this={overflowMenuElm}
             >
               <div slot="icon">
-                <IconButton variant="ghost" size="md" label="More Actions">
-                  <Fa icon={faEllipsis} class="text-base" />
-                </IconButton>
+                <Tooltip text="More Actions">
+                  <IconButton nativeTooltip={false} variant="ghost" size="md" label="More Actions">
+                    <Fa icon={faEllipsis} class="text-base" />
+                  </IconButton>
+                </Tooltip>
               </div>
               <div
                 class="w-52 py-1.5 rounded-lg border border-[var(--astryx-color-border-subtle)] bg-[var(--astryx-color-surface)] text-[var(--astryx-color-fg-primary)] shadow-lg text-sm"

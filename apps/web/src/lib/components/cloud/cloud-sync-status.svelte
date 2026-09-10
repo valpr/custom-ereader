@@ -26,7 +26,6 @@
   // Secondary sessions surface in Settings per-source status and reconnect
   // on demand when one of their books is opened.
   $: expiredSource = getExpiredSyncTargets($syncTarget$, states, pending)[0] || '';
-  $: failedOps = (expiredSource && pending[expiredSource]?.failedOps) || 0;
 
   // "Sync complete" toast: fires when a sync lands while a pending sync
   // existed or was cleared moments ago (reconnect clears pending on
@@ -99,10 +98,7 @@
 -->
 <div role="status" aria-live="polite" class="sr-only">
   {#if expiredSource}
-    Sync paused. Session expired for {getFriendlyStorageSourceName(expiredSource)}
-    .{#if failedOps > 0}
-      {failedOps}
-      {failedOps === 1 ? 'operation' : 'operations'} will sync after reconnect.{/if}
+    Sync paused. Session expired for {getFriendlyStorageSourceName(expiredSource)}.
   {/if}
 </div>
 

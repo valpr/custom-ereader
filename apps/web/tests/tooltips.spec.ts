@@ -84,6 +84,46 @@ test.describe('Astryx Tooltip Component & Settings Page Tooltips', () => {
     await expect(tooltip).not.toBeVisible();
   });
 
+  test('book manager Import tooltip dismisses when its dropdown menu opens', async ({ page }) => {
+    await seedReaderBook(page);
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto('/manage');
+    await page.waitForLoadState('networkidle');
+
+    const importButton = page.getByRole('button', { name: 'Import', exact: true });
+    await expect(importButton).toBeVisible();
+
+    await importButton.hover();
+    const importTooltip = page.locator('.astryx-tooltip', { hasText: 'Import Books or Backup' });
+    await expect(importTooltip).toBeVisible();
+
+    // Opening the dropdown must dismiss the trigger tooltip so it cannot
+    // overlap the menu (native title behavior).
+    await importButton.click();
+    await expect(page.getByRole('button', { name: 'Import File(s)' })).toBeVisible();
+    await expect(importTooltip).not.toBeVisible();
+  });
+
+  test('book manager Import tooltip dismisses when its dropdown is opened via keyboard', async ({
+    page
+  }) => {
+    await seedReaderBook(page);
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto('/manage');
+    await page.waitForLoadState('networkidle');
+
+    const importButton = page.getByRole('button', { name: 'Import', exact: true });
+    await expect(importButton).toBeVisible();
+
+    await importButton.focus();
+    const importTooltip = page.locator('.astryx-tooltip', { hasText: 'Import Books or Backup' });
+    await expect(importTooltip).toBeVisible();
+
+    await importButton.press('Enter');
+    await expect(page.getByRole('button', { name: 'Import File(s)' })).toBeVisible();
+    await expect(importTooltip).not.toBeVisible();
+  });
+
   test('font management icon tooltip in settings does not crush into vertical column', async ({
     page
   }) => {

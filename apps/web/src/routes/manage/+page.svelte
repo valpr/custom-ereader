@@ -215,8 +215,6 @@
 
   $: expiredSyncTarget =
     getExpiredSyncTargets($syncTarget$, $storageConnectionStates$, $pendingCloudSync$)[0] || '';
-  $: expiredFailedOps =
-    (expiredSyncTarget && $pendingCloudSync$[expiredSyncTarget]?.failedOps) || 0;
 
   async function handleCloudReconnect() {
     if (!expiredSyncTarget || cloudReconnecting) return;
@@ -890,7 +888,7 @@
         component: MessageDialog,
         props: {
           title: 'Upload complete',
-            message: `“${card.title}” was uploaded to your primary cloud (${primary.name}).`
+          message: `“${card.title}” was uploaded to your primary cloud (${primary.name}).`
         }
       }
     ]);
@@ -1225,7 +1223,6 @@
       <CloudReconnectBanner
         sourceName={expiredSyncTarget}
         busy={cloudReconnecting}
-        failedOps={expiredFailedOps}
         on:reconnect={handleCloudReconnect}
       />
     {/if}

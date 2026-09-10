@@ -200,7 +200,15 @@
     clearTimeout(timeoutId);
     removeActiveListeners();
   });
+
+  // Mirror native title behavior: any press or click dismisses the tooltip
+  // (and cancels a pending show) so it can never linger over an open menu.
+  // Window-level: pressing one control hides another control's tooltip
+  // (e.g. cloud warning tooltip over the Import/Filter dropdowns).
+  // Same-target clicks are covered too since the event bubbles to window.
 </script>
+
+<svelte:window on:pointerdown={hide} on:click={hide} />
 
 <div
   bind:this={wrapperEl}
