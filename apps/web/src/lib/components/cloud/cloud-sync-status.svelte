@@ -14,6 +14,7 @@
 
   let syncToast: string | null = null;
   let toastTimer: ReturnType<typeof setTimeout> | undefined;
+  let toastDebounce: ReturnType<typeof setTimeout> | undefined;
   let lastSeenSync = 0;
   let pendingClearedAt = 0;
   let prevPendingCount = 0;
@@ -30,10 +31,13 @@
   // "Sync complete" toast: fires when a sync lands while a pending sync
   // existed or was cleared moments ago (reconnect clears pending on
   // CONNECTED just before the retry finishes, hence the grace window).
-  // The label uses the source that actually synced (freshest
-  // lastSyncBySource entry, falling back to the primary sync target) —
-  // never an arbitrary pending entry, which may hold a stale failure for
-  // the other cloud.
+  // The label defaults to the primary sync target. Only when a per-source
+  // sync just recorded itself (manual / retry paths bump the global stamp
+  // and lastSyncBySource together via markLastSync) is that source shown
+  // instead. Background syncs bump only the global stamp, so a stale
+  // freshest entry for the other cloud must never win — otherwise a GDrive
+  // sync completes while the toast names OneDrive. Label resolution is
+  // deferred a tick so markLastSync's back-to-back store updates land first.
   $: {
     const keys = Object.keys(pending);
     const count = keys.length;
@@ -48,20 +52,26 @@
       if ($lastSyncTimestamp$ > lastSeenSync) {
         lastSeenSync = $lastSyncTimestamp$;
         if (count > 0 || Date.now() - pendingClearedAt < 60000) {
-          const bySource = $lastSyncBySource$;
-          let completedSource = $syncTarget$;
-          let latest = -1;
-          for (const [name, at] of Object.entries(bySource)) {
-            if (typeof at === 'number' && at > latest) {
-              latest = at;
-              completedSource = name;
+          if (toastDebounce) clearTimeout(toastDebounce);
+          toastDebounce = setTimeout(() => {
+            const bySource = lastSyncBySource$.getValue();
+            const target = syncTarget$.getValue();
+            let latestName = '';
+            let latest = -1;
+            for (const [name, at] of Object.entries(bySource)) {
+              if (typeof at === 'number' && at > latest) {
+                latest = at;
+                latestName = name;
+              }
             }
-          }
-          showToast(
-            completedSource
-              ? `Sync complete (${getFriendlyStorageSourceName(completedSource)})`
-              : 'Sync complete'
-          );
+            const completedSource =
+              latestName && Math.abs(lastSeenSync - latest) < 2000 ? latestName : target;
+            showToast(
+              completedSource
+                ? `Sync complete (${getFriendlyStorageSourceName(completedSource)})`
+                : 'Sync complete'
+            );
+          }, 150);
         }
       }
       prevPendingCount = count;
@@ -69,6 +79,7 @@
   }
 
   onDestroy(() => {
+    if (toastDebounce) clearTimeout(toastDebounce);
     if (toastTimer) clearTimeout(toastTimer);
   });
 
