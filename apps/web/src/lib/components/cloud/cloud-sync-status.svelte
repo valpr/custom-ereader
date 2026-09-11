@@ -123,6 +123,7 @@
 {#if notice}
   <div
     data-testid="cloud-notice-toast"
+    role="status"
     class="writing-horizontal-tb fixed bottom-6 left-1/2 z-40 -translate-x-1/2 rounded-full px-4 py-2 text-sm font-medium shadow-lg"
     style="background-color: var(--astryx-color-fg-primary, #18181b); color: var(--astryx-color-surface, #ffffff);"
   >
