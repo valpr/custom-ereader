@@ -1852,8 +1852,8 @@
       </ListItem>
 
       <ListItem
-        headline="Keep Local Data on Deletion"
-        description="Preserves reading statistics and history when removing the local copy (cloud copies are unaffected unless “also delete from cloud” is checked)"
+        headline="Keep Reading Statistics on Deletion"
+        description="Preserves reading statistics and history when deleting books, on this device and in the cloud. Book files, covers, and progress are still removed; only the statistics copy is kept."
       >
         <Switch slot="suffix" bind:checked={keepLocalStatisticsOnDeletion} />
       </ListItem>
