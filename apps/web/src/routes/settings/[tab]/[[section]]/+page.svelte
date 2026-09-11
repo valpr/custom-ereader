@@ -10,8 +10,6 @@
     addCharactersOnCompletion$,
     adjustStatisticsAfterIdleTime$,
     appThemeMode$,
-    autoBookmark$,
-    autoBookmarkTime$,
     autosaveHistoryEnabled$,
     autosaveHistoryInterval$,
     autosaveHistoryMaxCount$,
@@ -231,8 +229,6 @@
       bind:externalReadAction={$externalReadAction$}
       bind:confirmClose={$confirmClose$}
       bind:manualBookmark={$manualBookmark$}
-      bind:autoBookmark={$autoBookmark$}
-      bind:autoBookmarkTime={$autoBookmarkTime$}
       bind:autosaveHistoryEnabled={$autosaveHistoryEnabled$}
       bind:autosaveHistoryInterval={$autosaveHistoryInterval$}
       bind:autosaveHistoryMaxCount={$autosaveHistoryMaxCount$}

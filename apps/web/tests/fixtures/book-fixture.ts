@@ -90,7 +90,6 @@ export interface ReaderSettingsOptions {
   enableTapEdgeToFlip?: boolean;
   showCharacterCounter?: boolean;
   showPercentage?: boolean;
-  autoBookmark?: boolean;
 }
 
 /**
@@ -118,9 +117,6 @@ export async function setReaderSettings(page: Page, settings: ReaderSettingsOpti
     }
     if (s.showPercentage !== undefined) {
       localStorage.setItem('showPercentage', s.showPercentage ? '1' : '0');
-    }
-    if (s.autoBookmark !== undefined) {
-      localStorage.setItem('autoBookmark', s.autoBookmark ? '1' : '0');
     }
   }, settings);
 }

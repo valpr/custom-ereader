@@ -35,8 +35,6 @@
   import MessageDialog from '$lib/components/message-dialog.svelte';
   import StyleSheetRenderer from '$lib/components/style-sheet-renderer.svelte';
   import {
-    autoBookmark$,
-    autoBookmarkTime$,
     autosaveHistoryEnabled$,
     autosaveHistoryInterval$,
     autosaveHistoryMaxCount$,
@@ -2208,8 +2206,6 @@
     autoPositionOnResize={$autoPositionOnResize$}
     avoidPageBreak={$avoidPageBreak$}
     pageColumns={$pageColumns$}
-    autoBookmark={$autoBookmark$}
-    autoBookmarkTime={$autoBookmarkTime$}
     multiplier={$multiplier$}
     {userBookmarks}
     bind:exploredCharCount
@@ -2225,7 +2221,6 @@
     bind:customReadingPointScrollOffset
     bind:customReadingPointRange
     bind:showCustomReadingPoint
-    on:bookmark={bookmarkPage}
     on:trackerPause={() => pauseTracker(true)}
   />
   {$initBookmarkData$ ?? ''}
