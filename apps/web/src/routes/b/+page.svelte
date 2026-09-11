@@ -227,7 +227,6 @@
   let externalStorageErrors = 0;
   let isReplicating = false;
   let storedExploredCharacter = 0;
-  let hasBookmarkData = false;
   let blockDataUpdates = false;
   let trackerElm: BookReadingTracker;
   let userBookmarks: BooksDbUserBookmarkData[] = [];
@@ -661,7 +660,6 @@
     ($autoReplication$ === AutoReplicationType.Up || $autoReplication$ === AutoReplicationType.All);
 
   $: bookmarkData.then((data) => {
-    hasBookmarkData = !!data;
     storedExploredCharacter = data?.exploredCharCount || 0;
   });
 
@@ -1369,7 +1367,6 @@
       ev,
       bookReaderKeybindMap$.getValue(),
       bookmarkPage,
-      scrollToBookmark,
       (x) => multiplier$.next(multiplier$.getValue() + x),
       autoScroller,
       pageManager,
@@ -1585,17 +1582,6 @@
     bookmarkData = Promise.resolve(data);
 
     scheduleReplication(StorageDataType.PROGRESS);
-  }
-
-  async function scrollToBookmark() {
-    const data = await bookmarkData;
-    if (!data || !bookmarkManager) return;
-
-    if (data.exploredCharCount !== exploredCharCount) {
-      pauseTracker(true);
-    }
-
-    bookmarkManager.scrollToBookmark(data, customReadingPointScrollOffset);
   }
 
   function onFullscreenClick() {
@@ -2068,7 +2054,6 @@
       )}
       showFullscreenButton={fullscreenManager.fullscreenEnabled}
       autoScrollMultiplier={$multiplier$}
-      {hasBookmarkData}
       bind:isBookmarkScreen
       on:tocClick={() => {
         pauseTracker();
@@ -2105,7 +2090,6 @@
         }
       }}
       on:fullscreenClick={onFullscreenClick}
-      on:bookmarkClick={bookmarkPage}
       on:bookmarkPanelClick={() => {
         pauseTracker();
         showHeader = false;
@@ -2114,10 +2098,6 @@
       on:createBookmarkClick={() => {
         showHeader = false;
         openCreateBookmarkDialog();
-      }}
-      on:scrollToBookmarkClick={() => {
-        showHeader = false;
-        scrollToBookmark();
       }}
       on:statisticsClick={() => {
         if ($rawBookData$) {
