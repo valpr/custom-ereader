@@ -44,7 +44,6 @@
     tocClick: void;
     bookmarkPanelClick: void;
     createBookmarkClick: void;
-    bookmarkClick: void;
     scrollToBookmarkClick: void;
     jumpClick: void;
     completeBook: void;
@@ -59,29 +58,6 @@
     bookManagerClick: void;
     cloudReconnectClick: void;
   }>();
-
-  let bookmarkPressTimer: any;
-  let didLongPress = false;
-
-  function handleBookmarkPointerDown() {
-    didLongPress = false;
-    bookmarkPressTimer = setTimeout(() => {
-      didLongPress = true;
-      dispatch('createBookmarkClick');
-    }, 500);
-  }
-
-  function handleBookmarkPointerUp() {
-    clearTimeout(bookmarkPressTimer);
-  }
-
-  function handleBookmarkClick() {
-    if (didLongPress) {
-      didLongPress = false;
-      return;
-    }
-    dispatch('bookmarkClick');
-  }
 
   $: customReadingPointMenuItems = [
     ...(hasCustomReadingPoint
@@ -166,20 +142,14 @@
         </IconButton>
       </Tooltip>
 
-      <Tooltip text="Save Position (Hold to Create Named Bookmark)">
+      <Tooltip text="Create Named Bookmark">
         <IconButton
           nativeTooltip={false}
-          label="Save Position (Hold to Create Named Bookmark)"
+          label="Create Named Bookmark"
           size="md"
           variant="ghost"
           active={isBookmarkScreen}
-          on:pointerdown={handleBookmarkPointerDown}
-          on:pointerup={handleBookmarkPointerUp}
-          on:contextmenu={(e) => {
-            e.preventDefault();
-            dispatch('createBookmarkClick');
-          }}
-          on:click={handleBookmarkClick}
+          on:click={() => dispatch('createBookmarkClick')}
         >
           <Fa icon={isBookmarkScreen ? fasBookmark : farBookmark} class="text-base" />
         </IconButton>

@@ -2105,7 +2105,6 @@
         }
       }}
       on:fullscreenClick={onFullscreenClick}
-      on:bookmarkClick={bookmarkPage}
       on:bookmarkPanelClick={() => {
         pauseTracker();
         showHeader = false;
