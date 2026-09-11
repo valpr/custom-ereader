@@ -14,8 +14,12 @@ import type {
   BooksDbUserBookmarkData
 } from '$lib/data/database/books-db/versions/books-db';
 import { database, fsStorageSource$ } from '$lib/data/store';
-import { mergeProfiles } from '$lib/data/profiles/profile-manager';
-import type { ReaderProfile, ReaderProfilesSyncPayload } from '$lib/data/profiles/profile-types';
+import { mergeProfiles, newerStatisticsSettingsSection } from '$lib/data/profiles/profile-manager';
+import type {
+  ReaderProfile,
+  ReaderProfilesSyncPayload,
+  StatisticsSyncSection
+} from '$lib/data/profiles/profile-types';
 import { mergeReadingGoals, readingGoalSortFunction } from '$lib/data/reading-goal';
 import type { ThemeOption } from '$lib/data/theme-option';
 import { mergeStatistics, updateStatisticToStore } from '$lib/functions/statistic-util';
@@ -422,7 +426,12 @@ export class FilesystemStorageHandler extends BaseStorageHandler {
     const { file } = await this.getRootFile(BaseStorageHandler.profilesFilePrefix, 0.6);
 
     if (!file) {
-      return { profiles: undefined, customThemes: undefined, lastProfilesModified: 0 };
+      return {
+        profiles: undefined,
+        customThemes: undefined,
+        statisticsSettings: undefined,
+        lastProfilesModified: 0
+      };
     }
 
     const profilesFile = await file.getFile();
@@ -434,6 +443,7 @@ export class FilesystemStorageHandler extends BaseStorageHandler {
     return {
       profiles: payload?.profiles,
       customThemes: payload?.customThemes,
+      statisticsSettings: payload?.statisticsSettings,
       lastProfilesModified: BaseStorageHandler.getProfilesMetadata(file.name).lastProfilesModified
     };
   }
@@ -683,7 +693,8 @@ export class FilesystemStorageHandler extends BaseStorageHandler {
   async saveProfiles(
     profiles: ReaderProfile[],
     lastProfilesModified: number,
-    customThemes?: Record<string, ThemeOption>
+    customThemes?: Record<string, ThemeOption>,
+    statisticsSettings?: StatisticsSyncSection
   ) {
     const isMerge = this.profilesMergeMode === MergeMode.MERGE;
     const { file, rootDirectory } = await this.getRootFile(
@@ -694,6 +705,7 @@ export class FilesystemStorageHandler extends BaseStorageHandler {
     let profilesToStore: ReaderProfile[] = profiles;
     let newProfilesModified = lastProfilesModified;
     let customThemesToStore = customThemes;
+    let statisticsSettingsToStore = statisticsSettings;
 
     if (isMerge) {
       let existingPayload: ReaderProfilesSyncPayload | undefined;
@@ -719,6 +731,10 @@ export class FilesystemStorageHandler extends BaseStorageHandler {
           ...(customThemes || {})
         };
       }
+      statisticsSettingsToStore = newerStatisticsSettingsSection(
+        existingPayload?.statisticsSettings,
+        statisticsSettings
+      );
     }
 
     const filename = BaseStorageHandler.getProfilesFileName(newProfilesModified);
@@ -726,7 +742,8 @@ export class FilesystemStorageHandler extends BaseStorageHandler {
       version: 1,
       lastModified: newProfilesModified,
       profiles: profilesToStore,
-      customThemes: customThemesToStore
+      customThemes: customThemesToStore,
+      statisticsSettings: statisticsSettingsToStore
     };
 
     await this.writeFile(

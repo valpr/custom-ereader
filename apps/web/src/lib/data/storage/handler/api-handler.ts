@@ -15,8 +15,12 @@ import type {
 } from '$lib/data/database/books-db/versions/books-db';
 import { logger } from '$lib/data/logger';
 import { MergeMode } from '$lib/data/merge-mode';
-import { mergeProfiles } from '$lib/data/profiles/profile-manager';
-import type { ReaderProfile, ReaderProfilesSyncPayload } from '$lib/data/profiles/profile-types';
+import { mergeProfiles, newerStatisticsSettingsSection } from '$lib/data/profiles/profile-manager';
+import type {
+  ReaderProfile,
+  ReaderProfilesSyncPayload,
+  StatisticsSyncSection
+} from '$lib/data/profiles/profile-types';
 import { mergeReadingGoals, readingGoalSortFunction } from '$lib/data/reading-goal';
 import type { ThemeOption } from '$lib/data/theme-option';
 import {
@@ -460,13 +464,19 @@ export abstract class ApiStorageHandler extends BaseStorageHandler {
     const { file, data } = await this.getRootFile(BaseStorageHandler.profilesFilePrefix, 'json');
 
     if (!file || !data) {
-      return { profiles: undefined, customThemes: undefined, lastProfilesModified: 0 };
+      return {
+        profiles: undefined,
+        customThemes: undefined,
+        statisticsSettings: undefined,
+        lastProfilesModified: 0
+      };
     }
 
     const payload = data as ReaderProfilesSyncPayload;
     return {
       profiles: payload.profiles,
       customThemes: payload.customThemes,
+      statisticsSettings: payload.statisticsSettings,
       lastProfilesModified: BaseStorageHandler.getProfilesMetadata(file.name).lastProfilesModified
     };
   }
@@ -644,7 +654,8 @@ export abstract class ApiStorageHandler extends BaseStorageHandler {
   async saveProfiles(
     profiles: ReaderProfile[],
     lastProfilesModified: number,
-    customThemes?: Record<string, ThemeOption>
+    customThemes?: Record<string, ThemeOption>,
+    statisticsSettings?: StatisticsSyncSection
   ) {
     const isMerge = this.profilesMergeMode === MergeMode.MERGE;
     const { file, data: existingData } = await this.getRootFile(
@@ -656,6 +667,7 @@ export abstract class ApiStorageHandler extends BaseStorageHandler {
     let profilesToStore: ReaderProfile[] = profiles;
     let newProfilesModified = lastProfilesModified;
     let customThemesToStore = customThemes;
+    let statisticsSettingsToStore = statisticsSettings;
 
     if (isMerge && existingData) {
       const existingPayload = existingData as ReaderProfilesSyncPayload;
@@ -673,6 +685,10 @@ export abstract class ApiStorageHandler extends BaseStorageHandler {
           ...(customThemes || {})
         };
       }
+      statisticsSettingsToStore = newerStatisticsSettingsSection(
+        existingPayload.statisticsSettings,
+        statisticsSettings
+      );
     }
 
     const filename = BaseStorageHandler.getProfilesFileName(newProfilesModified);
@@ -680,7 +696,8 @@ export abstract class ApiStorageHandler extends BaseStorageHandler {
       version: 1,
       lastModified: newProfilesModified,
       profiles: profilesToStore,
-      customThemes: customThemesToStore
+      customThemes: customThemesToStore,
+      statisticsSettings: statisticsSettingsToStore
     };
 
     await this.upload(

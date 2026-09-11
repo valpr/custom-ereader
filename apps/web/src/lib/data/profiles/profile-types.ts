@@ -5,6 +5,10 @@
  */
 
 import { BlurMode } from '$lib/data/blur-mode';
+import {
+  TrackerAutoPause,
+  TrackerSkipThresholdAction
+} from '$lib/components/book-reader/book-reading-tracker/book-reading-tracker';
 import { FuriganaStyle } from '$lib/data/furigana-style';
 import type { AppThemeMode } from '$lib/data/store';
 import type { TextMarginMode } from '$lib/data/text-margin-mode';
@@ -89,6 +93,35 @@ export interface ReaderProfilesSyncPayload {
   lastModified: number;
   profiles: ReaderProfile[];
   customThemes?: Record<string, ThemeOption>;
+  statisticsSettings?: StatisticsSyncSection;
+}
+
+/**
+ * Global statistics/tracker behavior settings roamed via the profiles sync
+ * payload. Kept separate from per-profile reader settings on purpose.
+ * Whole-section last-writer-wins on `lastModified`; every field optional so
+ * old payloads and version skew degrade to "keep local".
+ */
+export interface StatisticsSyncSection {
+  lastModified: number;
+  settings: StatisticsSyncSettings;
+}
+
+export interface StatisticsSyncSettings {
+  statisticsEnabled?: boolean;
+  trackerAutostartTime?: number;
+  trackerIdleTime?: number;
+  trackerForwardSkipThreshold?: number;
+  trackerBackwardSkipThreshold?: number;
+  trackerSkipThresholdAction?: TrackerSkipThresholdAction;
+  trackerPopupDetection?: boolean;
+  trackerAutoPause?: TrackerAutoPause;
+  adjustStatisticsAfterIdleTime?: boolean;
+  openTrackerOnCompletion?: boolean;
+  addCharactersOnCompletion?: boolean;
+  keepLocalStatisticsOnDeletion?: boolean;
+  overwriteBookCompletion?: boolean;
+  startDayHoursForTracker?: number;
 }
 
 export const defaultDesktopSettings: ReaderProfileSettings = {

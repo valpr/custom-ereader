@@ -423,6 +423,11 @@ export const activeProfileId$ = writableStringLocalStorageSubject()(
 
 export const lastProfilesModified$ = writableNumberLocalStorageSubject()('lastProfilesModified', 0);
 
+export const lastStatisticsSettingsModified$ = writableNumberLocalStorageSubject()(
+  'lastStatisticsSettingsModified',
+  0
+);
+
 export const lastStatisticsTab$ = writableStringLocalStorageSubject<StatisticsTab>()(
   'lastStatisticsTab',
   StatisticsTab.OVERVIEW

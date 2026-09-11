@@ -1,11 +1,14 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
-  import { tap } from 'rxjs';
+  import { combineLatest, skip, tap, type Subscription } from 'rxjs';
   import { afterNavigate, beforeNavigate } from '$app/navigation';
   import SettingsContent from '$lib/components/settings/settings-content.svelte';
   import SettingsHeader from '$lib/components/settings/settings-header.svelte';
   import { pxScreen } from '$lib/css-classes';
-  import { syncProfilesToCloudTarget } from '$lib/data/profiles/profile-manager';
+  import {
+    isStatisticsSettingsSyncSuppressed,
+    syncProfilesToCloudTarget
+  } from '$lib/data/profiles/profile-manager';
   import {
     addCharactersOnCompletion$,
     adjustStatisticsAfterIdleTime$,
@@ -72,7 +75,8 @@
     viewMode$,
     writingMode$,
     readingGoalsMergeMode$,
-    hideSpoilerImageMode$
+    hideSpoilerImageMode$,
+    lastStatisticsSettingsModified$
   } from '$lib/data/store';
   import { mergeEntries } from '$lib/components/merged-header-icon/merged-entries';
   import type { PageData } from './$types';
@@ -88,12 +92,43 @@
   let persistentStorageReactive = false;
 
   let initialProfilesModified = 0;
+  let statisticsSettingsSyncSub: Subscription | undefined;
+
+  // Statistics behavior settings roam via the profiles payload but are not
+  // profile-scoped, so they need their own dirty tracking. Any local edit
+  // bumps both timestamps: the section LWW marker and lastProfilesModified$,
+  // which the existing leave-page check uses as its upload trigger.
+  const statisticsSettingsSubjects = [
+    statisticsEnabled$,
+    trackerAutostartTime$,
+    trackerIdleTime$,
+    trackerForwardSkipThreshold$,
+    trackerBackwardSkipThreshold$,
+    trackerSkipThresholdAction$,
+    trackerPopupDetection$,
+    trackerAutoPause$,
+    adjustStatisticsAfterIdleTime$,
+    openTrackerOnCompletion$,
+    addCharactersOnCompletion$,
+    keepLocalStatisticsOnDeletion$,
+    overwriteBookCompletion$,
+    startDayHoursForTracker$
+  ];
 
   onMount(() => {
     initialProfilesModified = lastProfilesModified$.getValue() || 0;
     storage.persisted().then(setPersistentStorage);
 
     setStorageQuota();
+
+    statisticsSettingsSyncSub = combineLatest(statisticsSettingsSubjects)
+      .pipe(skip(1))
+      .subscribe(() => {
+        if (isStatisticsSettingsSyncSuppressed()) return;
+        const now = Date.now();
+        lastStatisticsSettingsModified$.next(now);
+        lastProfilesModified$.next(now);
+      });
   });
 
   function checkAndSyncProfiles() {
@@ -109,6 +144,8 @@
   });
 
   onDestroy(() => {
+    statisticsSettingsSyncSub?.unsubscribe();
+    statisticsSettingsSyncSub = undefined;
     checkAndSyncProfiles();
   });
 

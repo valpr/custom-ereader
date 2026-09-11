@@ -14,7 +14,11 @@ import type {
   BooksDbUserBookmarkData
 } from '$lib/data/database/books-db/versions/books-db';
 import type { MergeMode } from '$lib/data/merge-mode';
-import type { ReaderProfile, ReaderProfilesSyncPayload } from '$lib/data/profiles/profile-types';
+import type {
+  ReaderProfile,
+  ReaderProfilesSyncPayload,
+  StatisticsSyncSection
+} from '$lib/data/profiles/profile-types';
 import { readingGoalSortFunction } from '$lib/data/reading-goal';
 import { BaseStorageHandler, FilePrefix } from '$lib/data/storage/handler/base-handler';
 import type { ThemeOption } from '$lib/data/theme-option';
@@ -273,7 +277,12 @@ export class BackupStorageHandler extends BaseStorageHandler {
     const { zipEntry, filename } = this.getRootFile(BaseStorageHandler.profilesFilePrefix);
 
     if (!zipEntry) {
-      return { profiles: undefined, customThemes: undefined, lastProfilesModified: 0 };
+      return {
+        profiles: undefined,
+        customThemes: undefined,
+        statisticsSettings: undefined,
+        lastProfilesModified: 0
+      };
     }
 
     const payload = (await this.extractAsJSON(
@@ -284,6 +293,7 @@ export class BackupStorageHandler extends BaseStorageHandler {
     return {
       profiles: payload?.profiles,
       customThemes: payload?.customThemes,
+      statisticsSettings: payload?.statisticsSettings,
       lastProfilesModified: BaseStorageHandler.getProfilesMetadata(filename).lastProfilesModified
     };
   }
@@ -419,14 +429,16 @@ export class BackupStorageHandler extends BaseStorageHandler {
   async saveProfiles(
     data: ReaderProfile[],
     lastProfilesModified: number,
-    customThemes?: Record<string, ThemeOption>
+    customThemes?: Record<string, ThemeOption>,
+    statisticsSettings?: StatisticsSyncSection
   ) {
     const filename = `${BaseStorageHandler.getProfilesFileName(lastProfilesModified)}`;
     const payload: ReaderProfilesSyncPayload = {
       version: 1,
       lastModified: lastProfilesModified,
       profiles: data,
-      customThemes
+      customThemes,
+      statisticsSettings
     };
 
     this.exportZipWriter = await this.addDataToZip(
