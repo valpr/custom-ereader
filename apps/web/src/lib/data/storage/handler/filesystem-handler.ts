@@ -768,7 +768,11 @@ export class FilesystemStorageHandler extends BaseStorageHandler {
     );
   }
 
-  async deleteBookData(booksToDelete: string[], cancelSignal: AbortSignal) {
+  async deleteBookData(
+    booksToDelete: string[],
+    cancelSignal: AbortSignal,
+    keepLocalStatistics = true
+  ) {
     const rootDirectory = await this.ensureRoot();
     const deleted: number[] = [];
     const deletionLimiter = pLimit(1);
@@ -784,9 +788,44 @@ export class FilesystemStorageHandler extends BaseStorageHandler {
           try {
             throwIfAborted(cancelSignal);
 
-            await rootDirectory.removeEntry(BaseStorageHandler.sanitizeForFilename(bookToDelete), {
-              recursive: true
-            });
+            const sanitizedTitle = BaseStorageHandler.sanitizeForFilename(bookToDelete);
+            const directory = await rootDirectory
+              .getDirectoryHandle(sanitizedTitle, { create: false })
+              .catch(() => undefined);
+
+            if (directory) {
+              const entries = (await FilesystemStorageHandler.list(
+                directory
+              )) as FileSystemFileHandle[];
+              const statisticsEntries = entries.filter((entry) =>
+                entry.name.startsWith('statistics_')
+              );
+              const keepStatistics = keepLocalStatistics && statisticsEntries.length > 0;
+              const entriesToDelete = keepStatistics
+                ? entries.filter((entry) => !entry.name.startsWith('statistics_'))
+                : entries;
+
+              for (let index = 0; index < entriesToDelete.length; index += 1) {
+                throwIfAborted(cancelSignal);
+                await directory.removeEntry(entriesToDelete[index].name).catch(() => {
+                  // Stale cache entry; continue with the rest.
+                });
+              }
+
+              if (keepStatistics) {
+                this.titleToDirectory.set(bookToDelete, directory);
+                this.titleToFiles.set(bookToDelete, statisticsEntries);
+              } else {
+                await rootDirectory.removeEntry(sanitizedTitle, { recursive: true }).catch(() => {
+                  // Directory may already be empty/removed after file deletes.
+                });
+                this.titleToDirectory.delete(bookToDelete);
+                this.titleToFiles.delete(bookToDelete);
+              }
+            } else {
+              this.titleToDirectory.delete(bookToDelete);
+              this.titleToFiles.delete(bookToDelete);
+            }
 
             const deletedId = this.titleToBookCard.get(bookToDelete)?.id;
 
@@ -794,8 +833,6 @@ export class FilesystemStorageHandler extends BaseStorageHandler {
               deleted.push(deletedId);
             }
 
-            this.titleToDirectory.delete(bookToDelete);
-            this.titleToFiles.delete(bookToDelete);
             this.titleToBookCard.delete(bookToDelete);
 
             database.dataListChanged$.next(this);
@@ -811,6 +848,10 @@ export class FilesystemStorageHandler extends BaseStorageHandler {
     );
 
     await Promise.all(deleteTasks).catch(() => {});
+
+    if (!error) {
+      this.dataListFetched = false;
+    }
 
     return { error, deleted };
   }
@@ -932,9 +973,22 @@ export class FilesystemStorageHandler extends BaseStorageHandler {
 
             await Promise.all(fileTasks);
 
-            this.titleToDirectory.set(bookCard.title, directory);
-            this.titleToFiles.set(bookCard.title, files);
-            this.titleToBookCard.set(bookCard.title, bookCard);
+            const title = bookCard.title;
+
+            // A folder without a bookdata_ file is not a book (e.g. a
+            // leftover statistics-only archive after deletion, or an
+            // orphaned cover). Keep the directory/files cached so stats can
+            // still merge on re-import, but don't surface a library card.
+            const hasBookData = files.some((file) => file.name.startsWith('bookdata_'));
+
+            this.titleToDirectory.set(title, directory);
+            this.titleToFiles.set(title, files);
+
+            if (hasBookData) {
+              this.titleToBookCard.set(title, bookCard);
+            } else {
+              this.titleToBookCard.delete(title);
+            }
           } catch (error) {
             listLimiter.clearQueue();
             throw error;

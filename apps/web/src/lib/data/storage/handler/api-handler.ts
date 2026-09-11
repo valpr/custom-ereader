@@ -709,7 +709,11 @@ export abstract class ApiStorageHandler extends BaseStorageHandler {
     await this.upload(titleId, filename, files, file, subtitleData);
   }
 
-  async deleteBookData(booksToDelete: string[], cancelSignal: AbortSignal) {
+  async deleteBookData(
+    booksToDelete: string[],
+    cancelSignal: AbortSignal,
+    keepLocalStatistics = true
+  ) {
     await this.ensureTitle();
 
     let error = '';
@@ -723,6 +727,10 @@ export abstract class ApiStorageHandler extends BaseStorageHandler {
     booksToDelete.forEach((bookToDelete) =>
       deleteTasks.push(
         deletionLimiter(async () => {
+          // Preserve the caller's replication context: child-file listing
+          // below is title-scoped via currentContext.
+          const previousContext = this.currentContext;
+
           try {
             throwIfAborted(cancelSignal);
 
@@ -743,10 +751,63 @@ export abstract class ApiStorageHandler extends BaseStorageHandler {
             }
 
             if (externalId) {
-              await this.executeDelete(externalId);
-            }
+              // List the folder's children so a folder delete can't leave
+              // orphaned files behind (notably cover_*, which would
+              // otherwise resurrect the folder as a ghost library item).
+              // statistics_* replicas are preserved when the keep-statistics
+              // setting is on, matching local deletion semantics.
+              let childFiles: ExternalFile[] = this.titleToFiles.get(bookToDelete) || [];
 
-            this.titleToFiles.delete(bookToDelete);
+              if (!childFiles.length) {
+                try {
+                  this.currentContext = { title: bookToDelete };
+                  childFiles = await this.getExternalFiles(externalId);
+                } catch {
+                  childFiles = [];
+                }
+              }
+
+              const statisticsFiles = childFiles.filter((entry) =>
+                entry.name.startsWith('statistics_')
+              );
+              const keepStatistics = keepLocalStatistics && statisticsFiles.length > 0;
+              const filesToDelete = keepStatistics
+                ? childFiles.filter((entry) => !entry.name.startsWith('statistics_'))
+                : childFiles;
+
+              for (let index = 0; index < filesToDelete.length; index += 1) {
+                throwIfAborted(cancelSignal);
+
+                try {
+                  await this.executeDelete(filesToDelete[index].id);
+                } catch (childError) {
+                  // A stale cache entry (already-deleted remote file)
+                  // shouldn't block removal of the remaining files.
+                  // Record it and continue; the folder delete below still
+                  // runs unless preservation applies.
+                  error = handleErrorDuringReplication(
+                    childError,
+                    `Error deleting ${bookToDelete}: `,
+                    []
+                  );
+                }
+              }
+
+              if (keepStatistics) {
+                // Keep the statistics replica as a hidden archive: the
+                // library card is removed below, but the folder id and
+                // stats files stay cached so future stats syncs and
+                // same-title re-imports can still merge them.
+                this.titleToFiles.set(bookToDelete, statisticsFiles);
+              } else {
+                await this.executeDelete(externalId);
+                this.titleToFiles.delete(bookToDelete);
+                this.titleToId.delete(bookToDelete);
+              }
+            } else {
+              this.titleToFiles.delete(bookToDelete);
+              this.titleToId.delete(bookToDelete);
+            }
 
             const deletedBookCard = this.titleToBookCard.get(bookToDelete);
 
@@ -754,7 +815,6 @@ export abstract class ApiStorageHandler extends BaseStorageHandler {
               deleted.push(deletedBookCard.id);
             }
 
-            this.titleToId.delete(bookToDelete);
             this.titleToBookCard.delete(bookToDelete);
 
             database.dataListChanged$.next(this);
@@ -764,6 +824,8 @@ export abstract class ApiStorageHandler extends BaseStorageHandler {
             error = handleErrorDuringReplication(err, `Error deleting ${bookToDelete}: `, [
               deletionLimiter
             ]);
+          } finally {
+            this.currentContext = previousContext;
           }
         })
       )
