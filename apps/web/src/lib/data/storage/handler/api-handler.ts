@@ -135,6 +135,16 @@ export abstract class ApiStorageHandler extends BaseStorageHandler {
     }
   }
 
+  /**
+   * Force the next `getBookList()` to refetch presence metadata from the
+   * server instead of serving the in-memory cache. Uses a full clear so
+   * remotely deleted titles are pruned too (`getBookList()` only adds).
+   * Metadata-only: folder listing + file names/thumbnails, no blob download.
+   */
+  invalidateBookListCache() {
+    this.clearData(true);
+  }
+
   async hasLocalBookData(): Promise<boolean> {
     const data = await database.getDataByTitle(this.currentContext.title);
 
