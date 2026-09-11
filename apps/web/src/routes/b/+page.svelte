@@ -378,10 +378,88 @@
   const initBookmarkData$ = rawBookData$.pipe(
     tap((rawBookData) => {
       if (!rawBookData) return;
-      bookmarkData = database.getBookmark(rawBookData.id);
+      bookmarkData = resolveResumeBookmark(rawBookData.id);
     }),
     reduceToEmptyString()
   );
+
+  function mapAutosaveToBookmark(
+    dataId: number,
+    autosave: BooksDbUserBookmarkData
+  ): BooksDbBookmarkData {
+    return {
+      dataId,
+      exploredCharCount: autosave.exploredCharCount,
+      progress: autosave.progress,
+      lastBookmarkModified: autosave.createdAt
+    };
+  }
+
+  async function seedLegacyBookmarkAsAutosave(
+    dataId: number,
+    stored: BooksDbBookmarkData
+  ): Promise<void> {
+    const charCount = Math.max(1, stored.exploredCharCount || 0);
+    if (!charCount) return;
+
+    const progress =
+      typeof stored.progress === 'number'
+        ? stored.progress
+        : bookCharCount
+          ? Math.min(1, charCount / bookCharCount)
+          : 0;
+
+    await database.putAutosaveBookmark(
+      {
+        dataId,
+        exploredCharCount: charCount,
+        progress,
+        label: generateBookmarkLabel($sectionData$, charCount, bookCharCount || charCount),
+        color: 'gray',
+        note: 'Autosaved reading checkpoint',
+        createdAt: stored.lastBookmarkModified || Date.now(),
+        lastModified: Date.now(),
+        isAutosave: true
+      },
+      $autosaveHistoryMaxCount$ || 10
+    );
+
+    await refreshUserBookmarks();
+  }
+
+  async function resolveResumeBookmark(dataId: number): Promise<BooksDbBookmarkData | undefined> {
+    const [stored, all] = await Promise.all([
+      database.getBookmark(dataId),
+      database.getUserBookmarks(dataId).catch(() => [] as BooksDbUserBookmarkData[])
+    ]);
+    const latestAutosave = all
+      .filter((b) => b.isAutosave)
+      .sort((a, b) => b.createdAt - a.createdAt)[0];
+
+    if (!stored) {
+      if (!latestAutosave) return undefined;
+      const mapped = mapAutosaveToBookmark(dataId, latestAutosave);
+      await database.putBookmark(mapped);
+      return mapped;
+    }
+
+    if (!latestAutosave) {
+      // Forward-fill history from the legacy position so future resumes converge.
+      if ($autosaveHistoryEnabled$ && (stored.exploredCharCount || 0) > 0) {
+        void seedLegacyBookmarkAsAutosave(dataId, stored).catch(() => undefined);
+      }
+      return stored;
+    }
+
+    if ((latestAutosave.createdAt || 0) >= (stored.lastBookmarkModified || 0)) {
+      const mapped = mapAutosaveToBookmark(dataId, latestAutosave);
+      // Keep the single-slot progress converged without extra sync churn on open.
+      void database.putBookmark(mapped).catch(() => undefined);
+      return mapped;
+    }
+
+    return stored;
+  }
 
   const initUserBookmarks$ = rawBookData$.pipe(
     switchMap((b) => {
@@ -691,6 +769,24 @@
     refreshUserBookmarks();
   }
 
+  async function syncAutosaveToProgress(dataId: number, charCount: number): Promise<void> {
+    if ($manualBookmark$) return;
+    if (!dataId || charCount <= 0) return;
+
+    const data: BooksDbBookmarkData = {
+      dataId,
+      exploredCharCount: Math.max(1, charCount),
+      progress: bookCharCount ? Math.min(1, charCount / bookCharCount) : 0,
+      lastBookmarkModified: Date.now()
+    };
+
+    await database.putBookmark(data);
+
+    bookmarkData = Promise.resolve(data);
+
+    scheduleReplication(StorageDataType.PROGRESS);
+  }
+
   async function createAutosaveSnapshot(charCount: number, customPrefix?: string) {
     const dataId = getBookIdSync();
     if (!dataId || charCount <= 0 || !bookCharCount) return;
@@ -713,7 +809,26 @@
       $autosaveHistoryMaxCount$ || 10
     );
 
+    await syncAutosaveToProgress(dataId, charCount);
+
     await refreshUserBookmarks();
+  }
+
+  async function flushPendingAutosave(): Promise<void> {
+    if (!browser || !$autosaveHistoryEnabled$) return;
+    if (!autosaveDebounceTimer) return;
+
+    const pendingCharCount = previousObservedCharCount;
+    clearAutosaveDebounce();
+
+    if (
+      pendingCharCount > 0 &&
+      bookCharCount > 0 &&
+      Math.abs(pendingCharCount - lastAutosavedCharCount) >= 15
+    ) {
+      lastAutosavedCharCount = pendingCharCount;
+      await createAutosaveSnapshot(pendingCharCount);
+    }
   }
 
   function handleUnload(event: BeforeUnloadEvent) {
@@ -1708,6 +1823,8 @@
       if (deleteLastItem) {
         exitTasks.push(database.deleteLastItem());
       }
+
+      exitTasks.push(flushPendingAutosave());
 
       if (!$manualBookmark$) {
         exitTasks.push(bookmarkPage(false));
