@@ -372,7 +372,20 @@ export class GDriveStorageHandler extends ApiStorageHandler {
       const [title, files] = entries[index];
 
       if (!files.length) {
-        return;
+        continue;
+      }
+
+      // A folder without a bookdata_ file is not a book (e.g. a leftover
+      // statistics-only archive after deletion, or an orphaned cover).
+      // Keep the file list cached so stats can still merge on re-import,
+      // but don't surface a library card for it.
+      const hasBookData = files.some((file) => file.name.startsWith('bookdata_'));
+
+      this.titleToFiles.set(title, files);
+
+      if (!hasBookData) {
+        this.titleToBookCard.delete(title);
+        continue;
       }
 
       const bookCard: BookCardProps = {
@@ -410,7 +423,6 @@ export class GDriveStorageHandler extends ApiStorageHandler {
         }
       }
 
-      this.titleToFiles.set(title, files);
       this.titleToBookCard.set(title, bookCard);
     }
   }

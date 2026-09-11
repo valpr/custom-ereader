@@ -63,7 +63,8 @@
       </p>
     {/if}
     <p class="mt-3 text-sm opacity-70">
-      Reading statistics on this device are kept per Settings → Keep Local Data on Deletion.
+      Reading statistics are kept per Settings → Keep Reading Statistics on Deletion (applies to
+      local and cloud copies).
     </p>
   </svelte:fragment>
   <div class="flex grow justify-between" slot="footer">
