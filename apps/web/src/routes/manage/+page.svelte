@@ -92,7 +92,7 @@
     switchMap,
     takeUntil
   } from 'rxjs';
-  import { onDestroy, tick } from 'svelte';
+  import { onDestroy, onMount, tick } from 'svelte';
   import Fa from 'svelte-fa';
 
   // Local-first loading: the stream emits the Browser list immediately and
@@ -234,6 +234,18 @@
       selectedBookIds = new Set();
     }
   }
+
+  onMount(() => {
+    // The global dialog overlay survives route changes. If the reader opened
+    // a non-modal action backdrop ('<div/>') and navigation happened before
+    // it was cleared (e.g. expired cloud session), drop it so it can't cover
+    // the manager as a black filter. Real modals (MessageDialog, etc.) are kept.
+    const current = dialogManager.dialogs$.getValue();
+
+    if (current.length > 0 && current.every((d) => typeof d.component === 'string')) {
+      dialogManager.dialogs$.next([]);
+    }
+  });
 
   onDestroy(() => dialogManager.dialogs$.next([]));
 

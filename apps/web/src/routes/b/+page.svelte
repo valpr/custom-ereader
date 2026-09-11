@@ -1582,32 +1582,44 @@
       : dataToReplicate.filter((d) => BOOK_SCOPED_DATA_TYPES.includes(d));
 
     let error: string | undefined;
-    error = await replicateData(
-      localStorageHandler,
-      externalStorageHandler,
-      refreshDataList,
-      [context],
-      types
-    ).catch((err: any) => err.message);
 
-    externalStorageHandler.updateSettings(
-      window,
-      true,
-      $replicationSaveBehavior$,
-      $statisticsMergeMode$,
-      $readingGoalsMergeMode$,
-      $cacheStorageData$,
-      false,
-      currentHandlerStorageSource
-    );
+    try {
+      error = await replicateData(
+        localStorageHandler,
+        externalStorageHandler,
+        refreshDataList,
+        [context],
+        types
+      ).catch((err: any) => err.message);
+    } finally {
+      externalStorageHandler.updateSettings(
+        window,
+        true,
+        $replicationSaveBehavior$,
+        $statisticsMergeMode$,
+        $readingGoalsMergeMode$,
+        $cacheStorageData$,
+        false,
+        currentHandlerStorageSource
+      );
 
-    isReplicating = false;
+      isReplicating = false;
+
+      if (!isSilent) {
+        skipKeyDownListener$.next(false);
+      }
+    }
 
     if (error) {
       if (isSessionExpiredError(error)) {
         // Banner/icon + reconnect own this failure; a modal would be a dead
-        // end even for the explicit sync button.
+        // end even for the explicit sync button. Always drop the backdrop so
+        // it can't freeze the screen across navigation.
         logger.warn(error);
+
+        if (!isSilent) {
+          dialogManager.dialogs$.next([]);
+        }
       } else if (!isSilent) {
         const showReport = logger.errorCount > 1;
 
@@ -1651,10 +1663,6 @@
         dataToReplicate = [];
       }
     }
-
-    if (!isSilent) {
-      skipKeyDownListener$.next(false);
-    }
   }
 
   function openActionBackdrop() {
@@ -1666,8 +1674,122 @@
     ]);
   }
 
+  interface ExitSyncSnapshot {
+    types: StorageDataType[];
+    context: ReplicationContext;
+    localHandler: BrowserStorageHandler;
+    externalHandler: BaseStorageHandler;
+    storageSourceName: string;
+    syncTargetName: string;
+    refreshDataList: boolean;
+    saveBehavior: ReplicationSaveBehavior;
+    statisticsMergeMode: MergeMode;
+    readingGoalsMergeMode: MergeMode;
+    cacheStorageData: boolean;
+  }
+
+  function capturePendingExitSync(): ExitSyncSnapshot | undefined {
+    const raw = $rawBookData$;
+
+    if (
+      !upSyncEnabled ||
+      isReplicating ||
+      !dataToReplicate.length ||
+      !raw ||
+      !externalStorageHandler
+    ) {
+      return undefined;
+    }
+
+    const types = [
+      ...dataToReplicate,
+      ...dataToReplicateQueue.filter((t) => !dataToReplicate.includes(t))
+    ];
+
+    const snapshot: ExitSyncSnapshot = {
+      types,
+      context: {
+        id: raw.id,
+        title: raw.title,
+        imagePath: raw.coverImage
+      },
+      localHandler: localStorageHandler,
+      externalHandler: externalStorageHandler,
+      storageSourceName: raw.storageSource || $syncTarget$,
+      syncTargetName: $syncTarget$,
+      refreshDataList: $storageSource$ === externalStorageHandler.storageType,
+      saveBehavior: $replicationSaveBehavior$,
+      statisticsMergeMode: $statisticsMergeMode$,
+      readingGoalsMergeMode: $readingGoalsMergeMode$,
+      cacheStorageData: $cacheStorageData$
+    };
+
+    dataToReplicate = [];
+    dataToReplicateQueue = [];
+
+    return snapshot;
+  }
+
+  async function runExitSyncInBackground(snapshot: ExitSyncSnapshot) {
+    // Silent by design: no backdrop, no modal. Failures surface via the
+    // global CloudSyncStatus banner / reconnect flow, never as a blocker.
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const win = window;
+
+    snapshot.externalHandler.updateSettings(
+      win,
+      false,
+      snapshot.saveBehavior,
+      snapshot.statisticsMergeMode,
+      snapshot.readingGoalsMergeMode,
+      snapshot.cacheStorageData,
+      false,
+      snapshot.storageSourceName
+    );
+
+    try {
+      const types =
+        snapshot.storageSourceName === snapshot.syncTargetName
+          ? snapshot.types
+          : snapshot.types.filter((d) => BOOK_SCOPED_DATA_TYPES.includes(d));
+
+      if (!types.length) {
+        return;
+      }
+
+      const error = await replicateData(
+        snapshot.localHandler,
+        snapshot.externalHandler,
+        snapshot.refreshDataList,
+        [snapshot.context],
+        types
+      ).catch((err: any) => err?.message || String(err));
+
+      if (error) {
+        logger.warn(error);
+      }
+    } catch (error: any) {
+      logger.warn(error?.message || String(error));
+    } finally {
+      snapshot.externalHandler.updateSettings(
+        win,
+        true,
+        snapshot.saveBehavior,
+        snapshot.statisticsMergeMode,
+        snapshot.readingGoalsMergeMode,
+        snapshot.cacheStorageData,
+        false,
+        snapshot.storageSourceName
+      );
+    }
+  }
+
   async function leaveReader(routeId: string, deleteLastItem = true) {
     let message;
+    let pendingExitSync: ExitSyncSnapshot | undefined;
 
     try {
       blockDataUpdates = true;
@@ -1729,9 +1851,10 @@
 
       await Promise.all(exitTasks);
 
-      if (upSyncEnabled) {
-        await executeReplication(false);
-      }
+      // Local exit writes above stay awaited (fast IndexedDB). Cloud sync is
+      // snapshotted here and runs AFTER navigation so it never blocks the
+      // screen, even when token reconnection is required.
+      pendingExitSync = capturePendingExitSync();
     } catch (error: any) {
       // Auth failures already surface via banner/icon; don't block leaving
       // the reader with a modal for them.
@@ -1741,6 +1864,8 @@
         dialogManager.dialogs$.next([]);
         message = error.message;
       }
+
+      pendingExitSync = undefined;
     }
 
     if (message) {
@@ -1757,9 +1882,21 @@
           disableCloseOnClick: true
         }
       ]);
+    } else {
+      // Drop any stale non-modal backdrop so it can't leak onto the next
+      // page via the global layout overlay. Real error modals above are kept.
+      const current = dialogManager.dialogs$.getValue();
+
+      if (current.length > 0 && current.every((d) => typeof d.component === 'string')) {
+        dialogManager.dialogs$.next([]);
+      }
     }
 
-    goto(`${pagePath}${routeId}`);
+    await goto(`${pagePath}${routeId}`);
+
+    if (pendingExitSync) {
+      void runExitSyncInBackground(pendingExitSync);
+    }
   }
 
   function handleSetCustomReadingPoint() {
