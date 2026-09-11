@@ -184,4 +184,97 @@ test.describe('Cloud re-auth deferred UX', () => {
     await expect(page.getByRole('button', { name: /Cloud session expired/ })).toBeVisible();
     await expect(page.getByTestId('cloud-reconnect-banner')).toHaveCount(0);
   });
+
+  test.describe('expired session during reader sync', () => {
+    const CUSTOM_SOURCE = 'test-expired-onedrive';
+
+    async function seedCustomExpiredSource(page: Page) {
+      // Book whose designated cloud is a custom source holding only a stale
+      // refresh token (remote-context data unlocks without a dialog).
+      await seedReaderBook(page, { storageSource: CUSTOM_SOURCE });
+      await page.evaluate(async (sourceName) => {
+        const db = await new Promise<IDBDatabase>((resolve, reject) => {
+          const request = indexedDB.open('books', 7);
+          request.onsuccess = () => resolve(request.result);
+          request.onerror = () => reject(request.error);
+        });
+        await new Promise<void>((resolve, reject) => {
+          const tx = db.transaction('storageSource', 'readwrite');
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => reject(tx.error);
+          tx.objectStore('storageSource').put({
+            name: sourceName,
+            type: 'onedrive',
+            storedInManager: false,
+            encryptionDisabled: true,
+            data: { clientId: 'playwright-test-client', refreshToken: 'stale-refresh-token' },
+            disconnected: false,
+            lastSourceModified: Date.now()
+          });
+        });
+      }, CUSTOM_SOURCE);
+      await page.addInitScript(
+        ({ source }) => {
+          window.localStorage.setItem('syncTarget', source);
+          window.localStorage.setItem('autoReplication', 'down');
+        },
+        { source: CUSTOM_SOURCE }
+      );
+      // Hermetic refresh failure: the token endpoint answers invalid_grant,
+      // so getToken marks NEEDS_RECONNECT and throws session-expired locally.
+      await page.route('**/login.microsoftonline.com/**', async (route) => {
+        await route.fulfill({
+          status: 400,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            error: 'invalid_grant',
+            error_description: 'The refresh token has expired (test).'
+          })
+        });
+      });
+    }
+
+    test('expired refresh during book open keeps the book open with no modal', async ({ page }) => {
+      await seedCustomExpiredSource(page);
+      await page.goto('/b?id=1');
+
+      // Local copy still loads despite the failed background sync-down.
+      const content = page.locator('.book-content');
+      await expect(content).toBeVisible({ timeout: 15000 });
+
+      // No modal, and no redirect to the library.
+      await expect(page.locator('.astryx-dialog-surface')).toHaveCount(0);
+      await expect(page).toHaveURL(/\/b\?id=1/);
+
+      // The deferred UX owns the failure: header warning icon, no banner.
+      const showHeader = page.getByRole('button', { name: 'Show reader header' });
+      if (await showHeader.isVisible()) {
+        await showHeader.click();
+      }
+      await expect(page.getByRole('button', { name: /Cloud session expired/ })).toBeVisible();
+      await expect(page.getByTestId('cloud-reconnect-banner')).toHaveCount(0);
+    });
+
+    test('offline book open shows a toast instead of a modal', async ({ page }) => {
+      await seedReaderBook(page, { storageSource: 'ttu-onedrive-default' });
+      await page.addInitScript(() => {
+        // Offline emulation that keeps localhost reachable: Svelte's
+        // bind:online reads navigator.onLine, so stub it directly.
+        Object.defineProperty(window.navigator, 'onLine', {
+          get: () => false,
+          configurable: true
+        });
+      });
+      await page.goto('/b?id=1');
+
+      const content = page.locator('.book-content');
+      await expect(content).toBeVisible({ timeout: 15000 });
+
+      const toast = page.getByTestId('cloud-notice-toast');
+      await expect(toast).toBeVisible();
+      await expect(toast).toContainText(/Offline/);
+      await expect(page.locator('.astryx-dialog-surface')).toHaveCount(0);
+      await expect(page).toHaveURL(/\/b\?id=1/);
+    });
+  });
 });

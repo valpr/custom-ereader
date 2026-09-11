@@ -117,6 +117,17 @@ export function getExpiredSyncTargets(
   return [];
 }
 
+/**
+ * Detects expired-cloud-session failures from error text. Auth failures are
+ * surfaced through banner/icon + reconnect affordances (never modals), so
+ * error presenters should check this first and stay silent when it matches.
+ */
+export function isSessionExpiredError(error: unknown) {
+  const message = error instanceof Error ? error.message : `${error ?? ''}`;
+
+  return /session expired|needs reconnect|reconnect to resume syncing/i.test(message);
+}
+
 export function setConnectionState(storageSourceName: string, state: StorageConnectionState) {
   const current = storageConnectionStates$.getValue();
   if (current[storageSourceName] !== state) {
