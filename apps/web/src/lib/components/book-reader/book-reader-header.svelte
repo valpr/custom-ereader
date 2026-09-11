@@ -180,8 +180,44 @@
         {/if}
       </div>
 
-      <!-- Mobile: single ellipsis menu with every reader action -->
-      <div class="flex items-center sm:hidden">
+      <!-- Mobile: essential icons plus an ellipsis menu for everything else -->
+      <div class="flex items-center gap-0.5 sm:hidden">
+        {#if hasChapterData}
+          <Tooltip text="Open Table of Contents">
+            <IconButton
+              nativeTooltip={false}
+              label="Open Table of Contents"
+              size="md"
+              variant="ghost"
+              on:click={() => dispatch('tocClick')}
+            >
+              <Fa icon={faList} class="text-base" />
+            </IconButton>
+          </Tooltip>
+        {/if}
+        <Tooltip text="Open Bookmarks">
+          <IconButton
+            nativeTooltip={false}
+            label="Open Bookmarks"
+            size="md"
+            variant="ghost"
+            on:click={() => dispatch('bookmarkPanelClick')}
+          >
+            <Fa icon={faBookBookmark} class="text-base" />
+          </IconButton>
+        </Tooltip>
+        <Tooltip text="Create Named Bookmark">
+          <IconButton
+            nativeTooltip={false}
+            label="Create Named Bookmark"
+            size="md"
+            variant="ghost"
+            active={isBookmarkScreen}
+            on:click={() => dispatch('createBookmarkClick')}
+          >
+            <Fa icon={isBookmarkScreen ? fasBookmark : farBookmark} class="text-base" />
+          </IconButton>
+        </Tooltip>
         <Popover
           placement="bottom-start"
           fallbackPlacements={['bottom-end', 'bottom']}
@@ -199,35 +235,6 @@
             class="max-h-[60vh] w-56 overflow-y-auto rounded-lg border border-[var(--astryx-color-border-subtle)] bg-[var(--astryx-color-surface)] py-1.5 text-sm text-[var(--astryx-color-fg-primary)] shadow-lg"
             slot="content"
           >
-            {#if hasChapterData}
-              <button
-                type="button"
-                class="flex w-full cursor-pointer items-center gap-2.5 px-3.5 py-2 text-left text-sm text-[var(--astryx-color-fg-primary)] transition-colors outline-none hover:bg-[var(--astryx-color-surface-hover)] focus-visible:bg-[var(--astryx-color-surface-hover)]"
-                on:click={() => dispatchMobileAction('tocClick')}
-              >
-                <Fa icon={faList} class="w-4 text-center opacity-70" />
-                <span>Open Table of Contents</span>
-              </button>
-            {/if}
-            <button
-              type="button"
-              class="flex w-full cursor-pointer items-center gap-2.5 px-3.5 py-2 text-left text-sm text-[var(--astryx-color-fg-primary)] transition-colors outline-none hover:bg-[var(--astryx-color-surface-hover)] focus-visible:bg-[var(--astryx-color-surface-hover)]"
-              on:click={() => dispatchMobileAction('bookmarkPanelClick')}
-            >
-              <Fa icon={faBookBookmark} class="w-4 text-center opacity-70" />
-              <span>Open Bookmarks</span>
-            </button>
-            <button
-              type="button"
-              class="flex w-full cursor-pointer items-center gap-2.5 px-3.5 py-2 text-left text-sm text-[var(--astryx-color-fg-primary)] transition-colors outline-none hover:bg-[var(--astryx-color-surface-hover)] focus-visible:bg-[var(--astryx-color-surface-hover)]"
-              on:click={() => dispatchMobileAction('createBookmarkClick')}
-            >
-              <Fa
-                icon={isBookmarkScreen ? fasBookmark : farBookmark}
-                class="w-4 text-center opacity-70"
-              />
-              <span>Create Named Bookmark</span>
-            </button>
             {#if showCloudWarning}
               <button
                 type="button"
@@ -335,25 +342,30 @@
               <Fa icon={faCog} class="w-4 text-center opacity-70" />
               <span>{mergeEntries.SETTINGS.label}</span>
             </button>
-            <button
-              type="button"
-              class="flex w-full cursor-pointer items-center gap-2.5 px-3.5 py-2 text-left text-sm text-[var(--astryx-color-fg-primary)] transition-colors outline-none hover:bg-[var(--astryx-color-surface-hover)] focus-visible:bg-[var(--astryx-color-surface-hover)]"
-              on:mouseenter={() => preloadCode(`${pagePath}${mergeEntries.MANAGE.routeId}`)}
-              on:pointerdown={() => preloadCode(`${pagePath}${mergeEntries.MANAGE.routeId}`)}
-              on:click={() => dispatchMobileAction('bookManagerClick')}
-            >
-              <Fa icon={faSignOutAlt} class="w-4 text-center opacity-70" />
-              <span>{mergeEntries.MANAGE.label}</span>
-            </button>
           </div>
         </Popover>
       </div>
     </div>
 
-    <!-- Right / End Actions (desktop only; included in the mobile menu above) -->
-    <div slot="end" class="hidden items-center gap-1 sm:flex">
+    <!-- Right / End Actions (desktop bar; mobile shows Manager plus the menu above) -->
+    <div slot="end" class="flex items-center gap-0.5 sm:gap-1">
+      <div class="flex items-center gap-0.5 sm:hidden">
+        <Tooltip text={mergeEntries.MANAGE.title}>
+          <IconButton
+            nativeTooltip={false}
+            label={mergeEntries.MANAGE.title}
+            size="md"
+            variant="ghost"
+            on:mouseenter={() => preloadCode(`${pagePath}${mergeEntries.MANAGE.routeId}`)}
+            on:pointerdown={() => preloadCode(`${pagePath}${mergeEntries.MANAGE.routeId}`)}
+            on:click={() => dispatch('bookManagerClick')}
+          >
+            <Fa icon={faSignOutAlt} class="text-base" />
+          </IconButton>
+        </Tooltip>
+      </div>
       <!-- Navigation Hub & Fullscreen (Always visible left-most icons of the right side) -->
-      <div class="flex items-center gap-0.5 sm:gap-1" bind:clientWidth={primaryEndWidth}>
+      <div class="hidden items-center gap-1 sm:flex" bind:clientWidth={primaryEndWidth}>
         <Tooltip text={mergeEntries.SETTINGS.title}>
           <IconButton
             nativeTooltip={false}
@@ -397,253 +409,261 @@
         {/if}
       </div>
 
-      <!-- Astryx Adaptive OverflowList: smoothly collapses one icon at a time based on space -->
-      <OverflowList
-        items={secondaryItems}
-        availableWidth={availableSecondaryWidth}
-        itemWidth={36}
-        overflowWidth={36}
-        gap={4}
-        let:item
-      >
-        <!-- Visible Items on the Bar -->
-        {#if item.id === 'complete'}
-          <Tooltip text="Complete Book">
-            <IconButton
-              nativeTooltip={false}
-              label="Complete Book"
-              size="md"
-              variant="ghost"
-              on:click={() => dispatch('completeBook')}
-            >
-              <Fa icon={faFlag} class="text-base" />
-            </IconButton>
-          </Tooltip>
-        {:else if item.id === 'customPoint'}
-          {#if $customReadingPointEnabled$ || $viewMode$ === ViewMode.Paginated}
-            <Popover
-              placement="bottom-end"
-              fallbackPlacements={['bottom-start', 'bottom']}
-              yOffset={4}
-              bind:this={customReadingPointMenuElm}
-            >
-              <div slot="icon">
-                <Tooltip text="Open Custom Point Actions">
-                  <div
-                    class="flex h-9 w-9 cursor-pointer items-center justify-center rounded-[var(--astryx-radius-md,6px)] text-[var(--astryx-color-fg-muted)] transition-colors hover:bg-[var(--astryx-color-surface-hover)] hover:text-[var(--astryx-color-fg-primary)]"
-                  >
-                    <Fa icon={faCrosshairs} class="text-base" />
-                  </div>
-                </Tooltip>
-              </div>
-              <div
-                class="min-w-[8.5rem] rounded-lg border border-[var(--astryx-color-border-subtle)] bg-[var(--astryx-color-surface)] py-1 shadow-lg"
-                slot="content"
-              >
-                {#each customReadingPointMenuItems as actionItem (actionItem.label)}
-                  <div
-                    tabindex="0"
-                    role="button"
-                    class="cursor-pointer px-4 py-2 text-left text-sm text-[var(--astryx-color-fg-primary)] transition-colors hover:bg-[var(--astryx-color-surface-hover)]"
-                    on:click={() => dispatchCustomReadingPointAction(actionItem.action)}
-                    on:keyup={dummyFn}
-                  >
-                    {actionItem.label}
-                  </div>
-                {/each}
-              </div>
-            </Popover>
-          {/if}
-        {:else if item.id === 'stats'}
-          {#if isOldUrl}
-            <Tooltip text={mergeEntries.DOMAIN_HINT.title}>
+      <!-- Astryx Adaptive OverflowList (desktop only; mobile uses the Reader Actions menu) -->
+      <div class="hidden sm:contents">
+        <OverflowList
+          items={secondaryItems}
+          availableWidth={availableSecondaryWidth}
+          itemWidth={36}
+          overflowWidth={36}
+          gap={4}
+          let:item
+        >
+          <!-- Visible Items on the Bar -->
+          {#if item.id === 'complete'}
+            <Tooltip text="Complete Book">
               <IconButton
                 nativeTooltip={false}
-                label={mergeEntries.DOMAIN_HINT.title}
+                label="Complete Book"
                 size="md"
                 variant="ghost"
-                on:click={() => dispatch('domainHintClick')}
+                on:click={() => dispatch('completeBook')}
               >
-                <Fa icon={faTriangleExclamation} class="text-base" />
+                <Fa icon={faFlag} class="text-base" />
               </IconButton>
             </Tooltip>
-          {:else}
-            <Tooltip text={mergeEntries.STATISTICS.title}>
-              <IconButton
-                nativeTooltip={false}
-                label={mergeEntries.STATISTICS.title}
-                size="md"
-                variant="ghost"
-                on:mouseenter={() => preloadCode(`${pagePath}${mergeEntries.STATISTICS.routeId}`)}
-                on:pointerdown={() => preloadCode(`${pagePath}${mergeEntries.STATISTICS.routeId}`)}
-                on:click={() => dispatch('statisticsClick')}
+          {:else if item.id === 'customPoint'}
+            {#if $customReadingPointEnabled$ || $viewMode$ === ViewMode.Paginated}
+              <Popover
+                placement="bottom-end"
+                fallbackPlacements={['bottom-start', 'bottom']}
+                yOffset={4}
+                bind:this={customReadingPointMenuElm}
               >
-                <Fa icon={faChartLine} class="text-base" />
-              </IconButton>
-            </Tooltip>
+                <div slot="icon">
+                  <Tooltip text="Open Custom Point Actions">
+                    <div
+                      class="flex h-9 w-9 cursor-pointer items-center justify-center rounded-[var(--astryx-radius-md,6px)] text-[var(--astryx-color-fg-muted)] transition-colors hover:bg-[var(--astryx-color-surface-hover)] hover:text-[var(--astryx-color-fg-primary)]"
+                    >
+                      <Fa icon={faCrosshairs} class="text-base" />
+                    </div>
+                  </Tooltip>
+                </div>
+                <div
+                  class="min-w-[8.5rem] rounded-lg border border-[var(--astryx-color-border-subtle)] bg-[var(--astryx-color-surface)] py-1 shadow-lg"
+                  slot="content"
+                >
+                  {#each customReadingPointMenuItems as actionItem (actionItem.label)}
+                    <div
+                      tabindex="0"
+                      role="button"
+                      class="cursor-pointer px-4 py-2 text-left text-sm text-[var(--astryx-color-fg-primary)] transition-colors hover:bg-[var(--astryx-color-surface-hover)]"
+                      on:click={() => dispatchCustomReadingPointAction(actionItem.action)}
+                      on:keyup={dummyFn}
+                    >
+                      {actionItem.label}
+                    </div>
+                  {/each}
+                </div>
+              </Popover>
+            {/if}
+          {:else if item.id === 'stats'}
+            {#if isOldUrl}
+              <Tooltip text={mergeEntries.DOMAIN_HINT.title}>
+                <IconButton
+                  nativeTooltip={false}
+                  label={mergeEntries.DOMAIN_HINT.title}
+                  size="md"
+                  variant="ghost"
+                  on:click={() => dispatch('domainHintClick')}
+                >
+                  <Fa icon={faTriangleExclamation} class="text-base" />
+                </IconButton>
+              </Tooltip>
+            {:else}
+              <Tooltip text={mergeEntries.STATISTICS.title}>
+                <IconButton
+                  nativeTooltip={false}
+                  label={mergeEntries.STATISTICS.title}
+                  size="md"
+                  variant="ghost"
+                  on:mouseenter={() => preloadCode(`${pagePath}${mergeEntries.STATISTICS.routeId}`)}
+                  on:pointerdown={() =>
+                    preloadCode(`${pagePath}${mergeEntries.STATISTICS.routeId}`)}
+                  on:click={() => dispatch('statisticsClick')}
+                >
+                  <Fa icon={faChartLine} class="text-base" />
+                </IconButton>
+              </Tooltip>
+            {/if}
+          {:else if item.id === 'jump'}
+            {#if hasText}
+              <Tooltip text={mergeEntries.JUMP_TO_POSITION.title}>
+                <IconButton
+                  nativeTooltip={false}
+                  label={mergeEntries.JUMP_TO_POSITION.title}
+                  size="md"
+                  variant="ghost"
+                  on:click={() => dispatch('jumpClick')}
+                >
+                  <Fa icon={faHashtag} class="text-base" />
+                </IconButton>
+              </Tooltip>
+            {/if}
+          {:else if item.id === 'gallery'}
+            {#if $readerImageGalleryPictures$.length}
+              <Tooltip text={mergeEntries.READER_IMAGE_GALLERY.title}>
+                <IconButton
+                  nativeTooltip={false}
+                  label={mergeEntries.READER_IMAGE_GALLERY.title}
+                  size="md"
+                  variant="ghost"
+                  on:click={() => dispatch('readerImageGalleryClick')}
+                >
+                  <Fa icon={faImages} class="text-base" />
+                </IconButton>
+              </Tooltip>
+            {/if}
           {/if}
-        {:else if item.id === 'jump'}
-          {#if hasText}
-            <Tooltip text={mergeEntries.JUMP_TO_POSITION.title}>
-              <IconButton
-                nativeTooltip={false}
-                label={mergeEntries.JUMP_TO_POSITION.title}
-                size="md"
-                variant="ghost"
-                on:click={() => dispatch('jumpClick')}
-              >
-                <Fa icon={faHashtag} class="text-base" />
-              </IconButton>
-            </Tooltip>
-          {/if}
-        {:else if item.id === 'gallery'}
-          {#if $readerImageGalleryPictures$.length}
-            <Tooltip text={mergeEntries.READER_IMAGE_GALLERY.title}>
-              <IconButton
-                nativeTooltip={false}
-                label={mergeEntries.READER_IMAGE_GALLERY.title}
-                size="md"
-                variant="ghost"
-                on:click={() => dispatch('readerImageGalleryClick')}
-              >
-                <Fa icon={faImages} class="text-base" />
-              </IconButton>
-            </Tooltip>
-          {/if}
-        {/if}
 
-        <!-- Overflow Popover (rendered when any secondary items overflow) -->
-        <svelte:fragment slot="overflow" let:overflowItems>
-          <div>
-            <Popover
-              placement="bottom-end"
-              fallbackPlacements={['bottom-start', 'bottom']}
-              yOffset={4}
-              bind:this={overflowMenuElm}
-            >
-              <div slot="icon">
-                <Tooltip text="More Actions">
-                  <IconButton nativeTooltip={false} variant="ghost" size="md" label="More Actions">
-                    <Fa icon={faEllipsis} class="text-base" />
-                  </IconButton>
-                </Tooltip>
-              </div>
-              <div
-                class="w-52 py-1.5 rounded-lg border border-[var(--astryx-color-border-subtle)] bg-[var(--astryx-color-surface)] text-[var(--astryx-color-fg-primary)] shadow-lg text-sm"
-                slot="content"
+          <!-- Overflow Popover (rendered when any secondary items overflow) -->
+          <svelte:fragment slot="overflow" let:overflowItems>
+            <div>
+              <Popover
+                placement="bottom-end"
+                fallbackPlacements={['bottom-start', 'bottom']}
+                yOffset={4}
+                bind:this={overflowMenuElm}
               >
-                {#each overflowItems as oItem (oItem.id)}
-                  {#if oItem.id === 'complete'}
-                    <button
-                      type="button"
-                      class="w-full flex items-center gap-2.5 px-3.5 py-2 text-sm text-left text-[var(--astryx-color-fg-primary)] hover:bg-[var(--astryx-color-surface-hover)] focus-visible:bg-[var(--astryx-color-surface-hover)] outline-none transition-colors cursor-pointer"
-                      on:click={() => {
-                        dispatch('completeBook');
-                        overflowMenuElm?.toggleOpen();
-                      }}
+                <div slot="icon">
+                  <Tooltip text="More Actions">
+                    <IconButton
+                      nativeTooltip={false}
+                      variant="ghost"
+                      size="md"
+                      label="More Actions"
                     >
-                      <Fa icon={faFlag} class="w-4 text-center opacity-70" />
-                      <span>Complete Book</span>
-                    </button>
-                  {:else if oItem.id === 'customPoint'}
-                    {#if hasCustomReadingPoint}
+                      <Fa icon={faEllipsis} class="text-base" />
+                    </IconButton>
+                  </Tooltip>
+                </div>
+                <div
+                  class="w-52 py-1.5 rounded-lg border border-[var(--astryx-color-border-subtle)] bg-[var(--astryx-color-surface)] text-[var(--astryx-color-fg-primary)] shadow-lg text-sm"
+                  slot="content"
+                >
+                  {#each overflowItems as oItem (oItem.id)}
+                    {#if oItem.id === 'complete'}
                       <button
                         type="button"
                         class="w-full flex items-center gap-2.5 px-3.5 py-2 text-sm text-left text-[var(--astryx-color-fg-primary)] hover:bg-[var(--astryx-color-surface-hover)] focus-visible:bg-[var(--astryx-color-surface-hover)] outline-none transition-colors cursor-pointer"
                         on:click={() => {
-                          dispatch('showCustomReadingPoint');
+                          dispatch('completeBook');
+                          overflowMenuElm?.toggleOpen();
+                        }}
+                      >
+                        <Fa icon={faFlag} class="w-4 text-center opacity-70" />
+                        <span>Complete Book</span>
+                      </button>
+                    {:else if oItem.id === 'customPoint'}
+                      {#if hasCustomReadingPoint}
+                        <button
+                          type="button"
+                          class="w-full flex items-center gap-2.5 px-3.5 py-2 text-sm text-left text-[var(--astryx-color-fg-primary)] hover:bg-[var(--astryx-color-surface-hover)] focus-visible:bg-[var(--astryx-color-surface-hover)] outline-none transition-colors cursor-pointer"
+                          on:click={() => {
+                            dispatch('showCustomReadingPoint');
+                            overflowMenuElm?.toggleOpen();
+                          }}
+                        >
+                          <Fa icon={faCrosshairs} class="w-4 text-center opacity-70" />
+                          <span>Show Reading Point</span>
+                        </button>
+                      {/if}
+                      <button
+                        type="button"
+                        class="w-full flex items-center gap-2.5 px-3.5 py-2 text-sm text-left text-[var(--astryx-color-fg-primary)] hover:bg-[var(--astryx-color-surface-hover)] focus-visible:bg-[var(--astryx-color-surface-hover)] outline-none transition-colors cursor-pointer"
+                        on:click={() => {
+                          dispatch('setCustomReadingPoint');
                           overflowMenuElm?.toggleOpen();
                         }}
                       >
                         <Fa icon={faCrosshairs} class="w-4 text-center opacity-70" />
-                        <span>Show Reading Point</span>
+                        <span>Set Reading Point</span>
                       </button>
-                    {/if}
-                    <button
-                      type="button"
-                      class="w-full flex items-center gap-2.5 px-3.5 py-2 text-sm text-left text-[var(--astryx-color-fg-primary)] hover:bg-[var(--astryx-color-surface-hover)] focus-visible:bg-[var(--astryx-color-surface-hover)] outline-none transition-colors cursor-pointer"
-                      on:click={() => {
-                        dispatch('setCustomReadingPoint');
-                        overflowMenuElm?.toggleOpen();
-                      }}
-                    >
-                      <Fa icon={faCrosshairs} class="w-4 text-center opacity-70" />
-                      <span>Set Reading Point</span>
-                    </button>
-                    {#if hasCustomReadingPoint}
+                      {#if hasCustomReadingPoint}
+                        <button
+                          type="button"
+                          class="w-full flex items-center gap-2.5 px-3.5 py-2 text-sm text-left text-[var(--astryx-color-fg-primary)] hover:bg-[var(--astryx-color-surface-hover)] focus-visible:bg-[var(--astryx-color-surface-hover)] outline-none transition-colors cursor-pointer"
+                          on:click={() => {
+                            dispatch('resetCustomReadingPoint');
+                            overflowMenuElm?.toggleOpen();
+                          }}
+                        >
+                          <Fa icon={faCrosshairs} class="w-4 text-center opacity-70" />
+                          <span>Reset Reading Point</span>
+                        </button>
+                      {/if}
+                    {:else if oItem.id === 'stats'}
+                      {#if isOldUrl}
+                        <button
+                          type="button"
+                          class="w-full flex items-center gap-2.5 px-3.5 py-2 text-sm text-left text-[var(--astryx-color-fg-primary)] hover:bg-[var(--astryx-color-surface-hover)] focus-visible:bg-[var(--astryx-color-surface-hover)] outline-none transition-colors cursor-pointer"
+                          on:click={() => {
+                            dispatch('domainHintClick');
+                            overflowMenuElm?.toggleOpen();
+                          }}
+                        >
+                          <Fa icon={faTriangleExclamation} class="w-4 text-center opacity-70" />
+                          <span>{mergeEntries.DOMAIN_HINT.label}</span>
+                        </button>
+                      {:else}
+                        <button
+                          type="button"
+                          class="w-full flex items-center gap-2.5 px-3.5 py-2 text-sm text-left text-[var(--astryx-color-fg-primary)] hover:bg-[var(--astryx-color-surface-hover)] focus-visible:bg-[var(--astryx-color-surface-hover)] outline-none transition-colors cursor-pointer"
+                          on:mouseenter={() =>
+                            preloadCode(`${pagePath}${mergeEntries.STATISTICS.routeId}`)}
+                          on:pointerdown={() =>
+                            preloadCode(`${pagePath}${mergeEntries.STATISTICS.routeId}`)}
+                          on:click={() => {
+                            dispatch('statisticsClick');
+                            overflowMenuElm?.toggleOpen();
+                          }}
+                        >
+                          <Fa icon={faChartLine} class="w-4 text-center opacity-70" />
+                          <span>{mergeEntries.STATISTICS.label}</span>
+                        </button>
+                      {/if}
+                    {:else if oItem.id === 'jump'}
                       <button
                         type="button"
                         class="w-full flex items-center gap-2.5 px-3.5 py-2 text-sm text-left text-[var(--astryx-color-fg-primary)] hover:bg-[var(--astryx-color-surface-hover)] focus-visible:bg-[var(--astryx-color-surface-hover)] outline-none transition-colors cursor-pointer"
                         on:click={() => {
-                          dispatch('resetCustomReadingPoint');
+                          dispatch('jumpClick');
                           overflowMenuElm?.toggleOpen();
                         }}
                       >
-                        <Fa icon={faCrosshairs} class="w-4 text-center opacity-70" />
-                        <span>Reset Reading Point</span>
+                        <Fa icon={faHashtag} class="w-4 text-center opacity-70" />
+                        <span>Jump to Position</span>
                       </button>
-                    {/if}
-                  {:else if oItem.id === 'stats'}
-                    {#if isOldUrl}
+                    {:else if oItem.id === 'gallery'}
                       <button
                         type="button"
                         class="w-full flex items-center gap-2.5 px-3.5 py-2 text-sm text-left text-[var(--astryx-color-fg-primary)] hover:bg-[var(--astryx-color-surface-hover)] focus-visible:bg-[var(--astryx-color-surface-hover)] outline-none transition-colors cursor-pointer"
                         on:click={() => {
-                          dispatch('domainHintClick');
+                          dispatch('readerImageGalleryClick');
                           overflowMenuElm?.toggleOpen();
                         }}
                       >
-                        <Fa icon={faTriangleExclamation} class="w-4 text-center opacity-70" />
-                        <span>{mergeEntries.DOMAIN_HINT.label}</span>
-                      </button>
-                    {:else}
-                      <button
-                        type="button"
-                        class="w-full flex items-center gap-2.5 px-3.5 py-2 text-sm text-left text-[var(--astryx-color-fg-primary)] hover:bg-[var(--astryx-color-surface-hover)] focus-visible:bg-[var(--astryx-color-surface-hover)] outline-none transition-colors cursor-pointer"
-                        on:mouseenter={() =>
-                          preloadCode(`${pagePath}${mergeEntries.STATISTICS.routeId}`)}
-                        on:pointerdown={() =>
-                          preloadCode(`${pagePath}${mergeEntries.STATISTICS.routeId}`)}
-                        on:click={() => {
-                          dispatch('statisticsClick');
-                          overflowMenuElm?.toggleOpen();
-                        }}
-                      >
-                        <Fa icon={faChartLine} class="w-4 text-center opacity-70" />
-                        <span>{mergeEntries.STATISTICS.label}</span>
+                        <Fa icon={faImages} class="w-4 text-center opacity-70" />
+                        <span>Image Gallery</span>
                       </button>
                     {/if}
-                  {:else if oItem.id === 'jump'}
-                    <button
-                      type="button"
-                      class="w-full flex items-center gap-2.5 px-3.5 py-2 text-sm text-left text-[var(--astryx-color-fg-primary)] hover:bg-[var(--astryx-color-surface-hover)] focus-visible:bg-[var(--astryx-color-surface-hover)] outline-none transition-colors cursor-pointer"
-                      on:click={() => {
-                        dispatch('jumpClick');
-                        overflowMenuElm?.toggleOpen();
-                      }}
-                    >
-                      <Fa icon={faHashtag} class="w-4 text-center opacity-70" />
-                      <span>Jump to Position</span>
-                    </button>
-                  {:else if oItem.id === 'gallery'}
-                    <button
-                      type="button"
-                      class="w-full flex items-center gap-2.5 px-3.5 py-2 text-sm text-left text-[var(--astryx-color-fg-primary)] hover:bg-[var(--astryx-color-surface-hover)] focus-visible:bg-[var(--astryx-color-surface-hover)] outline-none transition-colors cursor-pointer"
-                      on:click={() => {
-                        dispatch('readerImageGalleryClick');
-                        overflowMenuElm?.toggleOpen();
-                      }}
-                    >
-                      <Fa icon={faImages} class="w-4 text-center opacity-70" />
-                      <span>Image Gallery</span>
-                    </button>
-                  {/if}
-                {/each}
-              </div>
-            </Popover>
-          </div>
-        </svelte:fragment>
-      </OverflowList>
+                  {/each}
+                </div>
+              </Popover>
+            </div>
+          </svelte:fragment>
+        </OverflowList>
+      </div>
     </div>
   </TopBar>
 </div>

@@ -22,7 +22,7 @@ test.describe('Reader Header Responsive Behavior', () => {
     const topTrigger = page.locator('button.fixed.inset-x-0.top-0');
     await topTrigger.click();
     // Desktop shows the manager icon on the bar; mobile shows the Reader Actions menu instead
-    await expect(page.locator(`button[aria-label="${visibleButtonLabel}"]`)).toBeVisible({
+    await expect(page.locator(`button[aria-label="${visibleButtonLabel}"]:visible`)).toBeVisible({
       timeout: 5000
     });
   }
@@ -36,7 +36,7 @@ test.describe('Reader Header Responsive Behavior', () => {
 
     // Primary end actions must be visible
     await expect(page.locator('button[aria-label="Go to Reader Settings"]')).toBeVisible();
-    await expect(page.locator('button[aria-label="Go to Book Manager"]')).toBeVisible();
+    await expect(page.locator('button[aria-label="Go to Book Manager"]:visible')).toBeVisible();
 
     // Mobile Reader Actions menu must NOT be visible on wide screens
     await expect(page.locator('button[aria-label="Reader Actions"]')).toBeHidden();
@@ -50,33 +50,38 @@ test.describe('Reader Header Responsive Behavior', () => {
     await expect(moreActions).toBeHidden();
   });
 
-  test('narrow mobile viewport (375x667): all actions collapse into the Reader Actions menu', async ({
+  test('narrow mobile viewport (375x667): essentials stay on the bar, rest in the Reader Actions menu', async ({
     page
   }) => {
     await page.setViewportSize({ width: 375, height: 667 });
     await page.goto('/b?id=1');
     await openHeader(page, 'Reader Actions');
 
-    // Desktop bar icons must be hidden
+    // Essential actions stay single-tap on the bar
+    await expect(page.locator('button[aria-label="Open Table of Contents"]:visible')).toBeVisible();
+    await expect(page.locator('button[aria-label="Open Bookmarks"]:visible')).toBeVisible();
+    await expect(page.locator('button[aria-label="Create Named Bookmark"]:visible')).toBeVisible();
+    await expect(page.locator('button[aria-label="Go to Book Manager"]:visible')).toBeVisible();
+
+    // Non-essential bar icons collapse
     await expect(page.locator('button[aria-label="Go to Reader Settings"]')).toBeHidden();
-    await expect(page.locator('button[aria-label="Go to Book Manager"]')).toBeHidden();
     await expect(page.locator('button[aria-label="Complete Book"]')).toBeHidden();
 
-    // Single Reader Actions ellipsis button must be visible instead
+    // Single Reader Actions ellipsis button holds everything else
     const readerActions = page.locator('button[aria-label="Reader Actions"]');
     await expect(readerActions).toBeVisible();
 
     // Click Reader Actions to open the popover menu
     await readerActions.click();
 
-    // Every action must be reachable as a labeled menu row
-    await expect(page.locator('button:has-text("Open Table of Contents")')).toBeVisible();
-    await expect(page.locator('button:has-text("Open Bookmarks")')).toBeVisible();
-    await expect(page.locator('button:has-text("Create Named Bookmark")')).toBeVisible();
+    // Non-essential actions must be reachable as labeled menu rows
     await expect(page.locator('button:has-text("Complete Book")')).toBeVisible();
     await expect(page.locator('button:has-text("Statistics")')).toBeVisible();
     await expect(page.locator('button:has-text("Settings")')).toBeVisible();
-    await expect(page.locator('button:has-text("Manager")')).toBeVisible();
+
+    // Essentials live on the bar, not duplicated in the menu
+    await expect(page.locator('button:has-text("Open Table of Contents")')).toBeHidden();
+    await expect(page.locator('button:has-text("Manager")')).toBeHidden();
 
     // The header must remain open when interacting with the popover
     await expect(readerActions).toBeVisible();
@@ -99,10 +104,12 @@ test.describe('Reader Header Responsive Behavior', () => {
     await page.setViewportSize({ width: 375, height: 667 });
     await page.waitForTimeout(300); // Allow resize debounce/calculation
 
-    // Now the mobile menu appears and all bar icons collapse
+    // Now the mobile menu appears; essentials stay, the rest collapse
     await expect(readerActions).toBeVisible();
     await expect(moreActions).toBeHidden();
-    await expect(page.locator('button[aria-label="Go to Book Manager"]')).toBeHidden();
+    await expect(page.locator('button[aria-label="Go to Book Manager"]:visible')).toBeVisible();
+    await expect(page.locator('button[aria-label="Go to Reader Settings"]')).toBeHidden();
+    await expect(page.locator('button[aria-label="Complete Book"]')).toBeHidden();
 
     // Resize back to wide
     await page.setViewportSize({ width: 1280, height: 800 });
