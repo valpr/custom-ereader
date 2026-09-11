@@ -7,21 +7,22 @@
 import { expect, test } from '@playwright/test';
 import { seedReaderBook } from './fixtures/book-fixture';
 
-test.describe('Reader Header Responsive Behavior (Astryx OverflowList)', () => {
+test.describe('Reader Header Responsive Behavior', () => {
   test.beforeEach(async ({ page }) => {
     page.on('console', (msg) => console.log('LOG:', msg.text()));
     page.on('pageerror', (err) => console.log('UNCAUGHT PAGE ERROR:', err.stack || err.message));
     await seedReaderBook(page);
   });
 
-  async function openHeader(page: any) {
+  async function openHeader(page: any, visibleButtonLabel = 'Go to Book Manager') {
     // Wait for book content to load
     await expect(page.locator('.book-content')).toBeVisible();
 
     // Click the top trigger zone to open the header
     const topTrigger = page.locator('button.fixed.inset-x-0.top-0');
     await topTrigger.click();
-    await expect(page.locator('button[aria-label="Go to Book Manager"]')).toBeVisible({
+    // Desktop shows the manager icon on the bar; mobile shows the Reader Actions menu instead
+    await expect(page.locator(`button[aria-label="${visibleButtonLabel}"]`)).toBeVisible({
       timeout: 5000
     });
   }
@@ -37,6 +38,9 @@ test.describe('Reader Header Responsive Behavior (Astryx OverflowList)', () => {
     await expect(page.locator('button[aria-label="Go to Reader Settings"]')).toBeVisible();
     await expect(page.locator('button[aria-label="Go to Book Manager"]')).toBeVisible();
 
+    // Mobile Reader Actions menu must NOT be visible on wide screens
+    await expect(page.locator('button[aria-label="Reader Actions"]')).toBeHidden();
+
     // Secondary actions should be visible on the bar
     await expect(page.locator('button[aria-label="Complete Book"]')).toBeVisible();
     await expect(page.locator('button[aria-label="Go to Statistics"]')).toBeVisible();
@@ -46,33 +50,36 @@ test.describe('Reader Header Responsive Behavior (Astryx OverflowList)', () => {
     await expect(moreActions).toBeHidden();
   });
 
-  test('narrow mobile viewport (375x667): primary actions visible, secondary items in popover', async ({
+  test('narrow mobile viewport (375x667): all actions collapse into the Reader Actions menu', async ({
     page
   }) => {
     await page.setViewportSize({ width: 375, height: 667 });
     await page.goto('/b?id=1');
-    await openHeader(page);
+    await openHeader(page, 'Reader Actions');
 
-    // Primary end actions must still be visible
-    await expect(page.locator('button[aria-label="Go to Reader Settings"]')).toBeVisible();
-    await expect(page.locator('button[aria-label="Go to Book Manager"]')).toBeVisible();
+    // Desktop bar icons must be hidden
+    await expect(page.locator('button[aria-label="Go to Reader Settings"]')).toBeHidden();
+    await expect(page.locator('button[aria-label="Go to Book Manager"]')).toBeHidden();
+    await expect(page.locator('button[aria-label="Complete Book"]')).toBeHidden();
 
-    // More Actions ellipsis button must be visible
-    const moreActions = page.locator('button[aria-label="More Actions"]');
-    await expect(moreActions).toBeVisible();
+    // Single Reader Actions ellipsis button must be visible instead
+    const readerActions = page.locator('button[aria-label="Reader Actions"]');
+    await expect(readerActions).toBeVisible();
 
-    // Click More Actions to open the popover
-    await moreActions.click();
+    // Click Reader Actions to open the popover menu
+    await readerActions.click();
 
-    // Complete Book fits on the bar; trailing items like Statistics collapse into the popover
-    await expect(page.locator('button[aria-label="Complete Book"]')).toBeVisible();
-
-    // The popover menu items should now be visible
-    const statsItem = page.locator('button:has-text("Statistics")');
-    await expect(statsItem).toBeVisible();
+    // Every action must be reachable as a labeled menu row
+    await expect(page.locator('button:has-text("Open Table of Contents")')).toBeVisible();
+    await expect(page.locator('button:has-text("Open Bookmarks")')).toBeVisible();
+    await expect(page.locator('button:has-text("Create Named Bookmark")')).toBeVisible();
+    await expect(page.locator('button:has-text("Complete Book")')).toBeVisible();
+    await expect(page.locator('button:has-text("Statistics")')).toBeVisible();
+    await expect(page.locator('button:has-text("Settings")')).toBeVisible();
+    await expect(page.locator('button:has-text("Manager")')).toBeVisible();
 
     // The header must remain open when interacting with the popover
-    await expect(page.locator('button[aria-label="Go to Book Manager"]')).toBeVisible();
+    await expect(readerActions).toBeVisible();
   });
 
   test('dynamic resize transition: smooth collapse and expand without layout breakage', async ({
@@ -84,20 +91,25 @@ test.describe('Reader Header Responsive Behavior (Astryx OverflowList)', () => {
     await openHeader(page);
 
     const moreActions = page.locator('button[aria-label="More Actions"]');
+    const readerActions = page.locator('button[aria-label="Reader Actions"]');
     await expect(moreActions).toBeHidden();
+    await expect(readerActions).toBeHidden();
 
     // Resize down to mobile width
     await page.setViewportSize({ width: 375, height: 667 });
     await page.waitForTimeout(300); // Allow resize debounce/calculation
 
-    // Now more actions should appear
-    await expect(moreActions).toBeVisible();
+    // Now the mobile menu appears and all bar icons collapse
+    await expect(readerActions).toBeVisible();
+    await expect(moreActions).toBeHidden();
+    await expect(page.locator('button[aria-label="Go to Book Manager"]')).toBeHidden();
 
     // Resize back to wide
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.waitForTimeout(300);
 
-    // More actions should disappear, and bar items reappear
+    // Mobile menu disappears, and bar items reappear
+    await expect(readerActions).toBeHidden();
     await expect(moreActions).toBeHidden();
     await expect(page.locator('button[aria-label="Complete Book"]')).toBeVisible();
     await expect(page.locator('button[aria-label="Go to Statistics"]')).toBeVisible();

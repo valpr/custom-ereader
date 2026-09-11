@@ -68,6 +68,7 @@
 
   let customReadingPointMenuElm: Popover;
   let overflowMenuElm: Popover;
+  let mobileMenuElm: Popover;
 
   let headerWidth = 0;
   let startWidth = 0;
@@ -105,76 +106,252 @@
     dispatch(action);
     customReadingPointMenuElm.toggleOpen();
   }
+
+  function dispatchMobileAction(action: any) {
+    dispatch(action);
+    mobileMenuElm?.toggleOpen();
+  }
 </script>
 
 <svelte:window bind:innerWidth={windowInnerWidth} />
 
 <div class="w-full" bind:clientWidth={headerWidth}>
   <TopBar bordered={true} density="compact" translucent={true}>
-    <!-- Left / Start Actions -->
-    <div slot="start" bind:clientWidth={startWidth} class="flex items-center gap-0.5 sm:gap-1">
-      {#if hasChapterData}
-        <Tooltip text="Open Table of Contents">
+    <!-- Left / Start Actions (desktop icon bar; collapses to a single menu on mobile) -->
+    <div slot="start" class="flex items-center gap-0.5 sm:gap-1">
+      <div class="hidden items-center gap-1 sm:flex" bind:clientWidth={startWidth}>
+        {#if hasChapterData}
+          <Tooltip text="Open Table of Contents">
+            <IconButton
+              nativeTooltip={false}
+              label="Open Table of Contents"
+              size="md"
+              variant="ghost"
+              on:click={() => dispatch('tocClick')}
+            >
+              <Fa icon={faList} class="text-base" />
+            </IconButton>
+          </Tooltip>
+        {/if}
+
+        <Tooltip text="Open Bookmarks">
           <IconButton
             nativeTooltip={false}
-            label="Open Table of Contents"
+            label="Open Bookmarks"
             size="md"
             variant="ghost"
-            on:click={() => dispatch('tocClick')}
+            on:click={() => dispatch('bookmarkPanelClick')}
           >
-            <Fa icon={faList} class="text-base" />
+            <Fa icon={faBookBookmark} class="text-base" />
           </IconButton>
         </Tooltip>
-      {/if}
 
-      <Tooltip text="Open Bookmarks">
-        <IconButton
-          nativeTooltip={false}
-          label="Open Bookmarks"
-          size="md"
-          variant="ghost"
-          on:click={() => dispatch('bookmarkPanelClick')}
-        >
-          <Fa icon={faBookBookmark} class="text-base" />
-        </IconButton>
-      </Tooltip>
-
-      <Tooltip text="Create Named Bookmark">
-        <IconButton
-          nativeTooltip={false}
-          label="Create Named Bookmark"
-          size="md"
-          variant="ghost"
-          active={isBookmarkScreen}
-          on:click={() => dispatch('createBookmarkClick')}
-        >
-          <Fa icon={isBookmarkScreen ? fasBookmark : farBookmark} class="text-base" />
-        </IconButton>
-      </Tooltip>
-
-      {#if showCloudWarning}
-        <CloudStatusIcon
-          label={cloudWarningLabel}
-          state="warning"
-          on:click={() => dispatch('cloudReconnectClick')}
-        >
-          <Fa icon={faTriangleExclamation} class="text-base" />
-        </CloudStatusIcon>
-      {/if}
-
-      {#if $viewMode$ === ViewMode.Continuous && !$isMobile$}
-        <Tooltip text="Current Autoscroll Speed">
-          <span
-            class="ml-1 flex items-center rounded-full bg-[var(--astryx-color-surface-hover)] px-2 py-0.5 text-xs font-semibold text-[var(--astryx-color-fg-muted)]"
+        <Tooltip text="Create Named Bookmark">
+          <IconButton
+            nativeTooltip={false}
+            label="Create Named Bookmark"
+            size="md"
+            variant="ghost"
+            active={isBookmarkScreen}
+            on:click={() => dispatch('createBookmarkClick')}
           >
-            {autoScrollMultiplier}x
-          </span>
+            <Fa icon={isBookmarkScreen ? fasBookmark : farBookmark} class="text-base" />
+          </IconButton>
         </Tooltip>
-      {/if}
+
+        {#if showCloudWarning}
+          <CloudStatusIcon
+            label={cloudWarningLabel}
+            state="warning"
+            on:click={() => dispatch('cloudReconnectClick')}
+          >
+            <Fa icon={faTriangleExclamation} class="text-base" />
+          </CloudStatusIcon>
+        {/if}
+
+        {#if $viewMode$ === ViewMode.Continuous && !$isMobile$}
+          <Tooltip text="Current Autoscroll Speed">
+            <span
+              class="ml-1 flex items-center rounded-full bg-[var(--astryx-color-surface-hover)] px-2 py-0.5 text-xs font-semibold text-[var(--astryx-color-fg-muted)]"
+            >
+              {autoScrollMultiplier}x
+            </span>
+          </Tooltip>
+        {/if}
+      </div>
+
+      <!-- Mobile: single ellipsis menu with every reader action -->
+      <div class="flex items-center sm:hidden">
+        <Popover
+          placement="bottom-start"
+          fallbackPlacements={['bottom-end', 'bottom']}
+          yOffset={4}
+          bind:this={mobileMenuElm}
+        >
+          <div slot="icon">
+            <Tooltip text="Reader Actions">
+              <IconButton nativeTooltip={false} variant="ghost" size="md" label="Reader Actions">
+                <Fa icon={faEllipsis} class="text-base" />
+              </IconButton>
+            </Tooltip>
+          </div>
+          <div
+            class="max-h-[60vh] w-56 overflow-y-auto rounded-lg border border-[var(--astryx-color-border-subtle)] bg-[var(--astryx-color-surface)] py-1.5 text-sm text-[var(--astryx-color-fg-primary)] shadow-lg"
+            slot="content"
+          >
+            {#if hasChapterData}
+              <button
+                type="button"
+                class="flex w-full cursor-pointer items-center gap-2.5 px-3.5 py-2 text-left text-sm text-[var(--astryx-color-fg-primary)] transition-colors outline-none hover:bg-[var(--astryx-color-surface-hover)] focus-visible:bg-[var(--astryx-color-surface-hover)]"
+                on:click={() => dispatchMobileAction('tocClick')}
+              >
+                <Fa icon={faList} class="w-4 text-center opacity-70" />
+                <span>Open Table of Contents</span>
+              </button>
+            {/if}
+            <button
+              type="button"
+              class="flex w-full cursor-pointer items-center gap-2.5 px-3.5 py-2 text-left text-sm text-[var(--astryx-color-fg-primary)] transition-colors outline-none hover:bg-[var(--astryx-color-surface-hover)] focus-visible:bg-[var(--astryx-color-surface-hover)]"
+              on:click={() => dispatchMobileAction('bookmarkPanelClick')}
+            >
+              <Fa icon={faBookBookmark} class="w-4 text-center opacity-70" />
+              <span>Open Bookmarks</span>
+            </button>
+            <button
+              type="button"
+              class="flex w-full cursor-pointer items-center gap-2.5 px-3.5 py-2 text-left text-sm text-[var(--astryx-color-fg-primary)] transition-colors outline-none hover:bg-[var(--astryx-color-surface-hover)] focus-visible:bg-[var(--astryx-color-surface-hover)]"
+              on:click={() => dispatchMobileAction('createBookmarkClick')}
+            >
+              <Fa
+                icon={isBookmarkScreen ? fasBookmark : farBookmark}
+                class="w-4 text-center opacity-70"
+              />
+              <span>Create Named Bookmark</span>
+            </button>
+            {#if showCloudWarning}
+              <button
+                type="button"
+                class="flex w-full cursor-pointer items-center gap-2.5 px-3.5 py-2 text-left text-sm text-[var(--astryx-color-fg-primary)] transition-colors outline-none hover:bg-[var(--astryx-color-surface-hover)] focus-visible:bg-[var(--astryx-color-surface-hover)]"
+                on:click={() => dispatchMobileAction('cloudReconnectClick')}
+              >
+                <Fa icon={faTriangleExclamation} class="w-4 text-center opacity-70" />
+                <span>Reconnect Cloud Sync</span>
+              </button>
+            {/if}
+            <button
+              type="button"
+              class="flex w-full cursor-pointer items-center gap-2.5 px-3.5 py-2 text-left text-sm text-[var(--astryx-color-fg-primary)] transition-colors outline-none hover:bg-[var(--astryx-color-surface-hover)] focus-visible:bg-[var(--astryx-color-surface-hover)]"
+              on:click={() => dispatchMobileAction('completeBook')}
+            >
+              <Fa icon={faFlag} class="w-4 text-center opacity-70" />
+              <span>Complete Book</span>
+            </button>
+            {#if hasCustomReadingPoint}
+              <button
+                type="button"
+                class="flex w-full cursor-pointer items-center gap-2.5 px-3.5 py-2 text-left text-sm text-[var(--astryx-color-fg-primary)] transition-colors outline-none hover:bg-[var(--astryx-color-surface-hover)] focus-visible:bg-[var(--astryx-color-surface-hover)]"
+                on:click={() => dispatchMobileAction('showCustomReadingPoint')}
+              >
+                <Fa icon={faCrosshairs} class="w-4 text-center opacity-70" />
+                <span>Show Reading Point</span>
+              </button>
+            {/if}
+            <button
+              type="button"
+              class="flex w-full cursor-pointer items-center gap-2.5 px-3.5 py-2 text-left text-sm text-[var(--astryx-color-fg-primary)] transition-colors outline-none hover:bg-[var(--astryx-color-surface-hover)] focus-visible:bg-[var(--astryx-color-surface-hover)]"
+              on:click={() => dispatchMobileAction('setCustomReadingPoint')}
+            >
+              <Fa icon={faCrosshairs} class="w-4 text-center opacity-70" />
+              <span>Set Reading Point</span>
+            </button>
+            {#if hasCustomReadingPoint}
+              <button
+                type="button"
+                class="flex w-full cursor-pointer items-center gap-2.5 px-3.5 py-2 text-left text-sm text-[var(--astryx-color-fg-primary)] transition-colors outline-none hover:bg-[var(--astryx-color-surface-hover)] focus-visible:bg-[var(--astryx-color-surface-hover)]"
+                on:click={() => dispatchMobileAction('resetCustomReadingPoint')}
+              >
+                <Fa icon={faCrosshairs} class="w-4 text-center opacity-70" />
+                <span>Reset Reading Point</span>
+              </button>
+            {/if}
+            {#if isOldUrl}
+              <button
+                type="button"
+                class="flex w-full cursor-pointer items-center gap-2.5 px-3.5 py-2 text-left text-sm text-[var(--astryx-color-fg-primary)] transition-colors outline-none hover:bg-[var(--astryx-color-surface-hover)] focus-visible:bg-[var(--astryx-color-surface-hover)]"
+                on:click={() => dispatchMobileAction('domainHintClick')}
+              >
+                <Fa icon={faTriangleExclamation} class="w-4 text-center opacity-70" />
+                <span>{mergeEntries.DOMAIN_HINT.label}</span>
+              </button>
+            {:else}
+              <button
+                type="button"
+                class="flex w-full cursor-pointer items-center gap-2.5 px-3.5 py-2 text-left text-sm text-[var(--astryx-color-fg-primary)] transition-colors outline-none hover:bg-[var(--astryx-color-surface-hover)] focus-visible:bg-[var(--astryx-color-surface-hover)]"
+                on:mouseenter={() => preloadCode(`${pagePath}${mergeEntries.STATISTICS.routeId}`)}
+                on:pointerdown={() => preloadCode(`${pagePath}${mergeEntries.STATISTICS.routeId}`)}
+                on:click={() => dispatchMobileAction('statisticsClick')}
+              >
+                <Fa icon={faChartLine} class="w-4 text-center opacity-70" />
+                <span>{mergeEntries.STATISTICS.label}</span>
+              </button>
+            {/if}
+            {#if hasText}
+              <button
+                type="button"
+                class="flex w-full cursor-pointer items-center gap-2.5 px-3.5 py-2 text-left text-sm text-[var(--astryx-color-fg-primary)] transition-colors outline-none hover:bg-[var(--astryx-color-surface-hover)] focus-visible:bg-[var(--astryx-color-surface-hover)]"
+                on:click={() => dispatchMobileAction('jumpClick')}
+              >
+                <Fa icon={faHashtag} class="w-4 text-center opacity-70" />
+                <span>Jump to Position</span>
+              </button>
+            {/if}
+            {#if $readerImageGalleryPictures$.length}
+              <button
+                type="button"
+                class="flex w-full cursor-pointer items-center gap-2.5 px-3.5 py-2 text-left text-sm text-[var(--astryx-color-fg-primary)] transition-colors outline-none hover:bg-[var(--astryx-color-surface-hover)] focus-visible:bg-[var(--astryx-color-surface-hover)]"
+                on:click={() => dispatchMobileAction('readerImageGalleryClick')}
+              >
+                <Fa icon={faImages} class="w-4 text-center opacity-70" />
+                <span>Image Gallery</span>
+              </button>
+            {/if}
+            {#if showFullscreenButton}
+              <button
+                type="button"
+                class="flex w-full cursor-pointer items-center gap-2.5 px-3.5 py-2 text-left text-sm text-[var(--astryx-color-fg-primary)] transition-colors outline-none hover:bg-[var(--astryx-color-surface-hover)] focus-visible:bg-[var(--astryx-color-surface-hover)]"
+                on:click={() => dispatchMobileAction('fullscreenClick')}
+              >
+                <Fa icon={faExpand} class="w-4 text-center opacity-70" />
+                <span>Toggle Fullscreen</span>
+              </button>
+            {/if}
+            <button
+              type="button"
+              class="flex w-full cursor-pointer items-center gap-2.5 px-3.5 py-2 text-left text-sm text-[var(--astryx-color-fg-primary)] transition-colors outline-none hover:bg-[var(--astryx-color-surface-hover)] focus-visible:bg-[var(--astryx-color-surface-hover)]"
+              on:mouseenter={() => preloadCode(`${pagePath}${mergeEntries.SETTINGS.routeId}`)}
+              on:pointerdown={() => preloadCode(`${pagePath}${mergeEntries.SETTINGS.routeId}`)}
+              on:click={() => dispatchMobileAction('settingsClick')}
+            >
+              <Fa icon={faCog} class="w-4 text-center opacity-70" />
+              <span>{mergeEntries.SETTINGS.label}</span>
+            </button>
+            <button
+              type="button"
+              class="flex w-full cursor-pointer items-center gap-2.5 px-3.5 py-2 text-left text-sm text-[var(--astryx-color-fg-primary)] transition-colors outline-none hover:bg-[var(--astryx-color-surface-hover)] focus-visible:bg-[var(--astryx-color-surface-hover)]"
+              on:mouseenter={() => preloadCode(`${pagePath}${mergeEntries.MANAGE.routeId}`)}
+              on:pointerdown={() => preloadCode(`${pagePath}${mergeEntries.MANAGE.routeId}`)}
+              on:click={() => dispatchMobileAction('bookManagerClick')}
+            >
+              <Fa icon={faSignOutAlt} class="w-4 text-center opacity-70" />
+              <span>{mergeEntries.MANAGE.label}</span>
+            </button>
+          </div>
+        </Popover>
+      </div>
     </div>
 
-    <!-- Right / End Actions -->
-    <div slot="end" class="flex items-center gap-0.5 sm:gap-1">
+    <!-- Right / End Actions (desktop only; included in the mobile menu above) -->
+    <div slot="end" class="hidden items-center gap-1 sm:flex">
       <!-- Navigation Hub & Fullscreen (Always visible left-most icons of the right side) -->
       <div class="flex items-center gap-0.5 sm:gap-1" bind:clientWidth={primaryEndWidth}>
         <Tooltip text={mergeEntries.SETTINGS.title}>
