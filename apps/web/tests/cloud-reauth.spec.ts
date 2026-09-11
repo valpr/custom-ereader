@@ -48,6 +48,44 @@ test.describe('Cloud re-auth deferred UX', () => {
     );
   });
 
+  test('reconnect stays clickable on an empty library', async ({ page }) => {
+    // Empty collection renders the Upload Books empty-state, whose
+    // full-screen file-drop label (fixed inset-0 z-0) used to paint over the
+    // banner and swallow Reconnect clicks.
+    await page.addInitScript(() => {
+      window.localStorage.setItem('syncTarget', 'ttu-onedrive-default');
+      window.localStorage.setItem(
+        'pendingCloudSync',
+        JSON.stringify({
+          'ttu-onedrive-default': {
+            at: Date.now(),
+            reason: 'session expired (test)',
+            failedOps: 2
+          }
+        })
+      );
+    });
+    await page.goto('/manage');
+
+    const banner = page.getByTestId('cloud-reconnect-banner');
+    await expect(banner).toBeVisible();
+    await expect(banner).toContainText('OneDrive Default');
+    await expect(page.getByText('Upload Books')).toBeVisible();
+
+    const reconnect = banner.getByRole('button', { name: 'Reconnect' });
+    await expect(reconnect).toBeEnabled();
+
+    // Hit-test the button center: it must resolve inside the banner, not the
+    // empty-state label behind it. (No waitFor timeouts — all assertions.)
+    const hit = await reconnect.evaluate((el) => {
+      const rect = el.getBoundingClientRect();
+      const target = document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2);
+      if (target?.closest('[data-testid="cloud-reconnect-banner"]')) return 'banner';
+      return target?.tagName ?? 'none';
+    });
+    expect(hit).toBe('banner');
+  });
+
   test('banner does not cover header dropdown menus', async ({ page }) => {
     await seedExpiredSession(page, 3);
     // Narrow viewport so the full-width banner sits under the Filter menu.
