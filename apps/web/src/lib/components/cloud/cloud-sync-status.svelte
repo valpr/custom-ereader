@@ -7,7 +7,8 @@
     lastSyncBySource$,
     lastSyncTimestamp$,
     pendingCloudSync$,
-    syncTarget$
+    syncTarget$,
+    transientNotice$
   } from '$lib/data/store';
   import { getFriendlyStorageSourceName } from '$lib/data/storage/storage-types';
   import { onDestroy } from 'svelte';
@@ -15,10 +16,12 @@
   let syncToast: string | null = null;
   let toastTimer: ReturnType<typeof setTimeout> | undefined;
   let toastDebounce: ReturnType<typeof setTimeout> | undefined;
+  let noticeTimer: ReturnType<typeof setTimeout> | undefined;
   let lastSeenSync = 0;
   let pendingClearedAt = 0;
   let prevPendingCount = 0;
   let initialized = false;
+  let lastSeenNoticeId = 0;
 
   $: states = $storageConnectionStates$;
   $: pending = $pendingCloudSync$;
@@ -80,7 +83,22 @@
   onDestroy(() => {
     if (toastDebounce) clearTimeout(toastDebounce);
     if (toastTimer) clearTimeout(toastTimer);
+    if (noticeTimer) clearTimeout(noticeTimer);
   });
+
+  // Transient notices (offline skips, other non-blocking info): each push
+  // re-renders the pill and restarts the auto-dismiss timer.
+  $: notice = $transientNotice$;
+  $: {
+    if (notice && notice.id !== lastSeenNoticeId) {
+      lastSeenNoticeId = notice.id;
+      if (noticeTimer) clearTimeout(noticeTimer);
+      noticeTimer = setTimeout(() => {
+        lastSeenNoticeId = 0;
+        transientNotice$.next(null);
+      }, 5000);
+    }
+  }
 
   function showToast(message: string) {
     syncToast = message;
@@ -102,7 +120,16 @@
   {/if}
 </div>
 
-{#if syncToast}
+{#if notice}
+  <div
+    data-testid="cloud-notice-toast"
+    role="status"
+    class="writing-horizontal-tb fixed bottom-6 left-1/2 z-40 -translate-x-1/2 rounded-full px-4 py-2 text-sm font-medium shadow-lg"
+    style="background-color: var(--astryx-color-fg-primary, #18181b); color: var(--astryx-color-surface, #ffffff);"
+  >
+    {notice.message}
+  </div>
+{:else if syncToast}
   <div
     data-testid="cloud-sync-toast"
     class="writing-horizontal-tb fixed bottom-6 left-1/2 z-40 -translate-x-1/2 rounded-full px-4 py-2 text-sm font-medium shadow-lg"

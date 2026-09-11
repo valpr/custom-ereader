@@ -25,6 +25,7 @@
   import {
     StorageOAuthManager,
     getExpiredSyncTargets,
+    isSessionExpiredError,
     storageConnectionStates$
   } from '$lib/data/storage/storage-oauth-manager';
   import {
@@ -448,7 +449,7 @@
         // the open once on success.
         if (
           !retried &&
-          /session expired|needs reconnect|reconnect/i.test(error?.message || '') &&
+          isSessionExpiredError(error) &&
           (failedReadSource === StorageKey.GDRIVE || failedReadSource === StorageKey.ONEDRIVE)
         ) {
           const sourceName =
@@ -584,6 +585,18 @@
         }
       }
     ]);
+  }
+
+  /**
+   * Session-expired failures surface via banner/icon + reconnect affordances,
+   * so a modal would be a dead end. Returns true when the error contains only
+   * auth failures (caller should log and stay silent); mixed errors still
+   * need the modal.
+   */
+  function isAuthOnlyError(error: string) {
+    const lines = error.split('\n').filter((line) => line.trim());
+
+    return lines.length > 0 && lines.every((line) => isSessionExpiredError(line));
   }
 
   function initializeReplicationProgressData() {
@@ -767,7 +780,11 @@
     }
 
     if (error) {
-      showError('Deletion failed', error, 'Error(s) occurred during deletion');
+      if (isAuthOnlyError(error)) {
+        logger.warn(error);
+      } else {
+        showError('Deletion failed', error, 'Error(s) occurred during deletion');
+      }
     }
   }
 
@@ -879,7 +896,11 @@
     database.dataListChanged$.next(undefined);
 
     if (error) {
-      showError('Upload failed', error, 'Error(s) occurred during upload');
+      if (isAuthOnlyError(error)) {
+        logger.warn(error);
+      } else {
+        showError('Upload failed', error, 'Error(s) occurred during upload');
+      }
       return;
     }
 

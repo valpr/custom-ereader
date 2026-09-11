@@ -73,6 +73,7 @@
     lineHeight$,
     syncTarget$,
     pendingCloudSync$,
+    pushTransientNotice,
     autoReplication$,
     skipKeyDownListener$,
     replicationSaveBehavior$,
@@ -168,6 +169,7 @@
   import {
     StorageOAuthManager,
     getExpiredSyncTargets,
+    isSessionExpiredError,
     storageConnectionStates$
   } from '$lib/data/storage/storage-oauth-manager';
   import { readableToObservable } from '$lib/functions/rxjs/readable-to-observable';
@@ -317,6 +319,15 @@
           document.documentElement.lang = bookData.language;
         }
       } catch (error: any) {
+        // Expired cloud sessions surface via banner/icon + reconnect and
+        // must never modal or bounce the reader: the local copy already
+        // loaded above is fully readable, so continue with it.
+        if (bookData && isSessionExpiredError(error)) {
+          logger.warn(`Cloud sync skipped for "${bookData.title}": ${error.message}`);
+
+          return bookData;
+        }
+
         const message = `Error loading book: ${error.message}`;
 
         logger.warn(message);
@@ -1012,6 +1023,8 @@
     }
   }
 
+  const offlineSyncNotice = 'Offline — cloud sync is paused and resumes when you reconnect.';
+
   async function getStorageHandlerByName(storageSourceName: string, throwIfNotFound = false) {
     if (!storageSourceName) {
       if (throwIfNotFound) {
@@ -1023,16 +1036,8 @@
 
     if (storageSourceName === StorageSourceDefault.GDRIVE_DEFAULT) {
       if (!$isOnline$) {
-        dialogManager.dialogs$.next([
-          {
-            component: MessageDialog,
-            props: {
-              title: 'Load Error',
-              message:
-                'Sync disabled due to missing Online Connection - refresh Page after going Online to try again'
-            }
-          }
-        ]);
+        logger.warn(offlineSyncNotice);
+        pushTransientNotice(offlineSyncNotice);
 
         return undefined;
       }
@@ -1050,16 +1055,8 @@
     }
     if (storageSourceName === StorageSourceDefault.ONEDRIVE_DEFAULT) {
       if (!$isOnline$) {
-        dialogManager.dialogs$.next([
-          {
-            component: MessageDialog,
-            props: {
-              title: 'Load Error',
-              message:
-                'Sync disabled due to missing Online Connection - refresh Page after going Online to try again'
-            }
-          }
-        ]);
+        logger.warn(offlineSyncNotice);
+        pushTransientNotice(offlineSyncNotice);
 
         return undefined;
       }
@@ -1081,16 +1078,8 @@
 
       if (storageSource) {
         if (storageSource.type !== StorageKey.FS && !$isOnline$) {
-          dialogManager.dialogs$.next([
-            {
-              component: MessageDialog,
-              props: {
-                title: 'Load Error',
-                message:
-                  'Sync disabled due to missing Online Connection - refresh Page after going Online to try again'
-              }
-            }
-          ]);
+          logger.warn(offlineSyncNotice);
+          pushTransientNotice(offlineSyncNotice);
 
           return undefined;
         }
@@ -1159,6 +1148,13 @@
     const dataToReturn = { id, ...bookData };
 
     await storageHandler.updateLastRead(dataToReturn).catch((error: any) => {
+      // Expired sessions surface via banner/icon + reconnect; a modal here
+      // would interrupt reading for a background write that retries later.
+      if (isSessionExpiredError(error)) {
+        logger.warn(`Skipped external last-read update: ${error.message}`);
+        return;
+      }
+
       const message = `Failed to update last read on external storage: ${error.message}`;
 
       logger.warn(message);
@@ -1608,7 +1604,11 @@
     isReplicating = false;
 
     if (error) {
-      if (!isSilent) {
+      if (isSessionExpiredError(error)) {
+        // Banner/icon + reconnect own this failure; a modal would be a dead
+        // end even for the explicit sync button.
+        logger.warn(error);
+      } else if (!isSilent) {
         const showReport = logger.errorCount > 1;
 
         logger.warn(error);
@@ -1733,8 +1733,14 @@
         await executeReplication(false);
       }
     } catch (error: any) {
-      dialogManager.dialogs$.next([]);
-      message = error.message;
+      // Auth failures already surface via banner/icon; don't block leaving
+      // the reader with a modal for them.
+      if (isSessionExpiredError(error)) {
+        logger.warn(error?.message || error);
+      } else {
+        dialogManager.dialogs$.next([]);
+        message = error.message;
+      }
     }
 
     if (message) {

@@ -624,6 +624,27 @@ export function clearPendingCloudSync(sourceName: string) {
 
 export const skipKeyDownListener$ = writableSubject<boolean>(false);
 
+export interface TransientNotice {
+  id: number;
+  message: string;
+}
+
+/**
+ * Fire-and-forget toast channel rendered by CloudSyncStatus (mounted in the
+ * root layout, so it works on every route). Used for non-blocking notices
+ * that must never be modals — e.g. offline sync skips. Not persisted.
+ */
+export const transientNotice$ = writableSubject<TransientNotice | null>(null);
+
+let transientNoticeId = 0;
+
+export function pushTransientNotice(message: string) {
+  if (!message) return;
+
+  transientNoticeId += 1;
+  transientNotice$.next({ id: transientNoticeId, message });
+}
+
 export const userFonts$ = writableArrayLocalStorageSubject<UserFont>()('userfonts', []);
 
 // One-time migrations for unified library v1 (safe to re-run; idempotent)
