@@ -13,7 +13,6 @@
     faHashtag,
     faImages,
     faList,
-    faRotateLeft,
     faSignOutAlt,
     faTriangleExclamation,
     type IconDefinition
@@ -36,7 +35,6 @@
   export let hasCustomReadingPoint: boolean;
   export let showFullscreenButton: boolean;
   export let isBookmarkScreen: boolean;
-  export let hasBookmarkData: boolean;
   export let showCloudWarning = false;
   export let cloudWarningLabel = 'Cloud session expired. Reconnect to resume syncing.';
 
@@ -44,7 +42,6 @@
     tocClick: void;
     bookmarkPanelClick: void;
     createBookmarkClick: void;
-    scrollToBookmarkClick: void;
     jumpClick: void;
     completeBook: void;
     fullscreenClick: void;
@@ -154,20 +151,6 @@
           <Fa icon={isBookmarkScreen ? fasBookmark : farBookmark} class="text-base" />
         </IconButton>
       </Tooltip>
-
-      {#if hasBookmarkData}
-        <Tooltip text="Return to Bookmark">
-          <IconButton
-            nativeTooltip={false}
-            label="Return to Bookmark"
-            size="md"
-            variant="ghost"
-            on:click={() => dispatch('scrollToBookmarkClick')}
-          >
-            <Fa icon={faRotateLeft} class="text-base" />
-          </IconButton>
-        </Tooltip>
-      {/if}
 
       {#if showCloudWarning}
         <CloudStatusIcon
