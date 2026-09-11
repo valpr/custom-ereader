@@ -440,13 +440,18 @@ export async function replicateData(
             checkCancelAndProgress(cancelSignal, true, true);
             checkCancelAndProgress(cancelSignal, true, true);
           } else {
-            const { profiles, customThemes, lastProfilesModified } =
+            const { profiles, customThemes, statisticsSettings, lastProfilesModified } =
               await sourceHandler.getProfiles();
 
             checkCancelAndProgress(cancelSignal);
 
             if (profiles) {
-              await targetHandler.saveProfiles(profiles, lastProfilesModified, customThemes);
+              await targetHandler.saveProfiles(
+                profiles,
+                lastProfilesModified,
+                customThemes,
+                statisticsSettings
+              );
             }
 
             checkCancelAndProgress(cancelSignal, false, !profiles);

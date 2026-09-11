@@ -7,6 +7,8 @@
 import { browser } from '$app/environment';
 import {
   activeProfileId$,
+  addCharactersOnCompletion$,
+  adjustStatisticsAfterIdleTime$,
   appThemeMode$,
   autoPositionOnResize$,
   autoReplication$,
@@ -36,9 +38,13 @@ import {
   hideSpoilerImage$,
   hideSpoilerImageMode$,
   isOnline$,
+  keepLocalStatisticsOnDeletion$,
   lastProfilesModified$,
+  lastStatisticsSettingsModified$,
   lineHeight$,
   manualBookmark$,
+  openTrackerOnCompletion$,
+  overwriteBookCompletion$,
   pageColumns$,
   pauseTrackerOnCustomPointChange$,
   prioritizeReaderStyles$,
@@ -51,6 +57,8 @@ import {
   showFooterChapterCharacterCounter$,
   showFooterChapterPercentage$,
   showPercentage$,
+  startDayHoursForTracker$,
+  statisticsEnabled$,
   statisticsMergeMode$,
   swipeThreshold$,
   syncTarget$,
@@ -58,10 +66,21 @@ import {
   textMarginMode$,
   textMarginValue$,
   theme$,
+  trackerAutoPause$,
+  trackerAutostartTime$,
+  trackerBackwardSkipThreshold$,
+  trackerForwardSkipThreshold$,
+  trackerIdleTime$,
+  trackerPopupDetection$,
+  trackerSkipThresholdAction$,
   verticalTextOrientation$,
   viewMode$,
   writingMode$
 } from '$lib/data/store';
+import {
+  TrackerAutoPause,
+  TrackerSkipThresholdAction
+} from '$lib/components/book-reader/book-reading-tracker/book-reading-tracker';
 import { AutoReplicationType } from '$lib/functions/replication/replication-options';
 import { getStorageHandler } from '$lib/data/storage/storage-handler-factory';
 import { StorageDataType, StorageKey, StorageSourceDefault } from '$lib/data/storage/storage-types';
@@ -73,7 +92,9 @@ import {
   type ProfileIconType,
   type ReaderProfile,
   type ReaderProfileSettings,
-  type ReaderProfilesSyncPayload
+  type ReaderProfilesSyncPayload,
+  type StatisticsSyncSection,
+  type StatisticsSyncSettings
 } from './profile-types';
 
 export function getCurrentReaderSettings(): ReaderProfileSettings {
@@ -230,6 +251,107 @@ export function saveCurrentToActiveProfile(): void {
   lastProfilesModified$.next(now);
 }
 
+export function getCurrentStatisticsSettings(): StatisticsSyncSettings {
+  return {
+    statisticsEnabled: statisticsEnabled$.getValue(),
+    trackerAutostartTime: trackerAutostartTime$.getValue(),
+    trackerIdleTime: trackerIdleTime$.getValue(),
+    trackerForwardSkipThreshold: trackerForwardSkipThreshold$.getValue(),
+    trackerBackwardSkipThreshold: trackerBackwardSkipThreshold$.getValue(),
+    trackerSkipThresholdAction: trackerSkipThresholdAction$.getValue(),
+    trackerPopupDetection: trackerPopupDetection$.getValue(),
+    trackerAutoPause: trackerAutoPause$.getValue(),
+    adjustStatisticsAfterIdleTime: adjustStatisticsAfterIdleTime$.getValue(),
+    openTrackerOnCompletion: openTrackerOnCompletion$.getValue(),
+    addCharactersOnCompletion: addCharactersOnCompletion$.getValue(),
+    keepLocalStatisticsOnDeletion: keepLocalStatisticsOnDeletion$.getValue(),
+    overwriteBookCompletion: overwriteBookCompletion$.getValue(),
+    startDayHoursForTracker: startDayHoursForTracker$.getValue()
+  };
+}
+
+export function getStatisticsSettingsSection(): StatisticsSyncSection {
+  return {
+    lastModified: lastStatisticsSettingsModified$.getValue() || 0,
+    settings: getCurrentStatisticsSettings()
+  };
+}
+
+let suppressStatisticsSettingsSync = false;
+
+export function isStatisticsSettingsSyncSuppressed(): boolean {
+  return suppressStatisticsSettingsSync;
+}
+
+function isTrackerAutoPause(value: unknown): value is TrackerAutoPause {
+  return typeof value === 'string' && (Object.values(TrackerAutoPause) as string[]).includes(value);
+}
+
+function isTrackerSkipThresholdAction(value: unknown): value is TrackerSkipThresholdAction {
+  return (
+    typeof value === 'string' &&
+    (Object.values(TrackerSkipThresholdAction) as string[]).includes(value)
+  );
+}
+
+/**
+ * Applies a remotely synced statistics settings section using whole-section
+ * last-writer-wins. Returns true when applied (remote strictly newer).
+ * Unknown enum values from version skew fall back to the local value.
+ */
+export function applyStatisticsSettings(section: StatisticsSyncSection | undefined): boolean {
+  if (!section || typeof section.lastModified !== 'number') return false;
+  if (section.lastModified <= (lastStatisticsSettingsModified$.getValue() || 0)) return false;
+  const s = section.settings;
+  if (!s || typeof s !== 'object') return false;
+
+  suppressStatisticsSettingsSync = true;
+  try {
+    if (typeof s.statisticsEnabled === 'boolean') statisticsEnabled$.next(s.statisticsEnabled);
+    if (typeof s.trackerAutostartTime === 'number')
+      trackerAutostartTime$.next(s.trackerAutostartTime);
+    if (typeof s.trackerIdleTime === 'number') trackerIdleTime$.next(s.trackerIdleTime);
+    if (typeof s.trackerForwardSkipThreshold === 'number')
+      trackerForwardSkipThreshold$.next(s.trackerForwardSkipThreshold);
+    if (typeof s.trackerBackwardSkipThreshold === 'number')
+      trackerBackwardSkipThreshold$.next(s.trackerBackwardSkipThreshold);
+    if (isTrackerSkipThresholdAction(s.trackerSkipThresholdAction))
+      trackerSkipThresholdAction$.next(s.trackerSkipThresholdAction);
+    if (typeof s.trackerPopupDetection === 'boolean')
+      trackerPopupDetection$.next(s.trackerPopupDetection);
+    if (isTrackerAutoPause(s.trackerAutoPause)) trackerAutoPause$.next(s.trackerAutoPause);
+    if (typeof s.adjustStatisticsAfterIdleTime === 'boolean')
+      adjustStatisticsAfterIdleTime$.next(s.adjustStatisticsAfterIdleTime);
+    if (typeof s.openTrackerOnCompletion === 'boolean')
+      openTrackerOnCompletion$.next(s.openTrackerOnCompletion);
+    if (typeof s.addCharactersOnCompletion === 'boolean')
+      addCharactersOnCompletion$.next(s.addCharactersOnCompletion);
+    if (typeof s.keepLocalStatisticsOnDeletion === 'boolean')
+      keepLocalStatisticsOnDeletion$.next(s.keepLocalStatisticsOnDeletion);
+    if (typeof s.overwriteBookCompletion === 'boolean')
+      overwriteBookCompletion$.next(s.overwriteBookCompletion);
+    if (typeof s.startDayHoursForTracker === 'number')
+      startDayHoursForTracker$.next(s.startDayHoursForTracker);
+  } finally {
+    suppressStatisticsSettingsSync = false;
+  }
+
+  lastStatisticsSettingsModified$.next(section.lastModified);
+  return true;
+}
+
+/**
+ * Picks the newer of two statistics settings sections (whole-section LWW).
+ * Ties prefer `second` so an upload carrying equal timestamps still converges.
+ */
+export function newerStatisticsSettingsSection(
+  first: StatisticsSyncSection | undefined,
+  second: StatisticsSyncSection | undefined
+): StatisticsSyncSection | undefined {
+  if (second && (!first || second.lastModified >= first.lastModified)) return second;
+  return first;
+}
+
 export function createProfile(
   name: string,
   icon: ProfileIconType = 'custom',
@@ -362,7 +484,8 @@ export function exportProfilesAsJson(): void {
     version: 1,
     lastModified: lastProfilesModified$.getValue() || Date.now(),
     profiles: readerProfiles$.getValue() || defaultReaderProfiles,
-    customThemes: customThemes$.getValue() || {}
+    customThemes: customThemes$.getValue() || {},
+    statisticsSettings: getStatisticsSettingsSection()
   };
 
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
@@ -405,6 +528,8 @@ export function importProfilesFromJson(jsonString: string): {
         ...data.customThemes
       });
     }
+
+    applyStatisticsSettings(data.statisticsSettings);
 
     return { success: true, count: data.profiles.length };
   } catch (err: any) {

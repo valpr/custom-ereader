@@ -18,7 +18,7 @@ import {
 import type { Section } from '$lib/data/database/books-db/versions/v4/books-db-v4';
 import { storageRootName } from '$lib/data/env';
 import { MergeMode } from '$lib/data/merge-mode';
-import type { ReaderProfile } from '$lib/data/profiles/profile-types';
+import type { ReaderProfile, StatisticsSyncSection } from '$lib/data/profiles/profile-types';
 import type { ThemeOption } from '$lib/data/theme-option';
 import { InternalStorageSources, type StorageKey } from '$lib/data/storage/storage-types';
 import { exporterVersion } from '$lib/functions/replication/replicator';
@@ -118,6 +118,7 @@ export abstract class BaseStorageHandler {
   abstract getProfiles(): Promise<{
     profiles: ReaderProfile[] | undefined;
     customThemes?: Record<string, ThemeOption>;
+    statisticsSettings?: StatisticsSyncSection;
     lastProfilesModified: number;
   }>;
 
@@ -144,7 +145,8 @@ export abstract class BaseStorageHandler {
   abstract saveProfiles(
     data: ReaderProfile[],
     lastProfilesModified: number,
-    customThemes?: Record<string, ThemeOption>
+    customThemes?: Record<string, ThemeOption>,
+    statisticsSettings?: StatisticsSyncSection
   ): Promise<void>;
 
   abstract saveAudioBook(data: BooksDbAudioBook | File): Promise<void>;

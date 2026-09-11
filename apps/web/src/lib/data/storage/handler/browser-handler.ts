@@ -20,10 +20,16 @@ import {
   database,
   lastProfilesModified$,
   lastReadingGoalsModified$,
+  lastStatisticsSettingsModified$,
   readerProfiles$
 } from '$lib/data/store';
-import { applyProfile, mergeProfiles } from '$lib/data/profiles/profile-manager';
-import type { ReaderProfile } from '$lib/data/profiles/profile-types';
+import {
+  applyProfile,
+  applyStatisticsSettings,
+  getStatisticsSettingsSection,
+  mergeProfiles
+} from '$lib/data/profiles/profile-manager';
+import type { ReaderProfile, StatisticsSyncSection } from '$lib/data/profiles/profile-types';
 import type { ThemeOption } from '$lib/data/theme-option';
 import { MergeMode } from '$lib/data/merge-mode';
 import { ReplicationSaveBehavior } from '$lib/functions/replication/replication-options';
@@ -478,7 +484,8 @@ export class BrowserStorageHandler extends BaseStorageHandler {
   async saveProfiles(
     data: ReaderProfile[],
     lastProfilesModified: number,
-    remoteCustomThemes?: Record<string, ThemeOption>
+    remoteCustomThemes?: Record<string, ThemeOption>,
+    remoteStatisticsSettings?: StatisticsSyncSection
   ) {
     const isMerge = this.profilesMergeMode === MergeMode.MERGE;
     const localProfiles = readerProfiles$.getValue() || [];
@@ -505,6 +512,10 @@ export class BrowserStorageHandler extends BaseStorageHandler {
         ...remoteCustomThemes
       });
     }
+
+    // Whole-section LWW against the local marker; suppressed internally so
+    // remote application never dirties the sync timestamps again.
+    applyStatisticsSettings(remoteStatisticsSettings);
 
     const activeId = activeProfileId$.getValue();
     const activeProfile = profilesToStore.find((p) => p.id === activeId);
@@ -587,14 +598,24 @@ export class BrowserStorageHandler extends BaseStorageHandler {
     const profiles = readerProfiles$.getValue();
     const lastProfilesModified = lastProfilesModified$.getValue();
     const customThemes = customThemes$.getValue();
+    const statisticsSettings = getStatisticsSettingsSection();
 
     BaseStorageHandler.reportProgress();
 
-    if (!lastProfilesModified && (!profiles || !profiles.length)) {
-      return { profiles: undefined, customThemes: undefined, lastProfilesModified: 0 };
+    if (
+      !lastProfilesModified &&
+      (!profiles || !profiles.length) &&
+      !lastStatisticsSettingsModified$.getValue()
+    ) {
+      return {
+        profiles: undefined,
+        customThemes: undefined,
+        statisticsSettings: undefined,
+        lastProfilesModified: 0
+      };
     }
 
-    return { profiles, customThemes, lastProfilesModified };
+    return { profiles, customThemes, statisticsSettings, lastProfilesModified };
   }
 
   async saveAudioBook(data: BooksDbAudioBook | File) {
