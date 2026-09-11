@@ -21,7 +21,7 @@ test.describe('Reader Table of Contents (TOC) Navigation', () => {
     await topTrigger.click();
 
     // Click Open Table of Contents
-    const tocBtn = page.locator('button[aria-label="Open Table of Contents"]');
+    const tocBtn = page.locator('button[aria-label="Open Table of Contents"]:visible');
     await expect(tocBtn).toBeVisible();
     await tocBtn.click();
 
@@ -48,7 +48,7 @@ test.describe('Reader Table of Contents (TOC) Navigation', () => {
     // Open header then TOC
     const topTrigger = page.locator('button.fixed.inset-x-0.top-0');
     await topTrigger.click();
-    await page.locator('button[aria-label="Open Table of Contents"]').click();
+    await page.locator('button[aria-label="Open Table of Contents"]:visible').click();
 
     // Click Chapter 2
     const chapter2Item = page.locator('div[title="Go to 第二章 人間というもの"]');

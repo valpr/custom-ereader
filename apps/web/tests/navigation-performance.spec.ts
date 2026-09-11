@@ -12,7 +12,7 @@ test.describe('Navigation Performance & Mechanisms', () => {
     await expect(page.locator('.book-content')).toBeVisible();
     const topTrigger = page.locator('button.fixed.inset-x-0.top-0');
     await topTrigger.click();
-    await expect(page.locator('button[aria-label="Go to Book Manager"]')).toBeVisible({
+    await expect(page.locator('button[aria-label="Go to Book Manager"]:visible')).toBeVisible({
       timeout: 5000
     });
   }
@@ -28,7 +28,7 @@ test.describe('Navigation Performance & Mechanisms', () => {
     const backdrop = page.locator('.backdrop-blur-\\[2px\\]');
     await expect(backdrop).toHaveCount(0);
 
-    const managerBtn = page.locator('button[aria-label="Go to Book Manager"]');
+    const managerBtn = page.locator('button[aria-label="Go to Book Manager"]:visible');
     await managerBtn.click();
 
     await expect(page).toHaveURL(/\/manage/);
@@ -42,7 +42,7 @@ test.describe('Navigation Performance & Mechanisms', () => {
     await page.goto('/b?id=1');
     await openReaderHeader(page);
 
-    const managerBtn = page.locator('button[aria-label="Go to Book Manager"]');
+    const managerBtn = page.locator('button[aria-label="Go to Book Manager"]:visible');
     await managerBtn.hover();
 
     const start = Date.now();
