@@ -8,6 +8,9 @@
 [data-astryx-theme='neutral'],
 [data-astryx-theme='neutral'][data-theme='light'] {
   --astryx-color-canvas: #fafafa;
+  --astryx-color-bg: #ffffff;
+  --astryx-color-primary: #6366f1;
+  --astryx-color-primary-subtle: rgba(99, 102, 241, 0.12);
   --astryx-color-surface: #ffffff;
   --astryx-color-surface-subtle: #f4f4f5;
   --astryx-color-surface-hover: #f4f4f5;
@@ -49,6 +52,9 @@
   :where(:root),
   [data-astryx-theme='neutral'] {
     --astryx-color-canvas: #09090b;
+    --astryx-color-bg: #121214;
+    --astryx-color-primary: #818cf8;
+    --astryx-color-primary-subtle: rgba(129, 140, 248, 0.15);
     --astryx-color-surface: #121214;
     --astryx-color-surface-subtle: #1c1c20;
     --astryx-color-surface-hover: #1c1c20;
@@ -89,6 +95,9 @@
 [data-astryx-theme='neutral'][data-theme='dark'],
 .dark [data-astryx-theme='neutral'] {
   --astryx-color-canvas: #09090b;
+  --astryx-color-bg: #121214;
+  --astryx-color-primary: #818cf8;
+  --astryx-color-primary-subtle: rgba(129, 140, 248, 0.15);
   --astryx-color-surface: #121214;
   --astryx-color-surface-subtle: #1c1c20;
   --astryx-color-surface-hover: #1c1c20;
