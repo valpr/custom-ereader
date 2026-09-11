@@ -22,6 +22,7 @@
   } from '$lib/components/book-reader/book-reading-tracker/book-reading-tracker';
   import ButtonToggleGroup from '$lib/components/button-toggle-group/button-toggle-group.svelte';
   import type { ToggleOption } from '$lib/components/button-toggle-group/toggle-option';
+  import ConfirmDialog from '$lib/components/confirm-dialog.svelte';
   import MessageDialog from '$lib/components/message-dialog.svelte';
   import Ripple from '$lib/components/ripple.svelte';
   import SettingsCustomTheme from '$lib/components/settings/settings-custom-theme.svelte';
@@ -72,6 +73,7 @@
   import type { VerticalTextOrientation } from '$lib/data/vertical-text-orientation';
   import { ViewMode } from '$lib/data/view-mode';
   import type { WritingMode } from '$lib/data/writing-mode';
+  import { factoryReset } from '$lib/functions/factory-reset';
   import { secondsToMinutes } from '$lib/functions/statistic-util';
   import { dummyFn } from '$lib/functions/utils';
   import {
@@ -597,6 +599,53 @@
     showFooterChapterCharacterCounter = s.showFooterChapterCharacterCounter;
     showFooterChapterPercentage = s.showFooterChapterPercentage;
     enableReaderWakeLock = s.enableReaderWakeLock;
+  }
+
+  function confirmAction(dialogHeader: string, dialogMessage: string): Promise<boolean> {
+    return new Promise<boolean>((resolver) => {
+      dialogManager.dialogs$.next([
+        {
+          component: ConfirmDialog,
+          props: {
+            dialogHeader,
+            dialogMessage,
+            contentStyles: 'white-space: pre-line;',
+            resolver
+          },
+          disableCloseOnClick: true
+        }
+      ]);
+    });
+  }
+
+  async function onFactoryReset() {
+    const wasCanceled = await confirmAction(
+      'Reset everything?',
+      'This deletes all local books, reading progress, bookmarks, statistics, goals, profiles, and settings, and disconnects all cloud sources.\n\nFiles stored in Google Drive / OneDrive stay untouched and merge back if you reconnect later. Linked filesystem folders must be re-granted. Nothing is synced while no primary target is set, so the reset cannot wipe your clouds.'
+    );
+    if (wasCanceled) return;
+
+    const wasFinalCanceled = await confirmAction(
+      'Last chance — erase everything?',
+      'This cannot be undone. The app reloads with factory defaults.'
+    );
+    if (wasFinalCanceled) return;
+
+    showSpinner = true;
+    try {
+      await factoryReset();
+    } catch (err: any) {
+      showSpinner = false;
+      dialogManager.dialogs$.next([
+        {
+          component: MessageDialog,
+          props: {
+            title: 'Reset failed',
+            message: `Could not reset everything: ${err?.message || err}`
+          }
+        }
+      ]);
+    }
   }
 
   const storageSources$ = database.storageSourcesChanged$.pipe(
@@ -1615,6 +1664,20 @@
           >
             View Terms
           </a>
+        </div>
+      </ListItem>
+    </ListSection>
+
+    <!-- Section 6: Danger Zone -->
+    <ListSection title="Danger Zone" description="Irreversible actions">
+      <ListItem
+        headline="Reset everything"
+        description="Delete all local books, progress, statistics, goals, profiles, and settings, disconnect all clouds, and restore factory defaults. Cloud files are kept."
+      >
+        <div slot="suffix">
+          <Button variant="danger" size="sm" data-testid="factory-reset" on:click={onFactoryReset}>
+            Reset…
+          </Button>
         </div>
       </ListItem>
     </ListSection>

@@ -399,8 +399,9 @@
               </p>
               <p class="text-xs text-[var(--astryx-color-fg-muted,#71717a)] mt-0.5">
                 In the Book Manager, select books and click the Delete icon to permanently delete
-                books, reading progress, and bookmarks. In Settings &gt; Storage, you can delete
-                statistics or clear all local database storage.
+                books, reading progress, and bookmarks. In Settings &gt; Data &gt; Danger Zone,
+                “Reset everything” wipes all local books, data, and settings, disconnects all
+                clouds, and restores factory defaults.
               </p>
             </div>
           </div>

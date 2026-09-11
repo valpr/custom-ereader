@@ -35,7 +35,7 @@ import { lastReadingGoalsModified$, readingGoal$, syncTarget$ } from '$lib/data/
 import type { BaseStorageHandler } from '$lib/data/storage/handler/base-handler';
 import type { BookStatistic } from '$lib/components/statistics/statistics-types';
 import type BooksDb from '$lib/data/database/books-db/versions/books-db';
-import type { IDBPDatabase } from 'idb';
+import type { IDBPDatabase, StoreNames } from 'idb';
 import LogReportDialog from '$lib/components/log-report-dialog.svelte';
 import { MergeMode } from '$lib/data/merge-mode';
 import MessageDialog from '$lib/components/message-dialog.svelte';
@@ -566,6 +566,20 @@ export class DatabaseService {
     const db = await this.db;
     await db.delete('lastItem', LAST_ITEM_KEY);
     this.lastItemChanged$.next();
+  }
+
+  /**
+   * Factory-reset helper: clears every object store in a single transaction.
+   * Data only — the schema and append-only migration history are untouched.
+   * Callers must reload the app afterwards so in-memory stores rehydrate.
+   */
+  async clearAll(): Promise<void> {
+    const db = await this.db;
+    const storeNames = Array.from(db.objectStoreNames) as StoreNames<BooksDb>[];
+    if (!storeNames.length) return;
+    const tx = db.transaction(storeNames, 'readwrite');
+    await Promise.all(storeNames.map((name) => tx.objectStore(name).clear()));
+    await tx.done;
   }
 
   private async deleteSingleData(
