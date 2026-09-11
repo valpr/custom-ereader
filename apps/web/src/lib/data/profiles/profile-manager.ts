@@ -8,8 +8,6 @@ import { browser } from '$app/environment';
 import {
   activeProfileId$,
   appThemeMode$,
-  autoBookmark$,
-  autoBookmarkTime$,
   autoPositionOnResize$,
   autoReplication$,
   autosaveHistoryEnabled$,
@@ -116,8 +114,6 @@ export function getCurrentReaderSettings(): ReaderProfileSettings {
     disableWheelNavigation: disableWheelNavigation$.getValue(),
     confirmClose: confirmClose$.getValue(),
     manualBookmark: manualBookmark$.getValue(),
-    autoBookmark: autoBookmark$.getValue(),
-    autoBookmarkTime: autoBookmarkTime$.getValue(),
     autosaveHistoryEnabled: autosaveHistoryEnabled$.getValue(),
     autosaveHistoryInterval: autosaveHistoryInterval$.getValue(),
     autosaveHistoryMaxCount: autosaveHistoryMaxCount$.getValue(),
@@ -177,8 +173,6 @@ export function applyProfile(profile: ReaderProfile): void {
     disableWheelNavigation$.next(s.disableWheelNavigation);
   if (s.confirmClose !== undefined) confirmClose$.next(s.confirmClose);
   if (s.manualBookmark !== undefined) manualBookmark$.next(s.manualBookmark);
-  if (s.autoBookmark !== undefined) autoBookmark$.next(s.autoBookmark);
-  if (s.autoBookmarkTime !== undefined) autoBookmarkTime$.next(s.autoBookmarkTime);
   if (s.autosaveHistoryEnabled !== undefined)
     autosaveHistoryEnabled$.next(s.autosaveHistoryEnabled);
   if (s.autosaveHistoryInterval !== undefined)

@@ -115,10 +115,6 @@
 
   export let firstDimensionMargin: number;
 
-  export let autoBookmark = false;
-
-  export let autoBookmarkTime: number;
-
   export let customReadingPointRange: Range | undefined;
 
   export let showCustomReadingPoint: boolean;
@@ -126,7 +122,6 @@
   export let userBookmarks: BooksDbUserBookmarkData[] = [];
 
   const dispatch = createEventDispatcher<{
-    bookmark: void;
     contentChange: HTMLElement;
     trackerPause: void;
   }>();
@@ -432,16 +427,6 @@
       updateUserBookmarksScreen();
     });
   });
-
-  if (autoBookmark) {
-    pageChange$
-      .pipe(debounceTime(autoBookmarkTime * 1000), takeUntil(destroy$))
-      .subscribe((isUser) => {
-        if (isUser) {
-          dispatch('bookmark');
-        }
-      });
-  }
 
   currentSection$.pipe(distinctUntilChanged(), takeUntil(destroy$)).subscribe(() => {
     allowDisplay = false;

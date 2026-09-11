@@ -193,10 +193,6 @@ export const confirmClose$ = writableBooleanLocalStorageSubject()('confirmClose'
 
 export const manualBookmark$ = writableBooleanLocalStorageSubject()('manualBookmark', false);
 
-export const autoBookmark$ = writableBooleanLocalStorageSubject()('autoBookmark', true);
-
-export const autoBookmarkTime$ = writableNumberLocalStorageSubject()('autoBookmarkTime', 3);
-
 export const autosaveHistoryEnabled$ = writableBooleanLocalStorageSubject()(
   'autosaveHistoryEnabled',
   true

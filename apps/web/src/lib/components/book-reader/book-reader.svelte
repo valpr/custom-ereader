@@ -93,10 +93,6 @@
 
   export let pageColumns: number;
 
-  export let autoBookmark: boolean;
-
-  export let autoBookmarkTime: number;
-
   export let viewMode: ViewMode;
 
   export let exploredCharCount: number;
@@ -315,8 +311,6 @@
       {secondDimensionMaxValue}
       {firstDimensionMargin}
       {autoPositionOnResize}
-      {autoBookmark}
-      {autoBookmarkTime}
       {multiplier}
       {userBookmarks}
       loadingState={$imageLoadingState$ ?? true}
@@ -331,7 +325,6 @@
       bind:customReadingPointLeft
       bind:customReadingPointScrollOffset
       on:contentChange={(ev) => contentEl$.next(ev.detail)}
-      on:bookmark
       on:trackerPause
     />
   {:else}
@@ -363,8 +356,6 @@
       loadingState={$imageLoadingState$ ?? true}
       {avoidPageBreak}
       {pageColumns}
-      {autoBookmark}
-      {autoBookmarkTime}
       {firstDimensionMargin}
       {userBookmarks}
       bind:exploredCharCount
@@ -376,7 +367,6 @@
       bind:customReadingPointRange
       bind:showCustomReadingPoint
       on:contentChange={(ev) => contentEl$.next(ev.detail)}
-      on:bookmark
       on:trackerPause
     />
   {/if}

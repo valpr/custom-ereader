@@ -50,8 +50,6 @@
   import {
     activeProfileId$,
     appThemeMode$,
-    autoBookmark$,
-    autoBookmarkTime$,
     autoPositionOnResize$,
     autosaveHistoryEnabled$,
     autosaveHistoryInterval$,
@@ -168,8 +166,6 @@
     $showFooterChapterCharacterCounter$;
     $showFooterChapterPercentage$;
     $manualBookmark$;
-    $autoBookmark$;
-    $autoBookmarkTime$;
     $autosaveHistoryEnabled$;
     $autosaveHistoryInterval$;
     $autosaveHistoryMaxCount$;

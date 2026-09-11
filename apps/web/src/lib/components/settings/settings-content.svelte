@@ -172,10 +172,6 @@
 
   export let manualBookmark: boolean;
 
-  export let autoBookmark: boolean;
-
-  export let autoBookmarkTime: number;
-
   export let autosaveHistoryEnabled: boolean;
 
   export let autosaveHistoryInterval: number;
@@ -589,8 +585,6 @@
     disableWheelNavigation = s.disableWheelNavigation;
     confirmClose = s.confirmClose;
     manualBookmark = s.manualBookmark;
-    autoBookmark = s.autoBookmark;
-    autoBookmarkTime = s.autoBookmarkTime;
     autosaveHistoryEnabled = s.autosaveHistoryEnabled;
     autosaveHistoryInterval = s.autosaveHistoryInterval;
     autosaveHistoryMaxCount = s.autosaveHistoryMaxCount;
@@ -680,7 +674,6 @@
     verticalTextOrientation === 'mixed'
       ? 'Rotates the characters of horizontal scripts 90° clockwise'
       : 'Lays out the characters of horizontal scripts naturally (upright), as well as the glyphs for vertical scripts.';
-  $: autoBookmarkTooltip = `If enabled sets a bookmark after ${autoBookmarkTime} seconds without scrolling/page change`;
   $: wakeLockSupported = browser && 'wakeLock' in navigator;
   $: verticalMode = writingMode === 'vertical-rl';
   $: fontCacheSupported = browser && 'caches' in window;
@@ -1408,38 +1401,10 @@
           >
             <ListItem
               headline="Manual Bookmark Only"
-              description="Prevents automatically updating bookmark position when leaving the reader via menu"
+              description="Prevents autosaves from updating your synced reading position; checkpoints still record locally"
             >
               <Switch slot="suffix" bind:checked={manualBookmark} />
             </ListItem>
-
-            <ListItem headline="Auto-Bookmark Position" description={autoBookmarkTooltip}>
-              <Switch slot="suffix" bind:checked={autoBookmark} />
-            </ListItem>
-
-            {#if autoBookmark}
-              <ListItem
-                headline="Auto-Bookmark Delay"
-                description="Seconds idle on a page before saving an automatic bookmark"
-              >
-                <div slot="suffix" class="w-28">
-                  <Input
-                    type="number"
-                    size="sm"
-                    step={1}
-                    min={1}
-                    bind:value={autoBookmarkTime}
-                    on:blur={() => {
-                      if (autoBookmarkTime < 1 || typeof autoBookmarkTime !== 'number') {
-                        autoBookmarkTime = 3;
-                      }
-                    }}
-                  >
-                    <span slot="suffix" class="text-xs text-zinc-500">s</span>
-                  </Input>
-                </div>
-              </ListItem>
-            {/if}
 
             <ListItem
               headline="Rolling Autosave History"

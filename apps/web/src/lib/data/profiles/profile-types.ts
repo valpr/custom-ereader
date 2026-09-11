@@ -63,8 +63,6 @@ export interface ReaderProfileSettings {
 
   // Bookmarks, Autosaves & Progress
   manualBookmark: boolean;
-  autoBookmark: boolean;
-  autoBookmarkTime: number;
   autosaveHistoryEnabled: boolean;
   autosaveHistoryInterval: number;
   autosaveHistoryMaxCount: number;
@@ -130,8 +128,6 @@ export const defaultDesktopSettings: ReaderProfileSettings = {
   disableWheelNavigation: false,
   confirmClose: false,
   manualBookmark: false,
-  autoBookmark: true,
-  autoBookmarkTime: 3,
   autosaveHistoryEnabled: true,
   autosaveHistoryInterval: 3,
   autosaveHistoryMaxCount: 10,

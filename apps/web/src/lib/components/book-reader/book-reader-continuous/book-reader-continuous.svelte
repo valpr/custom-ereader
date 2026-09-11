@@ -108,10 +108,6 @@
 
   export let autoPositionOnResize: boolean;
 
-  export let autoBookmark: boolean;
-
-  export let autoBookmarkTime: number;
-
   export let loadingState: boolean;
 
   export let multiplier: number;
@@ -139,7 +135,6 @@
   export let userBookmarks: BooksDbUserBookmarkData[] = [];
 
   const dispatch = createEventDispatcher<{
-    bookmark: void;
     contentChange: HTMLElement;
     trackerPause: void;
   }>();
@@ -467,14 +462,6 @@
           bookmarkManager.scrollToBookmark(data, customReadingPointScrollOffset);
         })
         .finally(() => {
-          if (autoBookmark) {
-            fromEvent(window, 'scroll')
-              .pipe(skip(1), debounceTime(autoBookmarkTime * 1000), takeUntil(destroy$))
-              .subscribe(() => {
-                dispatch('bookmark');
-              });
-          }
-
           sectionList$
             .pipe(
               take(1),
