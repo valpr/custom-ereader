@@ -21,14 +21,34 @@ This repository is a personalized fork of the excellent [ttu-ttu/ebook-reader](h
 
 ## Changelog: Changes from Base ttu-reader
 
+### Reading & Bookmarks
+
 - **Multi-Bookmark Support**: Create and manage unlimited bookmarks per book without overwriting your current reading position.
-- **Smart Auto-Naming & Notes**: Automatically suggests bookmark titles with the chapter name and progress percentage (e.g., `Chapter 3 (42%)`), with full support for custom labels and personal notes per bookmark.
-- **Color Tags & Margin Indicators**: Categorize bookmarks with 6 distinct color tags and view interactive ribbon markers directly in the margin across both horizontal and vertical layouts.
-- **Slide-Out Bookmark Drawer**: Dedicated panel matching the Table of Contents drawer to view, edit, sort, and jump between bookmarks, with keyboard navigation support (`Shift+B` to create, `Shift+R` to open, `Shift+N`/`Shift+P` to cycle).
-- **Glitch Recovery & Rolling Auto saves**: Automatically logs position checkpoints and guards against abnormal scroll jumps, allowing you to instantly restore your place after accidental gestures or trackpad flings with one-click bookmark promotion.
-- **Opinionated Sync**: Simplified syncing pattern that allows settings/books to be automatically synced across platforms.
-- **Responsive Reader Header**: Icon toolbar progressively collapses lower-priority controls into an overflow menu (`⋯`) on narrow screens, keeping essential controls reachable on mobile.
-- **Refreshed UI & Settings**: Modernized layout featuring tabbed configuration panels, live typography sample previews, and new theme styling.
+- **Smart Auto-Naming & Notes**: Bookmark titles suggest the chapter name and progress percentage (e.g., `Chapter 3 (42%)`), with support for custom labels and personal notes.
+- **Color Tags & Margin Indicators**: Organize bookmarks with color tags and jump back from markers in the margin.
+- **Slide-Out Bookmark Drawer**: View, edit, sort, and jump between bookmarks from a dedicated panel (`Shift+B` to create, `Shift+R` to open).
+- **Automatic Place Saving**: Your place is saved as you read, so you can pick up where you left off even after an accidental scroll or reload.
+
+### Library Management
+
+- **All Books in One Place**: See books from this device and the cloud together. Local books show up right away.
+- **Per-Book Menu**: Check details, upload, download, or delete right from each book.
+- **Safer Deleting**: Clear confirmations explain what will be removed, and your reading stats are kept.
+- **Filter by Source**: Quickly narrow the library to one storage location.
+
+### Cloud Sync
+
+- **Sync Across Devices**: Your settings, place, bookmarks, and reading stats follow you between devices.
+- **Quiet Background Sync**: Syncing happens in the background, including when you close a book.
+- **Simple Reconnects**: An expired login shows a small banner instead of a pop-up, so you can reconnect without losing your spot.
+- **Clear Status Messages**: Short messages confirm what just synced and where.
+
+### Settings & Profiles
+
+- **Tabbed Settings with Live Preview**: Settings are organized in tabs with a preview of how your text will look.
+- **Shareable Settings Links**: Each settings page has its own link so you can jump straight to what you need.
+- **Self-Saving Profiles**: Reading profiles save automatically as you change them.
+- **Factory Reset**: Start fresh with one option that clears local data and restores defaults. Cloud files stay safe and come back when you reconnect.
 
 ---
 
