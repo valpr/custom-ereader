@@ -99,19 +99,6 @@ The reader is automatically built and deployed to GitHub Pages on every push to 
    The static production output will be generated in `apps/web/build/`.
 
 ---
-
-## Upstream Synchronization
-
-To pull latest improvements and fixes from upstream:
-
-```bash
-git fetch upstream
-git merge upstream/main
-git push origin main
-```
-
----
-
 ## Acknowledgements & License
 
 - Original project and architecture by [ttu-ttu](https://github.com/ttu-ttu/ebook-reader).
