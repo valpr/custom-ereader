@@ -18,6 +18,7 @@ import {
 } from '$lib/data/store';
 import { AutoReplicationType } from '$lib/functions/replication/replication-options';
 import { replicateData } from '$lib/functions/replication/replicator';
+import { ApiStorageHandler } from '$lib/data/storage/handler/api-handler';
 import { logger } from '$lib/data/logger';
 import type { BooksDbStorageSource } from '$lib/data/database/books-db/versions/books-db';
 
@@ -154,6 +155,23 @@ export async function triggerCloudSync(
 
     markLastSync(sourceName);
     clearPendingCloudSync(sourceName);
+
+    // Lightweight presence refresh: re-list cloud folders (metadata only,
+    // no book blob download) so remote-only / remotely-deleted books appear
+    // in the library. Handlers are singletons, so invalidating here is seen
+    // by the unified library stream. Emit undefined (not the handler) so
+    // `database.dataList$` subscribers keep their expected source.
+    try {
+      if (targetHandler instanceof ApiStorageHandler) {
+        targetHandler.invalidateBookListCache();
+        await targetHandler.getBookList();
+      }
+    } catch (listError: any) {
+      logger.warn(`Cloud book list refresh failed for ${sourceName}: ${listError?.message}`);
+    } finally {
+      database.listLoading$.next(false);
+      database.dataListChanged$.next(undefined);
+    }
     return '';
   } catch (err: any) {
     const message = err?.message || 'Unknown sync error';

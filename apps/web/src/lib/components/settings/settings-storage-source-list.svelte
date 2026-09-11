@@ -50,7 +50,6 @@
     unlockStorageData
   } from '$lib/data/storage/storage-source-manager';
   import {
-    StorageDataType,
     StorageKey,
     StorageSourceDefault,
     getFriendlyStorageSourceName
@@ -58,22 +57,16 @@
   import { getStorageIconData } from '$lib/data/storage/storage-view';
   import {
     autoReplication$,
-    cacheStorageData$,
     database,
     fsStorageSource$,
     gDriveStorageSource$,
     isOnline$,
     lastSyncBySource$,
-    markLastSync,
     oneDriveStorageSource$,
-    readingGoalsMergeMode$,
-    replicationSaveBehavior$,
-    statisticsMergeMode$,
     syncTarget$
   } from '$lib/data/store';
   import { AutoReplicationType } from '$lib/functions/replication/replication-options';
-  import { replicateData } from '$lib/functions/replication/replicator';
-  import { getStorageHandler } from '$lib/data/storage/storage-handler-factory';
+  import { triggerCloudSync } from '$lib/functions/replication/cloud-sync';
   import { formatRelativeTime } from '$lib/functions/time-util';
   import { logger } from '$lib/data/logger';
   import { onDestroy, onMount } from 'svelte';
@@ -359,90 +352,15 @@
 
     isSyncing = true;
     try {
-      const source =
-        storageSources?.find((s) => s.name === sourceName) ||
-        (sourceName === StorageSourceDefault.GDRIVE_DEFAULT
-          ? {
-              name: StorageSourceDefault.GDRIVE_DEFAULT,
-              type: StorageKey.GDRIVE,
-              storedInManager: false,
-              encryptionDisabled: false,
-              data: new ArrayBuffer(0),
-              lastSourceModified: 0
-            }
-          : sourceName === StorageSourceDefault.ONEDRIVE_DEFAULT
-            ? {
-                name: StorageSourceDefault.ONEDRIVE_DEFAULT,
-                type: StorageKey.ONEDRIVE,
-                storedInManager: false,
-                encryptionDisabled: false,
-                data: new ArrayBuffer(0),
-                lastSourceModified: 0
-              }
-            : null);
-      if (!source) return;
-
-      const targetHandler = getStorageHandler(
-        window,
-        source.type,
-        source.name,
-        true,
-        $cacheStorageData$,
-        $replicationSaveBehavior$,
-        $statisticsMergeMode$,
-        $readingGoalsMergeMode$
-      );
-
-      const localStorageHandler = getStorageHandler(
-        window,
-        StorageKey.BROWSER,
-        '',
-        true,
-        $cacheStorageData$,
-        $replicationSaveBehavior$,
-        $statisticsMergeMode$,
-        $readingGoalsMergeMode$
-      );
-
-      const db = await database.db;
-      const books = await db.getAll('data');
-      const contexts = books.map((b) => ({
-        id: b.id,
-        title: b.title,
-        imagePath: b.coverImage || ''
-      }));
-
-      const syncDataTypes = [
-        StorageDataType.PROGRESS,
-        StorageDataType.STATISTICS,
-        StorageDataType.READING_GOALS,
-        StorageDataType.USER_BOOKMARKS
-      ];
-
-      const error = await replicateData(
-        localStorageHandler,
-        targetHandler,
-        false,
-        contexts,
-        syncDataTypes
-      );
+      // Single-target sync shared with banner/header reconnect flows: only
+      // the selected target is synced (progress/stats/goals/bookmarks) plus
+      // a metadata-only cloud book-list refresh. The other cloud is left
+      // untouched and syncs on demand when one of its books is opened.
+      const error = await triggerCloudSync(window, sourceName, storageSources || []);
 
       if (error) {
         throw new Error(error);
       }
-
-      if (
-        $autoReplication$ === AutoReplicationType.All ||
-        $autoReplication$ === AutoReplicationType.Down
-      ) {
-        await replicateData(targetHandler, localStorageHandler, false, contexts, syncDataTypes);
-      }
-
-      markLastSync(sourceName);
-
-      // Single-target sync: only the selected target is synced. The other
-      // cloud is left untouched and syncs on demand when one of its books is
-      // opened (you will be asked to reconnect first if its session expired).
 
       updateRelativeTime();
     } catch (err: any) {
