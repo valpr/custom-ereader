@@ -74,6 +74,28 @@
         class:mdc-elevation--z4={isSelected || bookCard.id === currentBookId}
       >
         <BookCard {...bookCard} on:click={() => onBookCardClick(bookCard.id)} />
+        {#if bookCard.tags && bookCard.tags.length}
+          <div
+            class="pointer-events-none absolute left-10 right-8 top-1.5 z-10 flex max-h-10 flex-wrap gap-1 overflow-hidden"
+            title={bookCard.tags.join(', ')}
+            data-testid="book-card-tags-{bookCard.id}"
+          >
+            {#each bookCard.tags.slice(0, 2) as tag (tag)}
+              <span
+                class="max-w-full truncate rounded-full bg-gray-800 bg-opacity-80 px-1.5 py-0.5 text-[10px] font-semibold text-white shadow"
+              >
+                {tag}
+              </span>
+            {/each}
+            {#if bookCard.tags.length > 2}
+              <span
+                class="rounded-full bg-gray-800 bg-opacity-80 px-1.5 py-0.5 text-[10px] font-semibold text-white shadow"
+              >
+                +{bookCard.tags.length - 2}
+              </span>
+            {/if}
+          </div>
+        {/if}
       </div>
 
       {#if !isSelected}

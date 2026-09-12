@@ -17,4 +17,5 @@ export interface BookCardProps {
   lastBookmarkModified: number;
   isPlaceholder: boolean;
   sources?: StorageKey[];
+  tags?: string[];
 }

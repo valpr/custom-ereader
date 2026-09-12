@@ -6,6 +6,7 @@
 
 import { expect, test, type Page } from '@playwright/test';
 import { seedReaderBook } from './fixtures/book-fixture';
+import { currentDbVersion } from '../src/lib/data/database/books-db/versions/books-db';
 
 const SOURCE = 'ttu-gdrive-default';
 const FRIENDLY_SOURCE = 'GDrive Default';
@@ -192,27 +193,30 @@ test.describe('Cloud re-auth deferred UX', () => {
       // Book whose designated cloud is a custom source holding only a stale
       // refresh token (remote-context data unlocks without a dialog).
       await seedReaderBook(page, { storageSource: CUSTOM_SOURCE });
-      await page.evaluate(async (sourceName) => {
-        const db = await new Promise<IDBDatabase>((resolve, reject) => {
-          const request = indexedDB.open('books', 7);
-          request.onsuccess = () => resolve(request.result);
-          request.onerror = () => reject(request.error);
-        });
-        await new Promise<void>((resolve, reject) => {
-          const tx = db.transaction('storageSource', 'readwrite');
-          tx.oncomplete = () => resolve();
-          tx.onerror = () => reject(tx.error);
-          tx.objectStore('storageSource').put({
-            name: sourceName,
-            type: 'onedrive',
-            storedInManager: false,
-            encryptionDisabled: true,
-            data: { clientId: 'playwright-test-client', refreshToken: 'stale-refresh-token' },
-            disconnected: false,
-            lastSourceModified: Date.now()
+      await page.evaluate(
+        async ({ sourceName, version }) => {
+          const db = await new Promise<IDBDatabase>((resolve, reject) => {
+            const request = indexedDB.open('books', version);
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
           });
-        });
-      }, CUSTOM_SOURCE);
+          await new Promise<void>((resolve, reject) => {
+            const tx = db.transaction('storageSource', 'readwrite');
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error);
+            tx.objectStore('storageSource').put({
+              name: sourceName,
+              type: 'onedrive',
+              storedInManager: false,
+              encryptionDisabled: true,
+              data: { clientId: 'playwright-test-client', refreshToken: 'stale-refresh-token' },
+              disconnected: false,
+              lastSourceModified: Date.now()
+            });
+          });
+        },
+        { sourceName: CUSTOM_SOURCE, version: currentDbVersion }
+      );
       await page.addInitScript(
         ({ source }) => {
           window.localStorage.setItem('syncTarget', source);

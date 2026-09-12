@@ -4,9 +4,9 @@
  * All rights reserved.
  */
 
-import type BooksDbV7 from '$lib/data/database/books-db/versions/v7/books-db-v7';
+import type BooksDbV8 from '$lib/data/database/books-db/versions/v8/books-db-v8';
 
-type BooksDb = BooksDbV7;
+type BooksDb = BooksDbV8;
 
 export type BooksDbBookData = BooksDb['data']['value'];
 export type BooksDbBookmarkData = BooksDb['bookmark']['value'];
@@ -19,6 +19,6 @@ export type BooksDbAudioBook = BooksDb['audioBook']['value'];
 export type BooksDbSubtitleData = BooksDb['subtitle']['value'];
 export type BooksDbHandle = BooksDb['handle']['value'];
 export type { BookmarkColor } from '$lib/data/database/books-db/versions/v7/books-db-v7';
-export const currentDbVersion = 7;
+export const currentDbVersion = 8;
 
 export type { BooksDb as default };

@@ -36,6 +36,8 @@
   } from '$lib/data/storage/storage-types';
   import {
     fetchUnifiedBookListsStream,
+    fetchUnifiedBookTagsDict,
+    applyTagsDictToCards,
     mergeBookLists,
     normalizeTitle
   } from '$lib/data/storage/unified-library';
@@ -62,6 +64,7 @@
     syncTarget$
   } from '$lib/data/store';
   import { reconnectAndSync, reconnectAndSyncNow } from '$lib/functions/replication/cloud-reauth';
+  import { getAllTagsFromDict } from '$lib/data/book-tags';
   import { cloneMutateSet } from '$lib/functions/clone-mutate-set';
   import { getDropEventFiles } from '$lib/functions/file-dom/get-drop-event-files';
   import { inputFile } from '$lib/functions/file-dom/input-file';
@@ -158,14 +161,39 @@
   let unavailableBookTitles = new Set<string>();
   const unavailableBooksChanged$ = new Subject<void>();
 
+  // Library-wide tags dictionary (Browser + primary cloud, per-title union).
+  // Lets cloud-only books display tags without downloading every book zip.
+  const bookTagsDict$ = combineLatest([
+    database.dataListChanged$.pipe(startWith(undefined)),
+    gDriveStorageSource$,
+    oneDriveStorageSource$,
+    syncTarget$
+  ]).pipe(
+    switchMap(([, gDriveSource, oneDriveSource, primary]) => {
+      if (!browser || typeof window === 'undefined') {
+        return from([{ tagsByTitle: {}, titles: {} }]);
+      }
+      return from(
+        fetchUnifiedBookTagsDict(window, {
+          gDriveSourceName: gDriveSource,
+          oneDriveSourceName: oneDriveSource,
+          includeClouds: true,
+          primarySourceName: primary || ''
+        }).catch(() => ({ tagsByTitle: {}, titles: {} }))
+      );
+    }),
+    share()
+  );
+
   const bookCards$: Observable<BookCardProps[]> = combineLatest([
     unifiedLists$,
     database.bookmarks$,
     librarySortOption$,
     librarySourceFilter$,
-    unavailableBooksChanged$.pipe(startWith(undefined))
+    unavailableBooksChanged$.pipe(startWith(undefined)),
+    bookTagsDict$.pipe(startWith({ tagsByTitle: {}, titles: {} }))
   ]).pipe(
-    map(([lists, bookmarks, sortProp]) => {
+    map(([lists, bookmarks, sortProp, , , tagsDict]) => {
       const isTitleSort = sortProp.property === 'title';
       const merged = mergeBookLists(
         (lists as { source: StorageKey; cards: BookCardProps[] }[]) || []
@@ -178,20 +206,23 @@
 
       const bookmarkMap = keyBy(bookmarks, 'dataId');
 
-      return [
-        ...filtered
-          .filter((d) => $showExternalPlaceholder$ || !d.isPlaceholder)
-          .filter((d) => !unavailableBookTitles.has(normalizeTitle(d.title)))
-          .map((d) => ({
-            ...d,
-            ...((d.sources || []).includes(StorageKey.BROWSER)
-              ? bookmarkToProgress(bookmarkMap.get(d.id))
-              : { progress: d.progress || 0 })
-          }))
-          .sort((card1: BookCardProps, card2: BookCardProps) =>
-            sortBookCards(card1, card2, sortProp, isTitleSort)
-          )
-      ];
+      return applyTagsDictToCards(
+        [
+          ...filtered
+            .filter((d) => $showExternalPlaceholder$ || !d.isPlaceholder)
+            .filter((d) => !unavailableBookTitles.has(normalizeTitle(d.title)))
+            .map((d) => ({
+              ...d,
+              ...((d.sources || []).includes(StorageKey.BROWSER)
+                ? bookmarkToProgress(bookmarkMap.get(d.id))
+                : { progress: d.progress || 0 })
+            }))
+            .sort((card1: BookCardProps, card2: BookCardProps) =>
+              sortBookCards(card1, card2, sortProp, isTitleSort)
+            )
+        ],
+        tagsDict
+      );
     }),
     share()
   );
@@ -314,7 +345,12 @@
       browserHandler,
       false,
       [{ title, imagePath }],
-      [StorageDataType.DATA, StorageDataType.PROGRESS, StorageDataType.USER_BOOKMARKS],
+      [
+        StorageDataType.DATA,
+        StorageDataType.PROGRESS,
+        StorageDataType.USER_BOOKMARKS,
+        StorageDataType.BOOK_TAGS
+      ],
       cancelSignal
     ).catch((err) => err.message);
 
@@ -899,7 +935,12 @@
       targetHandler,
       false,
       [{ title: card.title, imagePath: card.imagePath }],
-      [StorageDataType.DATA, StorageDataType.PROGRESS, StorageDataType.USER_BOOKMARKS],
+      [
+        StorageDataType.DATA,
+        StorageDataType.PROGRESS,
+        StorageDataType.USER_BOOKMARKS,
+        StorageDataType.BOOK_TAGS
+      ],
       cancelSignal
     ).catch((err) => err.message);
 
@@ -927,11 +968,31 @@
     ]);
   }
 
-  function onShowBookDetails(bookId: number) {
+  async function onShowBookDetails(bookId: number) {
     const card = $bookCards$.find((book) => book.id === bookId);
 
     if (!card) {
       return;
+    }
+
+    const isCloudOnly = !(card.sources || []).includes(StorageKey.BROWSER);
+
+    let allTags: string[] = [];
+
+    try {
+      const localTags = await database.getAllTags();
+      const dict = await fetchUnifiedBookTagsDict(window, {
+        gDriveSourceName: $gDriveStorageSource$,
+        oneDriveSourceName: $oneDriveStorageSource$,
+        includeClouds: true,
+        primarySourceName: $syncTarget$ || ''
+      }).catch(() => ({ tagsByTitle: {}, titles: {} }));
+
+      allTags = [...new Set([...localTags, ...getAllTagsFromDict(dict.tagsByTitle)])].sort((a, b) =>
+        a.localeCompare(b)
+      );
+    } catch {
+      allTags = [];
     }
 
     dialogManager.dialogs$.next([
@@ -944,7 +1005,23 @@
           lastBookOpen: card.lastBookOpen,
           lastBookmarkModified: card.lastBookmarkModified,
           lastBookModified: card.lastBookModified,
-          sources: card.sources || []
+          sources: card.sources || [],
+          initialTags: card.tags || [],
+          allTags,
+          isCloudOnly,
+          onSaveTags: async (tags: string[]) => {
+            const local = await database.getDataByTitle(card.title);
+
+            if (!local?.id) {
+              throw new Error('Download this book before editing its tags');
+            }
+
+            await database.updateBookTags(local.id, tags);
+            // The browser handler caches cards in-memory; force a refetch so
+            // the new tags render immediately.
+            getStorageHandler(window, StorageKey.BROWSER, '').clearData();
+            database.dataListChanged$.next(undefined);
+          }
         }
       }
     ]);

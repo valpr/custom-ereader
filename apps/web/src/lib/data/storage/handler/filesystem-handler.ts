@@ -14,6 +14,12 @@ import type {
   BooksDbUserBookmarkData
 } from '$lib/data/database/books-db/versions/books-db';
 import { database, fsStorageSource$ } from '$lib/data/store';
+import {
+  mergeTagsDicts,
+  mergeTagsTitles,
+  type BookTagsDict,
+  type BookTagsSyncPayload
+} from '$lib/data/book-tags';
 import { mergeProfiles, newerStatisticsSettingsSection } from '$lib/data/profiles/profile-manager';
 import type {
   ReaderProfile,
@@ -286,6 +292,22 @@ export class FilesystemStorageHandler extends BaseStorageHandler {
     );
   }
 
+  async areBookTagsPresentAndUpToDate(referenceFilename: string | undefined) {
+    if (!referenceFilename) {
+      BaseStorageHandler.reportProgress();
+      return false;
+    }
+
+    const { file } = await this.getRootFile(BaseStorageHandler.bookTagsFilePrefix);
+
+    return BaseStorageHandler.checkIsPresentAndUpToDate(
+      BaseStorageHandler.getBookTagsMetadata,
+      'lastTagsModified',
+      referenceFilename,
+      file?.name
+    );
+  }
+
   async isAudioBookPresentAndUpToDate(referenceFilename: string | undefined) {
     if (!referenceFilename) {
       BaseStorageHandler.reportProgress();
@@ -445,6 +467,26 @@ export class FilesystemStorageHandler extends BaseStorageHandler {
       customThemes: payload?.customThemes,
       statisticsSettings: payload?.statisticsSettings,
       lastProfilesModified: BaseStorageHandler.getProfilesMetadata(file.name).lastProfilesModified
+    };
+  }
+
+  async getBookTags() {
+    const { file } = await this.getRootFile(BaseStorageHandler.bookTagsFilePrefix, 0.6);
+
+    if (!file) {
+      return { tags: undefined, titles: undefined, lastTagsModified: 0 };
+    }
+
+    const tagsFile = await file.getFile();
+    const tagsFileData = await FilesystemStorageHandler.readFileObject(tagsFile);
+    const payload = JSON.parse(tagsFileData) as BookTagsSyncPayload;
+
+    BaseStorageHandler.reportProgress(0.4);
+
+    return {
+      tags: payload?.tagsByTitle,
+      titles: payload?.titles,
+      lastTagsModified: BaseStorageHandler.getBookTagsMetadata(file.name).lastTagsModified
     };
   }
 
@@ -754,6 +796,55 @@ export class FilesystemStorageHandler extends BaseStorageHandler {
       file,
       0.6,
       BaseStorageHandler.profilesFilePrefix
+    );
+  }
+
+  async saveBookTags(
+    tags: BookTagsDict | File,
+    titles: Record<string, string> | undefined,
+    lastTagsModified: number
+  ) {
+    const isOverwrite = this.saveBehavior === ReplicationSaveBehavior.Overwrite;
+    const { file, rootDirectory } = await this.getRootFile(
+      BaseStorageHandler.bookTagsFilePrefix,
+      0.4
+    );
+
+    let tagsToStore: BookTagsDict = tags instanceof File ? {} : tags;
+    let titlesToStore = titles;
+    let newTagsModified = lastTagsModified;
+
+    if (!isOverwrite && file) {
+      const existingDataFile = await file.getFile();
+      const existingPayload = JSON.parse(
+        await FilesystemStorageHandler.readFileObject(existingDataFile)
+      ) as BookTagsSyncPayload;
+
+      tagsToStore = mergeTagsDicts(existingPayload?.tagsByTitle, tagsToStore);
+      titlesToStore = mergeTagsTitles(existingPayload?.titles, titlesToStore);
+      newTagsModified = Math.max(
+        existingPayload?.lastModified || 0,
+        lastTagsModified || 0,
+        Date.now()
+      );
+    }
+
+    const filename = BaseStorageHandler.getBookTagsFileName(newTagsModified || Date.now());
+    const payload: BookTagsSyncPayload = {
+      version: 1,
+      lastModified: newTagsModified || Date.now(),
+      tagsByTitle: tagsToStore,
+      titles: titlesToStore
+    };
+
+    await this.writeFile(
+      rootDirectory,
+      filename,
+      JSON.stringify(payload),
+      [],
+      file,
+      0.6,
+      BaseStorageHandler.bookTagsFilePrefix
     );
   }
 
