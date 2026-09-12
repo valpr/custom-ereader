@@ -182,7 +182,7 @@
 
   .astryx-toggle-group-btn:hover:not(:disabled):not(.is-selected) {
     background-color: var(--astryx-color-surface-subtle, #f4f4f5);
-    border-color: var(--astryx-color-border-hover, #d4d4d8);
+    border-color: var(--astryx-color-border-strong, #a1a1aa);
   }
 
   .astryx-toggle-group-btn:focus-visible {
@@ -206,12 +206,14 @@
   }
 
   .astryx-toggle-group-btn.invert-colors.is-selected {
-    background-color: #ffffff;
-    color: #18181b;
+    background-color: var(--astryx-color-surface, #ffffff);
+    color: var(--astryx-color-fg-primary, #18181b);
+    border-color: var(--astryx-color-border-strong, #a1a1aa);
   }
   .astryx-toggle-group-btn.invert-colors:not(.is-selected) {
-    background-color: #27272a;
-    color: #ffffff;
+    background-color: var(--astryx-color-brand, #18181b);
+    color: var(--astryx-color-fg-on-brand, #ffffff);
+    border-color: var(--astryx-color-brand, #18181b);
   }
 
   .astryx-toggle-group-btn:disabled {
