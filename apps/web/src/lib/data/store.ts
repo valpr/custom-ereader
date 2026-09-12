@@ -27,6 +27,7 @@ import { MergeMode } from '$lib/data/merge-mode';
 import { defaultReaderProfiles, type ReaderProfile } from '$lib/data/profiles/profile-types';
 import type { ReadingGoal } from '$lib/data/reading-goal';
 import { SortDirection, type SortOption } from '$lib/data/sort-types';
+import type { LibraryFilters } from '$lib/data/library-filters';
 import {
   StatisticsTabAvailableKeybind,
   type StatisticsTabKeybindMap
@@ -236,6 +237,11 @@ export const librarySourceFilter$ = writableSetLocalStorageSubject<StorageKey>()
 export const librarySortOption$ = writableObjectLocalStorageSubject<SortOption>()(
   'librarySortOption',
   { property: 'title', direction: SortDirection.DESC }
+);
+
+export const libraryFilters$ = writableObjectLocalStorageSubject<LibraryFilters>()(
+  'libraryFilters',
+  { query: '', tags: [], progress: 'all' }
 );
 
 export const importHTMLFixMode$ = writableStringLocalStorageSubject<ImportHTMLFixMode>()(
