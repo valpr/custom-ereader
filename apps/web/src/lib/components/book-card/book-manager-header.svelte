@@ -1,6 +1,6 @@
 <script lang="ts">
   import { browser, dev } from '$app/environment';
-  import { preloadCode } from '$app/navigation';
+  import { goto, preloadCode } from '$app/navigation';
   import type { BookCardProps } from '$lib/components/book-card/book-card-props';
   import { mergeEntries } from '$lib/components/merged-header-icon/merged-entries';
   import MergedHeaderIcon from '$lib/components/merged-header-icon/merged-header-icon.svelte';
@@ -8,16 +8,21 @@
   import { Button, CloudStatusIcon, IconButton, Tooltip, TopBar } from '@custom-ereader/ui';
   import { pagePath } from '$lib/data/env';
   import { SortDirection } from '$lib/data/sort-types';
+  import type { BooksDbStorageSource } from '$lib/data/database/books-db/versions/books-db';
   import { FilesystemStorageHandler } from '$lib/data/storage/handler/filesystem-handler';
-  import { StorageKey } from '$lib/data/storage/storage-types';
-  import { isStorageSourceAvailable } from '$lib/data/storage/storage-view';
   import {
+    getConnectionState,
+    sessionsRestoring$,
+    storageConnectionStates$,
+    StorageConnectionState
+  } from '$lib/data/storage/storage-oauth-manager';
+  import { StorageKey, StorageSourceDefault } from '$lib/data/storage/storage-types';
+  import {
+    database,
     fileCountData$,
-    gDriveStorageSource$,
     isOnline$,
     librarySortOption$,
-    librarySourceFilter$,
-    oneDriveStorageSource$
+    librarySourceFilter$
   } from '$lib/data/store';
   import { inputAllowDirectory } from '$lib/functions/file-dom/input-allow-directory';
   import { inputFile } from '$lib/functions/file-dom/input-file';
@@ -38,7 +43,7 @@
     faTrash,
     faTriangleExclamation
   } from '@fortawesome/free-solid-svg-icons';
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, onMount } from 'svelte';
   import Fa from 'svelte-fa';
 
   export let hasBookOpened: boolean;
@@ -68,11 +73,96 @@
   }>();
 
   let importMenuItems = [mergeEntries.FILE_IMPORT];
-  const sourceFilters = [
+
+  interface SourceFilterEntry {
+    label: string;
+    key: StorageKey | null;
+    requiresConnectivity: boolean;
+    setup?: boolean;
+  }
+
+  // Known cloud records for per-type availability. Reloaded on mount and
+  // whenever sources change (add/delete/disconnect), so the filter list
+  // tracks connected sources instead of always offering both clouds.
+  let storageSourceRecords: BooksDbStorageSource[] = [];
+  let sourceRecordsLoaded = false;
+
+  async function reloadSourceRecords() {
+    try {
+      storageSourceRecords = (await database.getStorageSources().catch(() => [])) || [];
+    } catch {
+      storageSourceRecords = [];
+    } finally {
+      sourceRecordsLoaded = true;
+    }
+  }
+
+  onMount(() => {
+    reloadSourceRecords();
+    const subscription = database.storageSourcesChanged$.subscribe(() => reloadSourceRecords());
+    return () => subscription.unsubscribe();
+  });
+
+  type CloudTypeStatus = 'connected' | 'expired' | 'none';
+
+  // A cloud type is offered when any source of that type (default or custom
+  // record) is connected or holds an expired session awaiting reconnect.
+  // Fully disconnected types (or deleted records) resolve to 'none'.
+  function cloudTypeStatus(
+    type: StorageKey,
+    connectionStates: Record<string, StorageConnectionState>,
+    records: BooksDbStorageSource[]
+  ): CloudTypeStatus {
+    const defaultName =
+      type === StorageKey.GDRIVE
+        ? StorageSourceDefault.GDRIVE_DEFAULT
+        : StorageSourceDefault.ONEDRIVE_DEFAULT;
+    const names = new Set<string>([defaultName]);
+    for (const record of records) {
+      if (record?.type === type && record.name) {
+        names.add(record.name);
+      }
+    }
+
+    let seenExpired = false;
+    for (const name of names) {
+      const record = records.find((r) => r.name === name);
+      const state = connectionStates[name] || getConnectionState(name, record);
+      if (state === StorageConnectionState.CONNECTED) {
+        return 'connected';
+      }
+      if (state === StorageConnectionState.NEEDS_RECONNECT) {
+        seenExpired = true;
+      }
+    }
+    return seenExpired ? 'expired' : 'none';
+  }
+
+  $: gDriveStatus = cloudTypeStatus(
+    StorageKey.GDRIVE,
+    $storageConnectionStates$,
+    storageSourceRecords
+  );
+  $: oneDriveStatus = cloudTypeStatus(
+    StorageKey.ONEDRIVE,
+    $storageConnectionStates$,
+    storageSourceRecords
+  );
+
+  $: sourceFilters = [
     { label: 'Browser', key: StorageKey.BROWSER, requiresConnectivity: false },
-    { label: 'GDrive', key: StorageKey.GDRIVE, requiresConnectivity: true },
-    { label: 'OneDrive', key: StorageKey.ONEDRIVE, requiresConnectivity: true }
-  ];
+    ...(gDriveStatus !== 'none'
+      ? [{ label: 'GDrive', key: StorageKey.GDRIVE, requiresConnectivity: true }]
+      : []),
+    ...(oneDriveStatus !== 'none'
+      ? [{ label: 'OneDrive', key: StorageKey.ONEDRIVE, requiresConnectivity: true }]
+      : []),
+    // No cloud available: offer a placeholder that routes to cloud enrollment
+    // in Settings instead of dead-end type options.
+    ...(gDriveStatus === 'none' && oneDriveStatus === 'none'
+      ? [{ label: 'Cloud', key: null, requiresConnectivity: false, setup: true }]
+      : [])
+  ] as SourceFilterEntry[];
 
   let fileImportElm: HTMLElement;
   let folderImportElm: HTMLElement;
@@ -84,8 +174,8 @@
   let isOldUrl = false;
   let showLoadCount = false;
 
-  function isFilterActive(key: StorageKey): boolean {
-    return $librarySourceFilter$.size === 1 && $librarySourceFilter$.has(key);
+  function isFilterActive(key: StorageKey | null): boolean {
+    return key !== null && $librarySourceFilter$.size === 1 && $librarySourceFilter$.has(key);
   }
 
   function isAllActive(): boolean {
@@ -99,6 +189,26 @@
     filterElm?.toggleOpen();
   }
 
+  function goToCloudSetup() {
+    filterElm?.toggleOpen();
+    goto(`${pagePath}/settings/data`);
+  }
+
+  // If the active filter's cloud type loses its last connected source
+  // (disconnect/delete), fall back to All so filtering can't stick on a
+  // type with no matching option. Gated on loaded records and finished
+  // session restore so boot doesn't wipe a still-valid persisted filter.
+  $: if (browser && sourceRecordsLoaded && !$sessionsRestoring$) {
+    const activeFilterKeys = [...$librarySourceFilter$];
+    if (
+      activeFilterKeys.length === 1 &&
+      activeFilterKeys[0] !== StorageKey.BROWSER &&
+      !sourceFilters.some((f) => f.key === activeFilterKeys[0])
+    ) {
+      librarySourceFilter$.next(new Set());
+    }
+  }
+
   $: currentFilterLabel = (() => {
     if ($librarySourceFilter$.size === 0) return 'All';
     const key = [...$librarySourceFilter$][0];
@@ -110,12 +220,14 @@
   }
 
   function sourceAvailabilityHint(
-    key: StorageKey,
-    requiresConnectivity: boolean
+    key: StorageKey | null,
+    requiresConnectivity: boolean,
+    setup = false
   ): string | undefined {
+    if (setup) return 'Connect a cloud';
     if (requiresConnectivity && !$isOnline$) return 'Needs internet';
-    if (key === StorageKey.GDRIVE && !gDriveAvailable) return 'Not connected';
-    if (key === StorageKey.ONEDRIVE && !oneDriveAvailable) return 'Not connected';
+    if (key === StorageKey.GDRIVE && gDriveStatus === 'expired') return 'Session expired';
+    if (key === StorageKey.ONEDRIVE && oneDriveStatus === 'expired') return 'Session expired';
     return undefined;
   }
 
@@ -130,11 +242,6 @@
         : [mergeEntries.FOLDER_IMPORT, mergeEntries.BACKUP_IMPORT])
     ];
   }
-
-  $: gDriveAvailable =
-    browser && isStorageSourceAvailable(StorageKey.GDRIVE, $gDriveStorageSource$, window);
-  $: oneDriveAvailable =
-    browser && isStorageSourceAvailable(StorageKey.ONEDRIVE, $oneDriveStorageSource$, window);
 
   $: sortMenuItems = [
     { property: 'id', label: 'Added (id)' },
@@ -411,19 +518,24 @@
               </span>
               <span>All sources</span>
             </button>
-            {#each sourceFilters as sourceFilter (sourceFilter.key)}
-              {@const disabled = isSourceDisabled(sourceFilter.requiresConnectivity)}
+            {#each sourceFilters as sourceFilter (sourceFilter.key ?? 'cloud-setup')}
+              {@const disabled =
+                !sourceFilter.setup && isSourceDisabled(sourceFilter.requiresConnectivity)}
               {@const active = isFilterActive(sourceFilter.key)}
               {@const hint = sourceAvailabilityHint(
                 sourceFilter.key,
-                sourceFilter.requiresConnectivity
+                sourceFilter.requiresConnectivity,
+                sourceFilter.setup
               )}
               <button
                 type="button"
                 {disabled}
                 title={hint ? `${sourceFilter.label} — ${hint}` : `Show only ${sourceFilter.label}`}
                 class="w-full flex items-center gap-2.5 px-3.5 py-2 text-sm text-left text-[var(--astryx-color-fg-primary)] hover:bg-[var(--astryx-color-surface-hover)] focus-visible:bg-[var(--astryx-color-surface-hover)] outline-none transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
-                on:click={() => !disabled && selectSourceFilter(active ? null : sourceFilter.key)}
+                on:click={() =>
+                  sourceFilter.setup
+                    ? goToCloudSetup()
+                    : !disabled && selectSourceFilter(active ? null : sourceFilter.key)}
               >
                 <span class="w-4 text-center">
                   {#if active}
