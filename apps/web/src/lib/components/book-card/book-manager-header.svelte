@@ -307,7 +307,6 @@
   // Library search/filter state (title query, tags AND-filter, progress).
   // Persisted via `libraryFilters$`; the title input is debounced so typing
   // doesn't re-run the library pipeline on every keystroke.
-  let searchElm: Popover;
   let searchDraft = '';
   let searchInputFocused = false;
   let searchDebounceTimer: ReturnType<typeof setTimeout> | undefined;
@@ -366,7 +365,7 @@
   function clearLibraryFilters() {
     if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
     searchDraft = '';
-    libraryFilters$.next({ ...DEFAULT_LIBRARY_FILTERS, tags: [] });
+    libraryFilters$.next({ ...DEFAULT_LIBRARY_FILTERS });
   }
 
   function changeSortOptions(clickedProperty: string, newDirection: SortDirection) {
@@ -634,12 +633,7 @@
           </div>
         </Popover>
 
-        <Popover
-          placement="bottom"
-          fallbackPlacements={['bottom-end', 'bottom-start']}
-          yOffset={4}
-          bind:this={searchElm}
-        >
+        <Popover placement="bottom" fallbackPlacements={['bottom-end', 'bottom-start']} yOffset={4}>
           <div slot="icon">
             <Tooltip text="Search and filter library">
               <Button

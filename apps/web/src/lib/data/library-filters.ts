@@ -78,7 +78,7 @@ export function filterBookCards(
 ): BookCardProps[] {
   if (!filters) return cards;
   const query = (filters.query || '').trim();
-  const tags = filters.tags || [];
+  const tags = Array.isArray(filters.tags) ? filters.tags : [];
   const progress = filters.progress || 'all';
   if (!query && tags.length === 0 && progress === 'all') return cards;
 
@@ -92,9 +92,10 @@ export function filterBookCards(
 
 export function getActiveFilterCount(filters: LibraryFilters | undefined | null): number {
   if (!filters) return 0;
+  const tags = Array.isArray(filters.tags) ? filters.tags : [];
   let count = 0;
   if ((filters.query || '').trim()) count += 1;
-  if ((filters.tags || []).length) count += filters.tags.length;
+  if (tags.length) count += tags.length;
   if (filters.progress && filters.progress !== 'all') count += 1;
   return count;
 }

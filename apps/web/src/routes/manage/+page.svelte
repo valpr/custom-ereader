@@ -66,7 +66,11 @@
   } from '$lib/data/store';
   import { reconnectAndSync, reconnectAndSyncNow } from '$lib/functions/replication/cloud-reauth';
   import { getAllTagsFromDict } from '$lib/data/book-tags';
-  import { filterBookCards, isLibraryFilterActive } from '$lib/data/library-filters';
+  import {
+    DEFAULT_LIBRARY_FILTERS,
+    filterBookCards,
+    isLibraryFilterActive
+  } from '$lib/data/library-filters';
   import { cloneMutateSet } from '$lib/functions/clone-mutate-set';
   import { getDropEventFiles } from '$lib/functions/file-dom/get-drop-event-files';
   import { inputFile } from '$lib/functions/file-dom/input-file';
@@ -237,6 +241,7 @@
   // never shrink the available options.
   const allLibraryTags$: Observable<string[]> = bookTagsDict$.pipe(
     map((dict) => getAllTagsFromDict(dict?.tagsByTitle)),
+    startWith([]),
     share()
   );
 
@@ -1378,7 +1383,7 @@
             type="button"
             data-testid="library-clear-filters-empty"
             class="inline-flex items-center gap-1.5 rounded-lg border border-[var(--astryx-color-border-subtle,#e4e4e7)] bg-[var(--astryx-color-surface,#ffffff)] px-4 py-2 text-sm font-medium text-[var(--astryx-color-fg-primary,#18181b)] shadow-sm hover:bg-[var(--astryx-color-surface-hover,#f4f4f5)] transition-colors cursor-pointer"
-            on:click={() => libraryFilters$.next({ query: '', tags: [], progress: 'all' })}
+            on:click={() => libraryFilters$.next({ ...DEFAULT_LIBRARY_FILTERS })}
           >
             <span>Clear filters</span>
           </button>
