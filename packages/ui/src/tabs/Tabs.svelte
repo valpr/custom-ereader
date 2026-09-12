@@ -157,13 +157,14 @@
   /* Variant: Pill */
   [data-variant='pill'] {
     background-color: var(--astryx-color-surface-subtle, #f4f4f5);
-    border: 1px solid var(--astryx-color-border-subtle, #e4e4e7);
+    border: 1px solid var(--astryx-color-border-default, #d4d4d8);
     border-radius: var(--astryx-radius-lg, 10px);
     padding: var(--astryx-space-1, 4px);
     gap: var(--astryx-space-1, 4px);
   }
 
   [data-variant='pill'] .astryx-tab-btn {
+    border: 1px solid transparent;
     border-radius: calc(var(--astryx-radius-lg, 10px) - 3px);
     color: var(--astryx-color-fg-secondary, #52525b);
     background: transparent;
@@ -178,6 +179,7 @@
     background-color: var(--astryx-color-surface, #ffffff);
     color: var(--astryx-color-fg-primary, #18181b);
     font-weight: var(--astryx-font-weight-semibold, 600);
+    border: 1px solid var(--astryx-color-border-strong, #a1a1aa);
     box-shadow: var(--astryx-elevation-sm, 0 1px 2px rgba(0, 0, 0, 0.05));
   }
 

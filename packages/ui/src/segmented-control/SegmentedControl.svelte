@@ -52,7 +52,7 @@
     align-items: center;
     padding: var(--astryx-space-0-5, 2px);
     background-color: var(--astryx-color-surface-subtle, #f4f4f5);
-    border: 1px solid var(--astryx-color-border-subtle, #e4e4e7);
+    border: 1px solid var(--astryx-color-border-default, #d4d4d8);
     border-radius: var(--astryx-radius-md, 6px);
     box-sizing: border-box;
     user-select: none;
@@ -98,9 +98,9 @@
     align-items: center;
     justify-content: center;
     background: transparent;
-    border: none;
+    border: 1px solid transparent;
     border-radius: calc(var(--astryx-radius-md, 6px) - 2px);
-    color: var(--astryx-color-fg-secondary, #52525b);
+    color: var(--astryx-color-fg-primary, #18181b);
     font-family: var(--astryx-font-family-sans, sans-serif);
     font-weight: var(--astryx-font-weight-medium, 500);
     cursor: pointer;
@@ -114,11 +114,14 @@
 
   .astryx-segment-item:hover:not(:disabled):not(.is-selected) {
     color: var(--astryx-color-fg-primary, #18181b);
+    border-color: var(--astryx-color-border-strong, #a1a1aa);
+    background-color: var(--astryx-color-surface, #ffffff);
   }
 
   .astryx-segment-item.is-selected {
-    background-color: var(--astryx-color-surface, #ffffff);
-    color: var(--astryx-color-fg-primary, #18181b);
+    background-color: var(--astryx-color-brand, #18181b);
+    color: var(--astryx-color-fg-on-brand, #ffffff);
+    border-color: var(--astryx-color-brand, #18181b);
     font-weight: var(--astryx-font-weight-semibold, 600);
     box-shadow: var(--astryx-elevation-sm, 0 1px 2px rgba(0, 0, 0, 0.05));
   }
