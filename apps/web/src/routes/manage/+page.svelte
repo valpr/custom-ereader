@@ -53,6 +53,7 @@
     keepLocalStatisticsOnDeletion$,
     lastExportedTarget$,
     lastExportedTypes$,
+    libraryFilters$,
     librarySortOption$,
     librarySourceFilter$,
     oneDriveStorageSource$,
@@ -65,6 +66,7 @@
   } from '$lib/data/store';
   import { reconnectAndSync, reconnectAndSyncNow } from '$lib/functions/replication/cloud-reauth';
   import { getAllTagsFromDict } from '$lib/data/book-tags';
+  import { filterBookCards, isLibraryFilterActive } from '$lib/data/library-filters';
   import { cloneMutateSet } from '$lib/functions/clone-mutate-set';
   import { getDropEventFiles } from '$lib/functions/file-dom/get-drop-event-files';
   import { inputFile } from '$lib/functions/file-dom/input-file';
@@ -190,10 +192,11 @@
     database.bookmarks$,
     librarySortOption$,
     librarySourceFilter$,
+    libraryFilters$,
     unavailableBooksChanged$.pipe(startWith(undefined)),
     bookTagsDict$.pipe(startWith({ tagsByTitle: {}, titles: {} }))
   ]).pipe(
-    map(([lists, bookmarks, sortProp, , , tagsDict]) => {
+    map(([lists, bookmarks, sortProp, , libraryFilters, , tagsDict]) => {
       const isTitleSort = sortProp.property === 'title';
       const merged = mergeBookLists(
         (lists as { source: StorageKey; cards: BookCardProps[] }[]) || []
@@ -206,24 +209,34 @@
 
       const bookmarkMap = keyBy(bookmarks, 'dataId');
 
-      return applyTagsDictToCards(
-        [
-          ...filtered
-            .filter((d) => $showExternalPlaceholder$ || !d.isPlaceholder)
-            .filter((d) => !unavailableBookTitles.has(normalizeTitle(d.title)))
-            .map((d) => ({
-              ...d,
-              ...((d.sources || []).includes(StorageKey.BROWSER)
-                ? bookmarkToProgress(bookmarkMap.get(d.id))
-                : { progress: d.progress || 0 })
-            }))
-            .sort((card1: BookCardProps, card2: BookCardProps) =>
-              sortBookCards(card1, card2, sortProp, isTitleSort)
-            )
-        ],
+      // Tags overlay runs before search filtering so cloud-only books are
+      // filterable by tag without downloading every book zip.
+      const withTags = applyTagsDictToCards(
+        filtered
+          .filter((d) => $showExternalPlaceholder$ || !d.isPlaceholder)
+          .filter((d) => !unavailableBookTitles.has(normalizeTitle(d.title)))
+          .map((d) => ({
+            ...d,
+            ...((d.sources || []).includes(StorageKey.BROWSER)
+              ? bookmarkToProgress(bookmarkMap.get(d.id))
+              : { progress: d.progress || 0 })
+          })),
         tagsDict
       );
+
+      return filterBookCards(withTags, libraryFilters).sort(
+        (card1: BookCardProps, card2: BookCardProps) =>
+          sortBookCards(card1, card2, sortProp, isTitleSort)
+      );
     }),
+    share()
+  );
+
+  // Distinct tag universe for the header filter picker. Derived from the
+  // unfiltered tags dictionary (not the filtered cards) so active filters
+  // never shrink the available options.
+  const allLibraryTags$: Observable<string[]> = bookTagsDict$.pipe(
+    map((dict) => getAllTagsFromDict(dict?.tagsByTitle)),
     share()
   );
 
@@ -1283,6 +1296,7 @@
     hasBookOpened={!!$currentBookId$}
     selectedCount={selectedBookIds.size}
     hasBooks={!!$bookCards$?.length}
+    availableTags={$allLibraryTags$ || []}
     {cancelTooltip}
     {replicationProgress}
     {replicationToProgress}
@@ -1348,6 +1362,28 @@
         on:uploadBookClick={(ev) => onUploadBookToPrimary(ev.detail.id)}
         on:detailsClick={(ev) => onShowBookDetails(ev.detail.id)}
       />
+    {:else if isLibraryFilterActive($libraryFilters$)}
+      <div
+        class="relative z-10 flex flex-col items-center justify-center pt-28 text-center"
+        data-testid="library-no-results"
+      >
+        <h1 class="text-xl font-bold tracking-tight text-[var(--astryx-color-fg-primary,#18181b)]">
+          No books match your filters
+        </h1>
+        <p class="mt-1 max-w-sm text-sm text-[var(--astryx-color-fg-muted,#71717a)]">
+          Try a different title, fewer tags, or another reading-progress option.
+        </p>
+        <div class="mt-4">
+          <button
+            type="button"
+            data-testid="library-clear-filters-empty"
+            class="inline-flex items-center gap-1.5 rounded-lg border border-[var(--astryx-color-border-subtle,#e4e4e7)] bg-[var(--astryx-color-surface,#ffffff)] px-4 py-2 text-sm font-medium text-[var(--astryx-color-fg-primary,#18181b)] shadow-sm hover:bg-[var(--astryx-color-surface-hover,#f4f4f5)] transition-colors cursor-pointer"
+            on:click={() => libraryFilters$.next({ query: '', tags: [], progress: 'all' })}
+          >
+            <span>Clear filters</span>
+          </button>
+        </div>
+      </div>
     {:else}
       <div
         class="relative z-10 flex flex-col items-center justify-center pt-28 text-center pointer-events-none"

@@ -5,8 +5,23 @@
   import { mergeEntries } from '$lib/components/merged-header-icon/merged-entries';
   import MergedHeaderIcon from '$lib/components/merged-header-icon/merged-header-icon.svelte';
   import Popover from '$lib/components/popover/popover.svelte';
-  import { Button, CloudStatusIcon, IconButton, Tooltip, TopBar } from '@custom-ereader/ui';
+  import {
+    Button,
+    CloudStatusIcon,
+    IconButton,
+    Input,
+    SegmentedControl,
+    Tooltip,
+    TopBar
+  } from '@custom-ereader/ui';
   import { pagePath } from '$lib/data/env';
+  import { normalizeTag } from '$lib/data/book-tags';
+  import {
+    DEFAULT_LIBRARY_FILTERS,
+    PROGRESS_FILTER_OPTIONS,
+    getActiveFilterCount,
+    type ProgressFilter
+  } from '$lib/data/library-filters';
   import { SortDirection } from '$lib/data/sort-types';
   import type { BooksDbStorageSource } from '$lib/data/database/books-db/versions/books-db';
   import { FilesystemStorageHandler } from '$lib/data/storage/handler/filesystem-handler';
@@ -21,6 +36,7 @@
     database,
     fileCountData$,
     isOnline$,
+    libraryFilters$,
     librarySortOption$,
     librarySourceFilter$
   } from '$lib/data/store';
@@ -37,6 +53,7 @@
     faCircleXmark,
     faCloudArrowUp,
     faFilter,
+    faMagnifyingGlass,
     faSortDown,
     faSortUp,
     faTimes,
@@ -56,6 +73,7 @@
   export let replicationProgressRemaining: string;
   export let showCloudWarning = false;
   export let cloudWarningLabel = 'Cloud session expired. Reconnect to resume syncing.';
+  export let availableTags: string[] = [];
 
   const dispatch = createEventDispatcher<{
     selectAllClick: void;
@@ -284,6 +302,71 @@
     } catch ({ message }: any) {
       console.error(`failed to read file: ${message}`);
     }
+  }
+
+  // Library search/filter state (title query, tags AND-filter, progress).
+  // Persisted via `libraryFilters$`; the title input is debounced so typing
+  // doesn't re-run the library pipeline on every keystroke.
+  let searchElm: Popover;
+  let searchDraft = '';
+  let searchInputFocused = false;
+  let searchDebounceTimer: ReturnType<typeof setTimeout> | undefined;
+  let activeFilterCount = 0;
+  let filtersActive = false;
+
+  $: activeFilterCount = getActiveFilterCount($libraryFilters$);
+  $: filtersActive = activeFilterCount > 0;
+
+  // Mirror the store into the draft while the user isn't editing, so
+  // external resets (e.g. the empty-state "Clear filters") reflect here.
+  $: if (!searchInputFocused) {
+    searchDraft = $libraryFilters$?.query ?? '';
+  }
+
+  function commitSearchDraft() {
+    const current = $libraryFilters$ ?? DEFAULT_LIBRARY_FILTERS;
+    if ((current.query ?? '') !== searchDraft) {
+      libraryFilters$.next({ ...current, query: searchDraft });
+    }
+  }
+
+  function onSearchInput() {
+    if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
+    searchDebounceTimer = setTimeout(commitSearchDraft, 300);
+  }
+
+  function onSearchClear() {
+    if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
+    searchDraft = '';
+    commitSearchDraft();
+  }
+
+  function isTagSelected(tag: string): boolean {
+    const selected = $libraryFilters$?.tags ?? [];
+    const normalized = normalizeTag(tag);
+    return selected.some((t) => normalizeTag(t) === normalized);
+  }
+
+  function toggleTagFilter(tag: string) {
+    const current = $libraryFilters$ ?? DEFAULT_LIBRARY_FILTERS;
+    const normalized = normalizeTag(tag);
+    if (!normalized) return;
+    const selected = current.tags ?? [];
+    const next = selected.some((t) => normalizeTag(t) === normalized)
+      ? selected.filter((t) => normalizeTag(t) !== normalized)
+      : [...selected, normalized];
+    libraryFilters$.next({ ...current, tags: next });
+  }
+
+  function setProgressFilter(value: string | number) {
+    const current = $libraryFilters$ ?? DEFAULT_LIBRARY_FILTERS;
+    libraryFilters$.next({ ...current, progress: value as ProgressFilter });
+  }
+
+  function clearLibraryFilters() {
+    if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
+    searchDraft = '';
+    libraryFilters$.next({ ...DEFAULT_LIBRARY_FILTERS, tags: [] });
   }
 
   function changeSortOptions(clickedProperty: string, newDirection: SortDirection) {
@@ -548,6 +631,124 @@
                 {/if}
               </button>
             {/each}
+          </div>
+        </Popover>
+
+        <Popover
+          placement="bottom"
+          fallbackPlacements={['bottom-end', 'bottom-start']}
+          yOffset={4}
+          bind:this={searchElm}
+        >
+          <div slot="icon">
+            <Tooltip text="Search and filter library">
+              <Button
+                variant="ghost"
+                size="md"
+                class="gap-1.5 px-2.5 text-sm font-medium text-[var(--astryx-color-fg-secondary)] hover:text-[var(--astryx-color-fg-primary)]"
+                aria-label="Search and filter library"
+                data-testid="library-search-filter-button"
+              >
+                <Fa icon={faMagnifyingGlass} class="text-sm opacity-80" />
+                <span>Search</span>
+                {#if filtersActive}
+                  <span
+                    data-testid="library-active-filter-count"
+                    class="inline-flex min-w-5 items-center justify-center rounded-full bg-[var(--astryx-color-primary-subtle,rgba(99,102,241,0.15))] px-1.5 py-0.5 text-xs font-semibold text-[var(--astryx-color-primary,#6366f1)]"
+                  >
+                    {activeFilterCount}
+                  </span>
+                {/if}
+              </Button>
+            </Tooltip>
+          </div>
+          <div
+            class="flex w-72 flex-col gap-3 rounded-lg border border-[var(--astryx-color-border-subtle,#e4e4e7)] bg-[var(--astryx-color-surface,#ffffff)] p-3 shadow-lg"
+            slot="content"
+          >
+            <Input
+              size="sm"
+              placeholder="Search by title..."
+              clearable
+              bind:value={searchDraft}
+              data-testid="library-search-input"
+              on:input={onSearchInput}
+              on:clear={onSearchClear}
+              on:focus={() => (searchInputFocused = true)}
+              on:blur={() => {
+                searchInputFocused = false;
+                if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
+                commitSearchDraft();
+              }}
+            >
+              <span slot="prefix">
+                <Fa icon={faMagnifyingGlass} class="text-xs opacity-60" />
+              </span>
+            </Input>
+
+            <div class="flex flex-col gap-1.5">
+              <span
+                class="text-xs font-semibold uppercase tracking-wide text-[var(--astryx-color-fg-muted)]"
+              >
+                Reading progress
+              </span>
+              <SegmentedControl
+                size="sm"
+                fullWidth
+                options={PROGRESS_FILTER_OPTIONS}
+                value={$libraryFilters$?.progress ?? 'all'}
+                on:change={(e) => setProgressFilter(e.detail.value)}
+              />
+            </div>
+
+            <div class="flex flex-col gap-1.5">
+              <span
+                class="text-xs font-semibold uppercase tracking-wide text-[var(--astryx-color-fg-muted)]"
+              >
+                Tags (match all)
+              </span>
+              {#if !availableTags.length}
+                <span class="text-xs text-[var(--astryx-color-fg-muted)]">
+                  No tags yet — add tags from a book's details to filter by them.
+                </span>
+              {:else}
+                <div
+                  class="flex max-h-40 flex-col gap-0.5 overflow-y-auto"
+                  data-testid="library-filter-tags"
+                >
+                  {#each availableTags as tag (tag)}
+                    {@const selected = isTagSelected(tag)}
+                    <button
+                      type="button"
+                      role="checkbox"
+                      aria-checked={selected}
+                      data-testid="library-filter-tag-{tag}"
+                      class="flex w-full items-center gap-2.5 rounded px-2 py-1.5 text-left text-sm text-[var(--astryx-color-fg-primary)] hover:bg-[var(--astryx-color-surface-hover)] focus-visible:bg-[var(--astryx-color-surface-hover)] outline-none transition-colors cursor-pointer"
+                      on:click={() => toggleTagFilter(tag)}
+                    >
+                      <span
+                        class="flex h-4 w-4 items-center justify-center rounded border text-[10px] {selected
+                          ? 'border-[var(--astryx-color-primary,#6366f1)] bg-[var(--astryx-color-primary,#6366f1)] text-white'
+                          : 'border-[var(--astryx-color-border-default,#d4d4d8)] text-transparent'}"
+                      >
+                        <Fa icon={faCheck} />
+                      </span>
+                      <span class="flex-1 truncate">{tag}</span>
+                    </button>
+                  {/each}
+                </div>
+              {/if}
+            </div>
+
+            <button
+              type="button"
+              data-testid="library-clear-filters"
+              disabled={!filtersActive}
+              class="w-full rounded-lg border border-[var(--astryx-color-border-subtle,#e4e4e7)] px-3 py-1.5 text-sm font-medium text-[var(--astryx-color-fg-secondary)] transition-colors hover:bg-[var(--astryx-color-surface-hover)] disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
+              on:click={clearLibraryFilters}
+            >
+              Clear filters
+            </button>
           </div>
         </Popover>
 
