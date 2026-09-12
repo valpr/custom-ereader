@@ -95,4 +95,14 @@
     />
     <label for="userBookmark">User Bookmarks</label>
   </div>
+  <div>
+    <input
+      type="checkbox"
+      id="bookTags"
+      name="bookTags"
+      value={StorageDataType.BOOK_TAGS}
+      bind:group={dataToReplicate}
+    />
+    <label for="bookTags">Book Tags</label>
+  </div>
 </div>

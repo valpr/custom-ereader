@@ -5,6 +5,7 @@
  */
 
 import type { BookCardProps } from '$lib/components/book-card/book-card-props';
+import type { BookTagsDict } from '$lib/data/book-tags';
 import {
   currentDbVersion,
   type BooksDbBookData,
@@ -87,6 +88,8 @@ export abstract class BaseStorageHandler {
 
   abstract areProfilesPresentAndUpToDate(referenceFilename: string | undefined): Promise<boolean>;
 
+  abstract areBookTagsPresentAndUpToDate(referenceFilename: string | undefined): Promise<boolean>;
+
   abstract isAudioBookPresentAndUpToDate(referenceFilename: string | undefined): Promise<boolean>;
 
   abstract isSubtitleDataPresentAndUpToDate(
@@ -122,6 +125,12 @@ export abstract class BaseStorageHandler {
     lastProfilesModified: number;
   }>;
 
+  abstract getBookTags(): Promise<{
+    tags: BookTagsDict | undefined;
+    titles: Record<string, string> | undefined;
+    lastTagsModified: number;
+  }>;
+
   abstract getAudioBook(): Promise<BooksDbAudioBook | File | undefined>;
 
   abstract getSubtitleData(): Promise<BooksDbSubtitleData | File | undefined>;
@@ -149,6 +158,12 @@ export abstract class BaseStorageHandler {
     statisticsSettings?: StatisticsSyncSection
   ): Promise<void>;
 
+  abstract saveBookTags(
+    tags: BookTagsDict | File,
+    titles: Record<string, string> | undefined,
+    lastTagsModified: number
+  ): Promise<void>;
+
   abstract saveAudioBook(data: BooksDbAudioBook | File): Promise<void>;
 
   abstract saveSubtitleData(data: BooksDbSubtitleData | File): Promise<void>;
@@ -164,6 +179,8 @@ export abstract class BaseStorageHandler {
   static readingGoalsFilePrefix = 'ttu-user-goals_';
 
   static profilesFilePrefix = 'ttu-user-profiles_';
+
+  static bookTagsFilePrefix = 'ttu-book-tags_';
 
   storageType: StorageKey;
 
@@ -205,7 +222,8 @@ export abstract class BaseStorageHandler {
 
   protected validRootFiles = [
     BaseStorageHandler.readingGoalsFilePrefix,
-    BaseStorageHandler.profilesFilePrefix
+    BaseStorageHandler.profilesFilePrefix,
+    BaseStorageHandler.bookTagsFilePrefix
   ];
 
   constructor(window: Window, storageType: StorageKey) {
@@ -343,6 +361,10 @@ export abstract class BaseStorageHandler {
     return `${BaseStorageHandler.profilesFilePrefix}${exporterVersion}_${currentDbVersion}_${lastProfilesModified}.json`;
   }
 
+  static getBookTagsFileName(lastTagsModified: number) {
+    return `${BaseStorageHandler.bookTagsFilePrefix}${exporterVersion}_${currentDbVersion}_${lastTagsModified}.json`;
+  }
+
   static getImageMimeTypeFromExtension(value: string) {
     const extension = value.split('.').pop()?.toLowerCase() || '';
 
@@ -417,8 +439,8 @@ export abstract class BaseStorageHandler {
         | 'lastBookOpen'
         | 'storageSource'
       >
-    > = ['title', 'styleSheet', 'elementHtml', 'htmlBackup', 'sections'];
-    const staticData: Record<string, string | Section[] | undefined> = {};
+    > = ['title', 'styleSheet', 'elementHtml', 'htmlBackup', 'sections', 'tags'];
+    const staticData: Record<string, string | string[] | Section[] | undefined> = {};
     const limiter = pLimit(1);
     const cover = bookdata.coverImage;
     const isBlobCover = cover instanceof Blob;
@@ -566,6 +588,7 @@ export abstract class BaseStorageHandler {
       hasThumb: true,
       characters: 0,
       sections: [],
+      tags: [],
       lastBookModified: 0,
       lastBookOpen: 0
     };
@@ -612,6 +635,7 @@ export abstract class BaseStorageHandler {
               bookObject.elementHtml = staticData.elementHtml;
               bookObject.styleSheet = staticData.styleSheet || '';
               bookObject.sections = staticData.sections || [];
+              bookObject.tags = Array.isArray(staticData.tags) ? staticData.tags : [];
               bookObject.characters = BaseStorageHandler.getBookCharacters(
                 characters || 0,
                 bookObject.sections
@@ -801,6 +825,16 @@ export abstract class BaseStorageHandler {
       exporterVersion: +parts[1],
       dbVersion: +parts[2],
       lastProfilesModified: +parts[3]
+    };
+  }
+
+  protected static getBookTagsMetadata(filename: string) {
+    const parts = filename.split('_').map((part) => part.replace(/\.json$/, ''));
+
+    return {
+      exporterVersion: +parts[1],
+      dbVersion: +parts[2],
+      lastTagsModified: +parts[3]
     };
   }
 

@@ -154,6 +154,7 @@ export async function importBackup(
       StorageDataType.STATISTICS,
       StorageDataType.READING_GOALS,
       StorageDataType.PROFILES,
+      StorageDataType.BOOK_TAGS,
       StorageDataType.AUDIOBOOK,
       StorageDataType.SUBTITLE,
       StorageDataType.USER_BOOKMARKS
@@ -170,7 +171,11 @@ export async function replicateData(
   dataToReplicate: StorageDataType[],
   cancelSignal?: AbortSignal
 ) {
-  const nonBookOperations = [StorageDataType.READING_GOALS, StorageDataType.PROFILES];
+  const nonBookOperations = [
+    StorageDataType.READING_GOALS,
+    StorageDataType.PROFILES,
+    StorageDataType.BOOK_TAGS
+  ];
   const bookOperationsLength = dataToReplicate.filter(
     (entry) => !nonBookOperations.includes(entry)
   ).length;
@@ -185,6 +190,7 @@ export async function replicateData(
   const processStatistics = dataToReplicate.includes(StorageDataType.STATISTICS);
   const processReadingGoals = dataToReplicate.includes(StorageDataType.READING_GOALS);
   const processProfiles = dataToReplicate.includes(StorageDataType.PROFILES);
+  const processBookTags = dataToReplicate.includes(StorageDataType.BOOK_TAGS);
   const processAudioBook = dataToReplicate.includes(StorageDataType.AUDIOBOOK);
   const processSubtitleData = dataToReplicate.includes(StorageDataType.SUBTITLE);
   const processUserBookmarks = dataToReplicate.includes(StorageDataType.USER_BOOKMARKS);
@@ -462,6 +468,42 @@ export async function replicateData(
           errorMessage = handleErrorDuringReplication(
             error,
             `Error Processing Reader Profiles: `,
+            [replicationLimiter],
+            progressBaseForOtherOperations
+          );
+        }
+      })
+    );
+  }
+
+  if (processBookTags) {
+    replicationTasks.push(
+      replicationLimiter(async () => {
+        try {
+          if (
+            await targetHandler.areBookTagsPresentAndUpToDate(
+              await sourceHandler.getFilenameForRecentCheck(BaseStorageHandler.bookTagsFilePrefix)
+            )
+          ) {
+            checkCancelAndProgress(cancelSignal, true, true);
+            checkCancelAndProgress(cancelSignal, true, true);
+          } else {
+            const { tags, titles, lastTagsModified } = await sourceHandler.getBookTags();
+
+            checkCancelAndProgress(cancelSignal);
+
+            if (tags) {
+              await targetHandler.saveBookTags(tags, titles, lastTagsModified);
+            }
+
+            checkCancelAndProgress(cancelSignal, false, !tags);
+          }
+
+          processed += 1;
+        } catch (error) {
+          errorMessage = handleErrorDuringReplication(
+            error,
+            `Error Processing Book Tags: `,
             [replicationLimiter],
             progressBaseForOtherOperations
           );

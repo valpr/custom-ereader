@@ -5,6 +5,13 @@
  */
 
 import type { BookCardProps } from '$lib/components/book-card/book-card-props';
+import {
+  mergeTagsDicts,
+  mergeTagsTitles,
+  normalizeTagList,
+  normalizeTagTitle,
+  type BookTagsDict
+} from '$lib/data/book-tags';
 import { getStorageHandler } from '$lib/data/storage/storage-handler-factory';
 import { StorageKey } from '$lib/data/storage/storage-types';
 import { isStorageSourceAvailable } from '$lib/data/storage/storage-view';
@@ -65,6 +72,9 @@ export function mergeBookLists(
         existing.imagePath = card.imagePath;
       }
       existing.isPlaceholder = existing.isPlaceholder && card.isPlaceholder;
+      // Tags are additive sets: union across sources so a Browser copy and a
+      // cloud copy of the same title never hide each other's tags.
+      existing.tags = normalizeTagList([...(existing.tags || []), ...(card.tags || [])]);
     }
   }
 
@@ -327,5 +337,102 @@ export function fetchUnifiedBookListsStream(
     return () => {
       cancelled = true;
     };
+  });
+}
+
+export interface UnifiedBookTags {
+  tagsByTitle: BookTagsDict;
+  titles: Record<string, string>;
+}
+
+/**
+ * Fetches the book-tags dictionary from Browser storage plus the primary
+ * cloud (when available) and returns the per-title union. Cloud-only books
+ * get their tags from this overlay without downloading every book zip.
+ * Unavailable sources resolve to empty so one offline cloud never breaks it.
+ */
+export async function fetchUnifiedBookTagsDict(
+  window: Window,
+  options: UnifiedFetchOptions = {}
+): Promise<UnifiedBookTags> {
+  const {
+    gDriveSourceName = '',
+    oneDriveSourceName = '',
+    includeClouds = true,
+    primarySourceName
+  } = options;
+
+  const empty: UnifiedBookTags = { tagsByTitle: {}, titles: {} };
+
+  const readDict = async (source: StorageKey, sourceName: string): Promise<UnifiedBookTags> => {
+    try {
+      const handler = getStorageHandler(
+        window,
+        source,
+        sourceName,
+        true,
+        false,
+        ReplicationSaveBehavior.NewOnly,
+        MergeMode.MERGE,
+        MergeMode.MERGE,
+        false
+      );
+      const { tags, titles } = await handler.getBookTags();
+
+      if (!tags) return empty;
+
+      const tagsByTitle: BookTagsDict = {};
+      for (const [key, value] of Object.entries(tags)) {
+        tagsByTitle[normalizeTagTitle(key)] = normalizeTagList(value);
+      }
+
+      return { tagsByTitle, titles: titles || {} };
+    } catch {
+      return empty;
+    }
+  };
+
+  const dicts: UnifiedBookTags[] = [await readDict(StorageKey.BROWSER, '')];
+
+  if (includeClouds) {
+    if (
+      !!gDriveSourceName &&
+      (primarySourceName === undefined || gDriveSourceName === primarySourceName) &&
+      isStorageSourceAvailable(StorageKey.GDRIVE, gDriveSourceName, window)
+    ) {
+      dicts.push(await readDict(StorageKey.GDRIVE, gDriveSourceName));
+    }
+
+    if (
+      !!oneDriveSourceName &&
+      (primarySourceName === undefined || oneDriveSourceName === primarySourceName) &&
+      isStorageSourceAvailable(StorageKey.ONEDRIVE, oneDriveSourceName, window)
+    ) {
+      dicts.push(await readDict(StorageKey.ONEDRIVE, oneDriveSourceName));
+    }
+  }
+
+  const merged: UnifiedBookTags = { tagsByTitle: {}, titles: {} };
+
+  for (const dict of dicts) {
+    merged.tagsByTitle = mergeTagsDicts(merged.tagsByTitle, dict.tagsByTitle);
+    merged.titles = mergeTagsTitles(merged.titles, dict.titles);
+  }
+
+  return merged;
+}
+
+/** Overlay a tags dictionary onto cards by normalized title (union). */
+export function applyTagsDictToCards(
+  cards: BookCardProps[],
+  dict: UnifiedBookTags | undefined
+): BookCardProps[] {
+  if (!dict) return cards;
+
+  return cards.map((card) => {
+    const extra = dict.tagsByTitle[normalizeTagTitle(card.title)];
+    if (!extra?.length) return card;
+
+    return { ...card, tags: normalizeTagList([...(card.tags || []), ...extra]) };
   });
 }

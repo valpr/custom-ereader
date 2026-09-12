@@ -19,6 +19,7 @@ import type {
   ReaderProfilesSyncPayload,
   StatisticsSyncSection
 } from '$lib/data/profiles/profile-types';
+import type { BookTagsDict, BookTagsSyncPayload } from '$lib/data/book-tags';
 import { readingGoalSortFunction } from '$lib/data/reading-goal';
 import { BaseStorageHandler, FilePrefix } from '$lib/data/storage/handler/base-handler';
 import type { ThemeOption } from '$lib/data/theme-option';
@@ -75,6 +76,11 @@ export class BackupStorageHandler extends BaseStorageHandler {
   }
 
   areProfilesPresentAndUpToDate() {
+    BaseStorageHandler.reportProgress();
+    return Promise.resolve(false);
+  }
+
+  areBookTagsPresentAndUpToDate() {
     BaseStorageHandler.reportProgress();
     return Promise.resolve(false);
   }
@@ -298,6 +304,25 @@ export class BackupStorageHandler extends BaseStorageHandler {
     };
   }
 
+  async getBookTags() {
+    const { zipEntry, filename } = this.getRootFile(BaseStorageHandler.bookTagsFilePrefix);
+
+    if (!zipEntry) {
+      return { tags: undefined, titles: undefined, lastTagsModified: 0 };
+    }
+
+    const payload = (await this.extractAsJSON(
+      zipEntry,
+      'Unable to read book tags'
+    )) as BookTagsSyncPayload;
+
+    return {
+      tags: payload?.tagsByTitle,
+      titles: payload?.titles,
+      lastTagsModified: BaseStorageHandler.getBookTagsMetadata(filename).lastTagsModified
+    };
+  }
+
   async getAudioBook() {
     const { zipEntry, filename } = this.findEntry(FilePrefix.AUDIO_BOOK);
 
@@ -439,6 +464,26 @@ export class BackupStorageHandler extends BaseStorageHandler {
       profiles: data,
       customThemes,
       statisticsSettings
+    };
+
+    this.exportZipWriter = await this.addDataToZip(
+      filename,
+      JSON.stringify(payload),
+      this.exportZipWriter
+    );
+  }
+
+  async saveBookTags(
+    tags: BookTagsDict | File,
+    titles: Record<string, string> | undefined,
+    lastTagsModified: number
+  ) {
+    const filename = `${BaseStorageHandler.getBookTagsFileName(lastTagsModified || Date.now())}`;
+    const payload: BookTagsSyncPayload = {
+      version: 1,
+      lastModified: lastTagsModified || Date.now(),
+      tagsByTitle: tags instanceof File ? {} : tags,
+      titles
     };
 
     this.exportZipWriter = await this.addDataToZip(

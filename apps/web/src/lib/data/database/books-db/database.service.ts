@@ -15,6 +15,12 @@ import type {
   BooksDbUserBookmarkData,
   BookmarkColor
 } from '$lib/data/database/books-db/versions/books-db';
+import {
+  getAllTagsFromDict,
+  normalizeTagList,
+  normalizeTagTitle,
+  type BookTagsDict
+} from '$lib/data/book-tags';
 import { Observable, Subject, from } from 'rxjs';
 import { StorageDataType, StorageKey } from '$lib/data/storage/storage-types';
 import {
@@ -30,7 +36,12 @@ import {
   mergeReadingGoals,
   readingGoalSortFunction
 } from '$lib/data/reading-goal';
-import { lastReadingGoalsModified$, readingGoal$, syncTarget$ } from '$lib/data/store';
+import {
+  lastBookTagsModified$,
+  lastReadingGoalsModified$,
+  readingGoal$,
+  syncTarget$
+} from '$lib/data/store';
 
 import type { BaseStorageHandler } from '$lib/data/storage/handler/base-handler';
 import type { BookStatistic } from '$lib/components/statistics/statistics-types';
@@ -321,6 +332,54 @@ export class DatabaseService {
   async getBookmark(dataId: number) {
     const db = await this.db;
     return db.get('bookmark', dataId);
+  }
+
+  /**
+   * Replace the tag list of a single book. Tags are normalized
+   * (lowercase, deduped, capped). Touches `lastBookModified` and the DATA
+   * sync timestamp so the change replicates, plus the book-tags dict marker.
+   * Callers must refresh the handler card cache (see manage page).
+   */
+  async updateBookTags(dataId: number, tags: string[]) {
+    const db = await this.db;
+    const book = await db.get('data', dataId);
+
+    if (!book) {
+      throw new Error('Book not found');
+    }
+
+    const normalized = normalizeTagList(tags);
+    const now = Date.now();
+
+    await db.put('data', {
+      ...book,
+      tags: normalized,
+      lastBookModified: Math.max(book.lastBookModified || 0, now)
+    });
+    await db.put('lastModified', {
+      title: book.title,
+      dataType: StorageDataType.DATA,
+      lastModifiedValue: now
+    });
+
+    lastBookTagsModified$.next(now);
+    this.dataListChanged$.next(undefined);
+
+    return normalized;
+  }
+
+  /** Every tag used by any local book, unique and sorted. Feeds suggestions. */
+  async getAllTags() {
+    const db = await this.db;
+    const books = await db.getAll('data');
+    const dict: BookTagsDict = {};
+
+    for (const book of books) {
+      const tags = normalizeTagList(book.tags);
+      if (tags.length) dict[normalizeTagTitle(book.title)] = tags;
+    }
+
+    return getAllTagsFromDict(dict);
   }
 
   async putBookmark(bookmarkData: BooksDbBookmarkData) {

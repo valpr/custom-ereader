@@ -388,7 +388,12 @@ export const lastExportedTarget$ = writableStringLocalStorageSubject<StorageKey>
 
 export const lastExportedTypes$ = writableArrayLocalStorageSubject<StorageDataType>()(
   'lastExportedTypes',
-  [StorageDataType.PROGRESS, StorageDataType.STATISTICS, StorageDataType.USER_BOOKMARKS]
+  [
+    StorageDataType.PROGRESS,
+    StorageDataType.STATISTICS,
+    StorageDataType.USER_BOOKMARKS,
+    StorageDataType.BOOK_TAGS
+  ]
 );
 
 export const lastBlurredTrackerItems$ = writableSetLocalStorageSubject<string>()(
@@ -422,6 +427,8 @@ export const activeProfileId$ = writableStringLocalStorageSubject()(
 );
 
 export const lastProfilesModified$ = writableNumberLocalStorageSubject()('lastProfilesModified', 0);
+
+export const lastBookTagsModified$ = writableNumberLocalStorageSubject()('lastBookTagsModified', 0);
 
 export const lastStatisticsSettingsModified$ = writableNumberLocalStorageSubject()(
   'lastStatisticsSettingsModified',

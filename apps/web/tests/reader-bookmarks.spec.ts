@@ -6,6 +6,7 @@
 
 import { expect, test } from '@playwright/test';
 import { seedReaderBook } from './fixtures/book-fixture';
+import { currentDbVersion } from '../src/lib/data/database/books-db/versions/books-db';
 
 test.describe('Reader Bookmarks & Autosave Checkpoints', () => {
   test.beforeEach(async ({ page }) => {
@@ -25,9 +26,9 @@ test.describe('Reader Bookmarks & Autosave Checkpoints', () => {
     await page.waitForTimeout(300);
 
     // Verify bookmark store in IndexedDB was updated
-    const bookmarkRecord = await page.evaluate(async () => {
+    const bookmarkRecord = await page.evaluate(async (version) => {
       return new Promise<any>((resolve, reject) => {
-        const req = indexedDB.open('books', 7);
+        const req = indexedDB.open('books', version);
         req.onsuccess = () => {
           const db = req.result;
           const tx = db.transaction('bookmark', 'readonly');
@@ -37,7 +38,7 @@ test.describe('Reader Bookmarks & Autosave Checkpoints', () => {
         };
         req.onerror = () => reject(req.error);
       });
-    });
+    }, currentDbVersion);
 
     expect(bookmarkRecord).toBeDefined();
     expect(bookmarkRecord.dataId).toBe(1);
@@ -64,9 +65,9 @@ test.describe('Reader Bookmarks & Autosave Checkpoints', () => {
     await expect(dialogTitle).toBeHidden();
 
     // Verify stored in IndexedDB userBookmark
-    const userBookmarks = await page.evaluate(async () => {
+    const userBookmarks = await page.evaluate(async (version) => {
       return new Promise<any[]>((resolve, reject) => {
-        const req = indexedDB.open('books', 7);
+        const req = indexedDB.open('books', version);
         req.onsuccess = () => {
           const db = req.result;
           const tx = db.transaction('userBookmark', 'readonly');
@@ -76,7 +77,7 @@ test.describe('Reader Bookmarks & Autosave Checkpoints', () => {
         };
         req.onerror = () => reject(req.error);
       });
-    });
+    }, currentDbVersion);
 
     const created = userBookmarks.find((b) => b.label === 'My Important Note');
     expect(created).toBeDefined();

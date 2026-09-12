@@ -5,6 +5,7 @@
  */
 
 import type { Page } from '@playwright/test';
+import { currentDbVersion } from '../../src/lib/data/database/books-db/versions/books-db';
 
 export interface TestSection {
   reference: string;
@@ -28,6 +29,7 @@ export interface TestBookData {
   lastBookModified: number;
   lastBookOpen: number;
   storageSource?: string;
+  tags?: string[];
 }
 
 export const SAMPLE_BOOK: TestBookData = {
@@ -144,69 +146,72 @@ export async function seedReaderBook(
   await setReaderSettings(page, settings);
 
   // Seed IndexedDB
-  await page.evaluate(async (book) => {
-    const db = await new Promise<IDBDatabase>((resolve, reject) => {
-      const request = indexedDB.open('books', 7);
-      request.onupgradeneeded = () => {
-        const d = request.result;
-        if (!d.objectStoreNames.contains('data')) {
-          const ds = d.createObjectStore('data', { keyPath: 'id', autoIncrement: true });
-          ds.createIndex('title', 'title');
-        }
-        if (!d.objectStoreNames.contains('bookmark')) {
-          d.createObjectStore('bookmark', { keyPath: 'dataId' });
-        }
-        if (!d.objectStoreNames.contains('userBookmark')) {
-          const us = d.createObjectStore('userBookmark', { keyPath: 'id', autoIncrement: true });
-          us.createIndex('dataId', 'dataId');
-        }
-        if (!d.objectStoreNames.contains('lastItem')) {
-          d.createObjectStore('lastItem');
-        }
-        if (!d.objectStoreNames.contains('storageSource')) {
-          d.createObjectStore('storageSource', { keyPath: 'name' });
-        }
-        if (!d.objectStoreNames.contains('statistic')) {
-          const ss = d.createObjectStore('statistic', { keyPath: ['title', 'dateKey'] });
-          ss.createIndex('dateKey', 'dateKey');
-          ss.createIndex('completedBook', ['completedBook', 'title']);
-        }
-        if (!d.objectStoreNames.contains('readingGoal')) {
-          const rs = d.createObjectStore('readingGoal', { keyPath: 'goalStartDate' });
-          rs.createIndex('goalEndDate', 'goalEndDate');
-        }
-        if (!d.objectStoreNames.contains('lastModified')) {
-          d.createObjectStore('lastModified', { keyPath: ['title', 'dataType'] });
-        }
-        if (!d.objectStoreNames.contains('audioBook')) {
-          d.createObjectStore('audioBook', { keyPath: 'title' });
-        }
-        if (!d.objectStoreNames.contains('subtitle')) {
-          d.createObjectStore('subtitle', { keyPath: 'title' });
-        }
-        if (!d.objectStoreNames.contains('handle')) {
-          d.createObjectStore('handle', { keyPath: ['title', 'dataType'] });
-        }
-      };
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
-    });
-
-    await new Promise<void>((resolve, reject) => {
-      const tx = db.transaction(['data', 'bookmark', 'lastItem'], 'readwrite');
-      tx.oncomplete = () => resolve();
-      tx.onerror = () => reject(tx.error);
-
-      tx.objectStore('data').put(book);
-      tx.objectStore('bookmark').put({
-        dataId: book.id,
-        exploredCharCount: 0,
-        progress: 0,
-        lastBookmarkModified: Date.now()
+  await page.evaluate(
+    async ({ book, version }) => {
+      const db = await new Promise<IDBDatabase>((resolve, reject) => {
+        const request = indexedDB.open('books', version);
+        request.onupgradeneeded = () => {
+          const d = request.result;
+          if (!d.objectStoreNames.contains('data')) {
+            const ds = d.createObjectStore('data', { keyPath: 'id', autoIncrement: true });
+            ds.createIndex('title', 'title');
+          }
+          if (!d.objectStoreNames.contains('bookmark')) {
+            d.createObjectStore('bookmark', { keyPath: 'dataId' });
+          }
+          if (!d.objectStoreNames.contains('userBookmark')) {
+            const us = d.createObjectStore('userBookmark', { keyPath: 'id', autoIncrement: true });
+            us.createIndex('dataId', 'dataId');
+          }
+          if (!d.objectStoreNames.contains('lastItem')) {
+            d.createObjectStore('lastItem');
+          }
+          if (!d.objectStoreNames.contains('storageSource')) {
+            d.createObjectStore('storageSource', { keyPath: 'name' });
+          }
+          if (!d.objectStoreNames.contains('statistic')) {
+            const ss = d.createObjectStore('statistic', { keyPath: ['title', 'dateKey'] });
+            ss.createIndex('dateKey', 'dateKey');
+            ss.createIndex('completedBook', ['completedBook', 'title']);
+          }
+          if (!d.objectStoreNames.contains('readingGoal')) {
+            const rs = d.createObjectStore('readingGoal', { keyPath: 'goalStartDate' });
+            rs.createIndex('goalEndDate', 'goalEndDate');
+          }
+          if (!d.objectStoreNames.contains('lastModified')) {
+            d.createObjectStore('lastModified', { keyPath: ['title', 'dataType'] });
+          }
+          if (!d.objectStoreNames.contains('audioBook')) {
+            d.createObjectStore('audioBook', { keyPath: 'title' });
+          }
+          if (!d.objectStoreNames.contains('subtitle')) {
+            d.createObjectStore('subtitle', { keyPath: 'title' });
+          }
+          if (!d.objectStoreNames.contains('handle')) {
+            d.createObjectStore('handle', { keyPath: ['title', 'dataType'] });
+          }
+        };
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
       });
-      tx.objectStore('lastItem').put({ dataId: book.id }, 0);
-    });
-  }, fullBook);
+
+      await new Promise<void>((resolve, reject) => {
+        const tx = db.transaction(['data', 'bookmark', 'lastItem'], 'readwrite');
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+
+        tx.objectStore('data').put(book);
+        tx.objectStore('bookmark').put({
+          dataId: book.id,
+          exploredCharCount: 0,
+          progress: 0,
+          lastBookmarkModified: Date.now()
+        });
+        tx.objectStore('lastItem').put({ dataId: book.id }, 0);
+      });
+    },
+    { book: fullBook, version: currentDbVersion }
+  );
 
   return fullBook;
 }

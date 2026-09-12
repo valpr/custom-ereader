@@ -5,6 +5,7 @@
  */
 
 import { BaseStorageHandler, FilePrefix } from '$lib/data/storage/handler/base-handler';
+import { normalizeTagList, normalizeTagTitle, type BookTagsDict } from '$lib/data/book-tags';
 import type {
   BooksDbAudioBook,
   BooksDbBookData,
@@ -18,6 +19,7 @@ import {
   activeProfileId$,
   customThemes$,
   database,
+  lastBookTagsModified$,
   lastProfilesModified$,
   lastReadingGoalsModified$,
   lastStatisticsSettingsModified$,
@@ -70,7 +72,8 @@ export class BrowserStorageHandler extends BaseStorageHandler {
             ),
             lastBookModified: book.lastBookModified || 0,
             lastBookOpen: book.lastBookOpen || 0,
-            isPlaceholder: !book.elementHtml
+            isPlaceholder: !book.elementHtml,
+            tags: book.tags || []
           });
         }
 
@@ -166,6 +169,12 @@ export class BrowserStorageHandler extends BaseStorageHandler {
 
       fileName = lastGoalModified
         ? BaseStorageHandler.getReadingGoalsFileName(lastGoalModified)
+        : undefined;
+    } else if (fileIdentifier === BaseStorageHandler.bookTagsFilePrefix) {
+      const lastTagsModified = lastBookTagsModified$.getValue();
+
+      fileName = lastTagsModified
+        ? BaseStorageHandler.getBookTagsFileName(lastTagsModified)
         : undefined;
     } else if (fileIdentifier === FilePrefix.AUDIO_BOOK) {
       const audioBook = await this.getAudioBook();
@@ -416,7 +425,8 @@ export class BrowserStorageHandler extends BaseStorageHandler {
         ),
         lastBookModified: storedBookData.lastBookModified || 0,
         lastBookOpen: storedBookData.lastBookOpen || 0,
-        isPlaceholder: !storedBookData.elementHtml
+        isPlaceholder: !storedBookData.elementHtml,
+        tags: storedBookData.tags || []
       });
     }
 
@@ -616,6 +626,101 @@ export class BrowserStorageHandler extends BaseStorageHandler {
     }
 
     return { profiles, customThemes, statisticsSettings, lastProfilesModified };
+  }
+
+  areBookTagsPresentAndUpToDate(referenceFilename: string | undefined) {
+    if (!referenceFilename) {
+      BaseStorageHandler.reportProgress();
+      return Promise.resolve(false);
+    }
+
+    const existingLastModified = lastBookTagsModified$.getValue();
+    const fileName = existingLastModified
+      ? BaseStorageHandler.getBookTagsFileName(existingLastModified)
+      : undefined;
+
+    BaseStorageHandler.reportProgress();
+
+    return Promise.resolve(
+      BaseStorageHandler.checkIsPresentAndUpToDate(
+        BaseStorageHandler.getBookTagsMetadata,
+        'lastTagsModified',
+        referenceFilename,
+        fileName
+      )
+    );
+  }
+
+  async getBookTags() {
+    const db = await database.db;
+    const books = await db.getAll('data');
+    const tagsByTitle: BookTagsDict = {};
+    const titles: Record<string, string> = {};
+
+    for (const book of books) {
+      const tags = normalizeTagList(book.tags);
+      if (!tags.length) continue;
+      const key = normalizeTagTitle(book.title);
+      tagsByTitle[key] = normalizeTagList([...(tagsByTitle[key] || []), ...tags]);
+      if (!titles[key]) titles[key] = book.title;
+    }
+
+    BaseStorageHandler.reportProgress();
+
+    if (!Object.keys(tagsByTitle).length) {
+      return { tags: undefined, titles: undefined, lastTagsModified: 0 };
+    }
+
+    let lastTagsModified = lastBookTagsModified$.getValue();
+    if (!lastTagsModified) {
+      lastTagsModified = Date.now();
+      lastBookTagsModified$.next(lastTagsModified);
+    }
+
+    return { tags: tagsByTitle, titles, lastTagsModified };
+  }
+
+  async saveBookTags(
+    data: BookTagsDict | File,
+    _titles: Record<string, string> | undefined,
+    lastTagsModified: number
+  ) {
+    if (data instanceof File) {
+      BaseStorageHandler.reportProgress();
+      return;
+    }
+
+    BaseStorageHandler.reportProgress(0.5);
+
+    // Tags are additive sets: union per title, unless the save behavior is
+    // Overwrite (export "replace"), in which case the incoming dict wins so
+    // tag deletions propagate.
+    const isOverwrite = this.saveBehavior === ReplicationSaveBehavior.Overwrite;
+    const db = await database.db;
+    const books = await db.getAll('data');
+
+    for (const book of books) {
+      const incoming = normalizeTagList(data[normalizeTagTitle(book.title)]);
+      const current = normalizeTagList(book.tags);
+
+      if (!incoming.length) {
+        if (isOverwrite && current.length) {
+          await db.put('data', { ...book, tags: [] });
+          this.addBookCard(book.title, { tags: [] });
+        }
+        continue;
+      }
+
+      const merged = isOverwrite ? incoming : normalizeTagList([...current, ...incoming]);
+
+      if (JSON.stringify(merged) !== JSON.stringify(current)) {
+        await db.put('data', { ...book, tags: merged });
+        this.addBookCard(book.title, { tags: merged });
+      }
+    }
+
+    lastBookTagsModified$.next(lastTagsModified || Date.now());
+    database.dataListChanged$.next(this);
   }
 
   async saveAudioBook(data: BooksDbAudioBook | File) {
