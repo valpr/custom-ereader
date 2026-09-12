@@ -105,6 +105,7 @@
     width: 100%;
     height: 6px;
     background-color: var(--astryx-color-surface-active, #e4e4e7);
+    border: 1px solid var(--astryx-color-border-strong, #a1a1aa);
     border-radius: var(--astryx-radius-full, 9999px);
     overflow: hidden;
     pointer-events: none;
