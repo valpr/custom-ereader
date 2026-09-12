@@ -10,6 +10,7 @@
   import { getCardDateInfo, getSourceLabel } from '$lib/components/book-card/book-card-info';
   import Popover from '$lib/components/popover/popover.svelte';
   import { CLOSE_POPOVER } from '$lib/data/events';
+  import { StorageKey } from '$lib/data/storage/storage-types';
   import { dummyFn } from '$lib/functions/utils';
   import { IconButton, List, ListItem } from '@custom-ereader/ui';
   import { createEventDispatcher } from 'svelte';
@@ -92,16 +93,18 @@
             </span>
             <div slot="content" class="w-56 py-1">
               <List density="compact" divided={false}>
-                <ListItem
-                  clickable
-                  headline="Upload to primary cloud"
-                  description="Copy this book to your sync target"
-                  on:click={(event) => onUploadMenuClick(bookCard.id, event)}
-                >
-                  <svelte:fragment slot="prefix">
-                    <Fa icon={faCloudArrowUp} />
-                  </svelte:fragment>
-                </ListItem>
+                {#if (bookCard.sources || []).includes(StorageKey.BROWSER)}
+                  <ListItem
+                    clickable
+                    headline="Upload to primary cloud"
+                    description="Copy this book to your sync target"
+                    on:click={(event) => onUploadMenuClick(bookCard.id, event)}
+                  >
+                    <svelte:fragment slot="prefix">
+                      <Fa icon={faCloudArrowUp} />
+                    </svelte:fragment>
+                  </ListItem>
+                {/if}
                 <ListItem
                   clickable
                   headline="View details"

@@ -96,4 +96,119 @@ test.describe('Book Card Options Menu', () => {
     await bookCard.hover();
     await expect(page.locator('div[role="button"].bg-red-400').first()).toBeVisible();
   });
+
+  test('hides upload for cloud-only books without a local browser copy', async ({ page }) => {
+    const cloudTitle = 'Cloud Only Book (Playwright Test Book)';
+
+    // Boot with a primary GDrive target so the library lists the mocked cloud.
+    await page.addInitScript(() => {
+      window.localStorage.setItem('syncTarget', 'test-gdrive-cloud');
+      window.localStorage.setItem('gDriveStorageSource', 'test-gdrive-cloud');
+    });
+
+    // Seed the full local schema plus one local book (distinct title, so the
+    // mocked cloud title below surfaces as its own cloud-only card).
+    await seedReaderBook(page);
+
+    // Seed a connected custom GDrive source with a plain (unencrypted)
+    // RemoteContext so listing never needs an unlock dialog.
+    await page.evaluate(async () => {
+      const db = await new Promise<IDBDatabase>((resolve, reject) => {
+        const request = indexedDB.open('books');
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+
+      await new Promise<void>((resolve, reject) => {
+        const tx = db.transaction('storageSource', 'readwrite');
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+        tx.objectStore('storageSource').put({
+          name: 'test-gdrive-cloud',
+          type: 'gdrive',
+          data: {
+            clientId: 'test-client-id',
+            clientSecret: 'test-client-secret',
+            refreshToken: 'test-refresh-token',
+            accountEmail: 'test@example.com',
+            accountName: 'Test'
+          },
+          storedInManager: false,
+          encryptionDisabled: true,
+          lastSourceModified: Date.now(),
+          disconnected: false
+        });
+      });
+    });
+
+    await page.route('https://oauth2.googleapis.com/token', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          access_token: 'test-access-token',
+          expires_in: '3600',
+          scope: 'test'
+        })
+      })
+    );
+
+    // Mock a Drive library holding one title that exists only in the cloud:
+    // root folder lookup, title-folder listing, then the bookdata file inside it.
+    await page.route('https://www.googleapis.com/drive/v3/files**', (route) => {
+      const url = new URL(route.request().url());
+      const query = url.searchParams.get('q') || '';
+
+      if (query.includes('name = ')) {
+        return route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ files: [{ id: 'root-id' }] })
+        });
+      }
+
+      if (query.includes('cloud-title-id')) {
+        return route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            files: [
+              {
+                id: 'bookdata-id',
+                name: 'bookdata_1_7_500_1700000000000_1700000000000.zip',
+                parents: ['cloud-title-id']
+              }
+            ]
+          })
+        });
+      }
+
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ files: [{ id: 'cloud-title-id', name: cloudTitle }] })
+      });
+    });
+
+    // Both the seeded local book and the cloud-only title render as cards.
+    await page.goto('/manage');
+
+    const localMenuBtn = page.getByRole('button', {
+      name: `Book options for ${SAMPLE_BOOK.title}`
+    });
+    await expect(localMenuBtn).toBeVisible({ timeout: 20000 });
+
+    const menuBtn = page.getByRole('button', { name: `Book options for ${cloudTitle}` });
+    await expect(menuBtn).toBeVisible({ timeout: 20000 });
+
+    // Local book still offers upload ...
+    await localMenuBtn.click();
+    await expect(page.getByRole('button', { name: 'Upload to primary cloud' })).toBeVisible();
+
+    // ... but the cloud-only menu opened here offers details only.
+    // (Clicking its kebab dismisses the local popover via click-outside.)
+    await menuBtn.click();
+    await expect(page.getByRole('button', { name: 'View details' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Upload to primary cloud' })).toHaveCount(0);
+  });
 });
