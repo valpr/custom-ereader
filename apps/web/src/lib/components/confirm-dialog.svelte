@@ -23,9 +23,11 @@
 <DialogTemplate>
   <svelte:fragment slot="header">{dialogHeader}</svelte:fragment>
   <svelte:fragment slot="content">
-    <p style={contentStyles}>{dialogMessage}</p>
+    <p class="min-w-0 break-words [overflow-wrap:anywhere]" style={contentStyles}>
+      {dialogMessage}
+    </p>
   </svelte:fragment>
-  <div class="flex grow justify-between" slot="footer">
+  <div class="flex min-w-0 grow flex-wrap justify-between gap-2" slot="footer">
     <button class={buttonClasses} class:invisible={!showCancel} on:click={() => closeDialog(true)}>
       Cancel
       <Ripple />
