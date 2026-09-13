@@ -99,24 +99,24 @@
     }
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  function setTitlesToFilter(_: any) {
-    const entries = [...statisticsTitleFilters.entries()];
-
-    titlesToFilter = entries.map(([title, isSelected]) => ({ title, isSelected }));
+  function setTitlesToFilter(filters: Map<string, boolean>) {
+    titlesToFilter = [...filters.entries()].map(([title, isSelected]) => ({
+      title,
+      isSelected
+    }));
 
     applyTitleFilters();
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  function applyTitleFilters(..._: any) {
+  function applyTitleFilters(dateRangeOnly?: boolean, showSelectedOnly?: boolean) {
+    const rangeOnly = dateRangeOnly ?? $lastStatisticsFilterDateRangeOnly$;
+    const selectedOnly = showSelectedOnly ?? $lastStatisticsFilterShowSelectedTitlesOnly$;
     tick().then(() => {
       filteredTitles = titlesToFilter.filter(
         (filterItem) =>
           (!titleFilter || filterItem.title.includes(titleFilter)) &&
-          (!$lastStatisticsFilterDateRangeOnly$ ||
-            titlesInStatisticsDateRange.has(filterItem.title)) &&
-          (!$lastStatisticsFilterShowSelectedTitlesOnly$ || filterItem.isSelected)
+          (!rangeOnly || titlesInStatisticsDateRange.has(filterItem.title)) &&
+          (!selectedOnly || filterItem.isSelected)
       );
 
       updateStatisticsTitleFilterRowsPerPage(currentStatisticsTitleFilterPage);

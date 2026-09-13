@@ -299,11 +299,14 @@
   onDestroy(() => dialogManager.dialogs$.next([]));
 
   function bookmarkToProgress(b: BooksDbBookmarkData | undefined) {
-    return b?.progress
-      ? {
-          progress: typeof b.progress === 'string' ? +b.progress.slice(0, -1) : b.progress,
-          lastBookmarkModified: b.lastBookmarkModified || 0
-        }
+    // Modern bookmarks store a 0-1 fraction; legacy ones stored percent
+    // strings ('42%'). Normalize to 0-1 so the progress bar, sort, and
+    // filters share one unit.
+    const raw = b?.progress;
+    const progress =
+      typeof raw === 'string' ? (Number(raw.slice(0, -1)) || 0) / 100 : Number(raw) || 0;
+    return b
+      ? { progress, lastBookmarkModified: b.lastBookmarkModified || 0 }
       : { progress: 0, lastBookmarkModified: 0 };
   }
 

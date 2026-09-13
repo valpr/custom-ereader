@@ -5,6 +5,7 @@
  */
 
 import type { LoadData } from '../types';
+import { logger } from '$lib/data/logger';
 import extractEpub from './extract-epub';
 import generateEpubHtml from './generate-epub-html';
 import generateEpubStyleSheet from './generate-epub-style-sheet';
@@ -67,7 +68,7 @@ export default async function loadEpub(
 
   if (!displayData.language) {
     displayData.language = 'ja';
-    console.warn(`no language data found for ${file.name} - fallback to ja`);
+    logger.warn(`no language data found for ${file.name} - fallback to ja`);
   }
 
   const blobData = reduceObjToBlobs(data);
