@@ -15,6 +15,7 @@
     TopBar
   } from '@custom-ereader/ui';
   import { pagePath } from '$lib/data/env';
+  import { logger } from '$lib/data/logger';
   import { normalizeTag } from '$lib/data/book-tags';
   import {
     DEFAULT_LIBRARY_FILTERS,
@@ -300,7 +301,7 @@
     try {
       $fileCountData$ = JSON.parse(await FilesystemStorageHandler.readFileObject(fileList[0]));
     } catch ({ message }: any) {
-      console.error(`failed to read file: ${message}`);
+      logger.error(`failed to read file: ${message}`);
     }
   }
 
