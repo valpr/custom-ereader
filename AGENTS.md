@@ -58,3 +58,13 @@ Mobile CSS rules:
 - Use dynamic viewport units with a fallback (`max-h-[90vh] max-h-[90dvh]`), never bare `100vh`.
 - Every dialog surface/wrapper needs `max-h` + `overflow-y-auto`; use fluid widths (`w-full max-w-...`), never fixed widths like `w-64`.
 - Honor `env(safe-area-inset-*)` padding, keep touch targets >= 44px, and keep suggestions/dropdowns reachable inside scrolling containers.
+
+### 4.2 Dialog text containment
+
+Dialog content must contain its text at 360–412px widths without spilling past the surface:
+
+- **App-generated text** (labels, dates, source lists, descriptions, errors): wrap with `break-words` + `[overflow-wrap:anywhere]` (the latter catches unbreakable timestamps/URLs/tokens).
+- **User/outside-generated text** (book titles, tags, filenames, profile/theme names, emails): `truncate` + `min-w-0` + `title=` tooltip with the full text.
+- Never use fixed-width children (`w-64`, `max-w-xs`) inside dialog content; use `w-full max-w-full`. Flex/grid children need `min-w-0` (flex items default to `min-width: auto` and won't shrink).
+- The shell (`dialog-template.svelte` content wrapper) already applies `min-w-0` + `overflow-wrap: anywhere` as a backstop — per-dialog classes above are still required so truncation/tooltips behave correctly.
+- Mobile specs for dialogs must seed a long unbroken string (e.g. 40+ char title) and assert no descendant overflows the dialog.

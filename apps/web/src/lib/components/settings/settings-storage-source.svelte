@@ -253,7 +253,7 @@
 
 <DialogTemplate>
   <div
-    class="flex flex-col p-2 max-h-[50vh] overflow-auto sm:max-h-[75vh]"
+    class="flex flex-col min-w-0 p-2 max-h-[50vh] max-h-[50dvh] overflow-auto sm:max-h-[75vh] sm:max-h-[75dvh]"
     slot="content"
     bind:this={containerElm}
   >
@@ -296,7 +296,9 @@
         Select Directory
         <Ripple />
       </button>
-      <div class="my-4 text-center">{handleFsPath || 'Nothing selected'}</div>
+      <div class="my-4 text-center min-w-0 break-words [overflow-wrap:anywhere]">
+        {handleFsPath || 'Nothing selected'}
+      </div>
     {:else}
       <input required type="text" placeholder="Client ID" bind:value={storageSourceClientId} />
       <input
@@ -353,9 +355,9 @@
       </div>
     {/if}
     {#if storageSourceStoredInManager || storageSourceEncryptionDisabled}
-      <div class="flex items-center my-4 max-w-xs">
+      <div class="flex items-center min-w-0 my-4 max-w-full">
         <Fa icon={faTriangleExclamation} />
-        <span class="ml-2">
+        <span class="ml-2 min-w-0 break-words">
           Make sure to understand the
           <a
             class="text-red-500"
@@ -369,7 +371,7 @@
       </div>
     {/if}
     {#if error}
-      <div class="text-red-500">Error: {error}</div>
+      <div class="text-red-500 min-w-0 break-words [overflow-wrap:anywhere]">Error: {error}</div>
     {/if}
   </div>
   <div class="mt-4 flex grow justify-between" slot="footer">

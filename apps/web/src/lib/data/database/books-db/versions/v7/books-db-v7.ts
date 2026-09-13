@@ -7,15 +7,7 @@
 import type BooksDbV6 from '$lib/data/database/books-db/versions/v6/books-db-v6';
 
 export type BookmarkColor =
-  | 'blue'
-  | 'red'
-  | 'green'
-  | 'yellow'
-  | 'purple'
-  | 'pink'
-  | 'orange'
-  | 'teal'
-  | 'gray';
+  'blue' | 'red' | 'green' | 'yellow' | 'purple' | 'pink' | 'orange' | 'teal' | 'gray';
 
 export const BOOKMARK_COLORS: Record<BookmarkColor, string> = {
   blue: '#3b82f6',

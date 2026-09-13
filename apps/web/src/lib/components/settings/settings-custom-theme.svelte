@@ -191,7 +191,7 @@
 <DialogTemplate>
   <div slot="content">
     <div
-      class="grid grid-cols-1 gap-2 items-center overflow-auto max-h-[60vh] sm:grid-cols-[auto_auto_5rem] sm:gap-4"
+      class="grid grid-cols-1 gap-2 items-center overflow-auto max-h-[60vh] max-h-[60dvh] min-w-0 sm:grid-cols-[auto_auto_5rem] sm:gap-4"
     >
       <select class="sm:col-span-2" bind:value={themeToCopy}>
         {#each existingThemes as theme (theme.id)}

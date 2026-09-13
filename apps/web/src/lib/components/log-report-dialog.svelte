@@ -184,7 +184,7 @@
 <DialogTemplate>
   <svelte:fragment slot="header">{title}</svelte:fragment>
   <svelte:fragment slot="content">
-    <p>{message}</p>
+    <p class="min-w-0 break-words [overflow-wrap:anywhere]">{message}</p>
   </svelte:fragment>
   <svelte:fragment slot="footer">
     <a class={buttonClasses} href={issuesUrl} target="_blank" rel="noreferrer">
