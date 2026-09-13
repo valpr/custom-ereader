@@ -520,15 +520,13 @@ export class StorageOAuthManager {
   }
 
   private async doRefreshToken(): Promise<OAuthTokenData | undefined> {
-    if (
-      !(
-        this.refreshEndpoint &&
-        this.storageSourceName &&
-        this.remoteData?.clientId &&
-        (this.storageType !== StorageKey.GDRIVE || this.remoteData.clientSecret) &&
-        this.remoteData.refreshToken
-      )
-    ) {
+    if (!(
+      this.refreshEndpoint &&
+      this.storageSourceName &&
+      this.remoteData?.clientId &&
+      (this.storageType !== StorageKey.GDRIVE || this.remoteData.clientSecret) &&
+      this.remoteData.refreshToken
+    )) {
       // Missing credentials/refresh token on an existing source means the
       // session cannot be silently renewed — surface as needing reconnect
       // rather than plain disconnected so background sync defers to in-app UI.
