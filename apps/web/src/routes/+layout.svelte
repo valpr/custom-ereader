@@ -161,7 +161,7 @@
     ></div>
 
     <div
-      class="relative top-1/2 left-1/2 inline-block max-w-[80vw] -translate-x-1/2 -translate-y-1/2"
+      class="relative top-1/2 left-1/2 inline-block w-[calc(100vw-2rem)] max-w-[calc(100vw-2rem)] max-h-[90vh] max-h-[90dvh] overflow-y-auto p-4 sm:w-auto sm:max-w-[80vw] -translate-x-1/2 -translate-y-1/2"
     >
       {#each dialogs as dialog}
         {#if typeof dialog.component === 'string'}
