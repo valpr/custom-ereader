@@ -20,7 +20,20 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
+      // The mobile smoke suite lives in tests/mobile/ and runs on the
+      // `mobile` project instead, so the desktop run stays as-is.
+      testIgnore: '**/mobile/**',
       use: { ...devices['Desktop Chrome'] }
+    },
+    {
+      name: 'mobile',
+      // Pixel 9 UA/touch profile, but with the real-world Chrome CSS viewport
+      // (412x915). Playwright's bundled Pixel 9 descriptor defaults to a
+      // 360-wide viewport, so override it here. Use --project=chromium or
+      // --project=mobile to run a single project locally.
+      // Smoke suite only: keeps the mobile gate fast.
+      testMatch: '**/mobile/**',
+      use: { ...devices['Pixel 9'], viewport: { width: 412, height: 915 } }
     }
   ],
   webServer: {
