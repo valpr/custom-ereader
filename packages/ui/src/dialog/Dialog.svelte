@@ -158,6 +158,8 @@
 
   .astryx-dialog-titles {
     flex: 1;
+    min-width: 0;
+    overflow-wrap: anywhere;
   }
 
   .astryx-dialog-title {

@@ -105,34 +105,43 @@
 
 <DialogTemplate>
   <svelte:fragment slot="header">
-    <span class="break-words">{title}</span>
+    <span class="block truncate" {title}>{title}</span>
   </svelte:fragment>
   <svelte:fragment slot="content">
-    <div data-testid="book-details-dialog" class="w-full max-w-sm">
+    <div data-testid="book-details-dialog" class="w-full max-w-full min-w-0">
       <div>Sources:</div>
-      <div class="w-full break-words">
+      <div class="w-full min-w-0 break-words [overflow-wrap:anywhere]">
         {sourceLabels.length ? sourceLabels.join(', ') : 'No Data'}
       </div>
       <div class="mt-4">Progress:</div>
-      <div class="w-full">{progressLabel}</div>
+      <div class="w-full min-w-0 break-words [overflow-wrap:anywhere]">{progressLabel}</div>
       <div class="mt-4">Characters:</div>
-      <div class="w-full">{characters || 'No Data'}</div>
+      <div class="w-full min-w-0 break-words [overflow-wrap:anywhere]">
+        {characters || 'No Data'}
+      </div>
       <div class="mt-4">Last Read:</div>
-      <div class="w-full">{getCardDateInfo(lastBookOpen)}</div>
+      <div class="w-full min-w-0 break-words [overflow-wrap:anywhere]">
+        {getCardDateInfo(lastBookOpen)}
+      </div>
       <div class="mt-4">Bookmarked:</div>
-      <div class="w-full">{getCardDateInfo(lastBookmarkModified)}</div>
+      <div class="w-full min-w-0 break-words [overflow-wrap:anywhere]">
+        {getCardDateInfo(lastBookmarkModified)}
+      </div>
       <div class="mt-4">Last Update:</div>
-      <div class="w-full">{getCardDateInfo(lastBookModified)}</div>
+      <div class="w-full min-w-0 break-words [overflow-wrap:anywhere]">
+        {getCardDateInfo(lastBookModified)}
+      </div>
 
       <div class="mt-4" data-testid="book-tags-editor">
         <label for="book-tags-input" class="mb-1 block">Tags:</label>
         {#if isCloudOnly}
           <div class="text-sm opacity-70">
             {#if tags.length}
-              <div class="flex flex-wrap gap-1">
+              <div class="flex flex-wrap gap-1 min-w-0">
                 {#each tags as tag (tag)}
                   <span
-                    class="rounded-full bg-[var(--astryx-color-surface,#ffffff)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--astryx-color-fg-secondary,#52525b)] shadow"
+                    class="rounded-full bg-[var(--astryx-color-surface,#ffffff)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--astryx-color-fg-secondary,#52525b)] shadow max-w-full truncate min-w-0"
+                    title={tag}
                   >
                     {tag}
                   </span>
@@ -144,12 +153,13 @@
             <div class="mt-1">Download this book to edit its tags.</div>
           </div>
         {:else}
-          <div class="flex flex-wrap gap-1">
+          <div class="flex flex-wrap gap-1 min-w-0">
             {#each tags as tag (tag)}
               <span
-                class="inline-flex items-center gap-1 rounded-full bg-[var(--astryx-color-primary-subtle,rgba(99,102,241,0.15))] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--astryx-color-primary,#6366f1)]"
+                class="inline-flex items-center gap-1 rounded-full bg-[var(--astryx-color-primary-subtle,rgba(99,102,241,0.15))] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--astryx-color-primary,#6366f1)] max-w-full min-w-0"
+                title={tag}
               >
-                {tag}
+                <span class="truncate min-w-0">{tag}</span>
                 <button
                   type="button"
                   data-testid="remove-tag-{tag}"

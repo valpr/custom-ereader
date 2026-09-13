@@ -39,7 +39,9 @@
 </script>
 
 <DialogTemplate>
-  <svelte:fragment slot="header">{title}</svelte:fragment>
+  <svelte:fragment slot="header">
+    <span class="block truncate" {title}>{title}</span>
+  </svelte:fragment>
   <div class="flex flex-col gap-4 text-sm text-gray-800 sm:text-base" slot="content">
     <div>
       <label for="bookmark-label" class="mb-1 block font-medium">Label</label>

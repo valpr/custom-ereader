@@ -28,7 +28,7 @@
 <DialogTemplate>
   <svelte:fragment slot="header">
     {#if titles.length === 1}
-      Delete “{singleTitle}”?
+      <span class="block truncate" title={singleTitle}>Delete “{singleTitle}”?</span>
     {:else}
       Delete {titles.length} {pluralize(titles.length, 'Book', false)}?
     {/if}
@@ -55,9 +55,9 @@
       {/if}
     </p>
     {#if cloudSummary}
-      <p class="flex items-center mt-4">
+      <p class="flex items-center min-w-0 mt-4">
         <input id="del-cloud" type="checkbox" bind:checked={deleteFromCloud} />
-        <label class="ml-2" for="del-cloud"
+        <label class="ml-2 min-w-0" for="del-cloud"
           >Also delete from cloud sources where these books exist</label
         >
       </p>
@@ -67,7 +67,7 @@
       local and cloud copies).
     </p>
   </svelte:fragment>
-  <div class="flex grow justify-between" slot="footer">
+  <div class="flex min-w-0 grow flex-wrap justify-between gap-2" slot="footer">
     <button class={buttonClasses} on:click={() => closeDialog(true)}>
       Cancel
       <Ripple />

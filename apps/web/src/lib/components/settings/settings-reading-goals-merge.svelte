@@ -311,7 +311,7 @@
         class:md:flex-col={archivalOptions?.length > 3}
       >
         {#each archivalOptions as archivalOption (archivalOption.label)}
-          <div class="flex items-center">
+          <div class="flex items-center min-w-0">
             <input
               type="radio"
               name="action"
@@ -322,16 +322,22 @@
               bind:group={selectedArchiveOption}
               on:change={checkDates}
             />
-            <span class:opacity-50={!archiveReadingGoal}>{archivalOption.label}</span>
+            <span class="min-w-0 break-words" class:opacity-50={!archiveReadingGoal}
+              >{archivalOption.label}</span
+            >
           </div>
         {/each}
       </div>
     {/if}
     {#if readingGoalToReplaceMessage}
-      <details class="cursor-pointer max-h-[6rem] sm:max-h-[10rem] overflow-auto mt-4">
-        <summary>{readingGoalToReplaceMessage}</summary>
+      <details
+        class="cursor-pointer max-h-[6rem] sm:max-h-[10rem] overflow-auto mt-4 min-w-0 break-words [overflow-wrap:anywhere]"
+      >
+        <summary class="min-w-0 break-words [overflow-wrap:anywhere]">
+          {readingGoalToReplaceMessage}
+        </summary>
         {#each readingGoalsToReplace as goalToReplace (goalToReplace.goalStartDate)}
-          <div class="my-2 p-1">
+          <div class="my-2 p-1 min-w-0 break-words">
             {getDateRangeLabel(goalToReplace.goalStartDate, goalToReplace.goalEndDate)} / {secondsToMinutes(
               goalToReplace.timeGoal
             )} min / {goalToReplace.characterGoal}
