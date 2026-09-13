@@ -28,6 +28,14 @@ export function writableStorageSubject<T>(
 function getStoredOrDefault(storage: Storage) {
   return <T>(key: string, defaultVal: T, mapFn: (s: string) => T) => {
     const stored = storage.getItem(key);
-    return stored ? mapFn(stored) : defaultVal;
+    if (!stored) return defaultVal;
+    // A corrupt value (hand-edited or written by an older schema) must not
+    // throw during store init and break boot. Drop it and fall back.
+    try {
+      return mapFn(stored);
+    } catch {
+      storage.removeItem(key);
+      return defaultVal;
+    }
   };
 }
