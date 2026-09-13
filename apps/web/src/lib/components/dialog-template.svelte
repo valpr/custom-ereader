@@ -2,7 +2,7 @@
 </script>
 
 <section
-  class="astryx-dialog-surface mdc-elevation--z24 rounded-xl bg-[var(--astryx-color-surface-elevated,var(--astryx-color-surface,#ffffff))] text-[var(--astryx-color-fg-primary,#18181b)] border border-[var(--astryx-color-border-subtle,transparent)] p-6 transition-colors shadow-2xl"
+  class="astryx-dialog-surface mdc-elevation--z24 rounded-xl bg-[var(--astryx-color-surface-elevated,var(--astryx-color-surface,#ffffff))] text-[var(--astryx-color-fg-primary,#18181b)] border border-[var(--astryx-color-border-subtle,transparent)] p-6 transition-colors shadow-2xl max-h-[85vh] max-h-[85dvh] w-full max-w-[calc(100vw-3rem)] overflow-y-auto"
 >
   <h2 class="weight-medium mb-5 text-xl text-[var(--astryx-color-fg-primary,#18181b)]">
     <slot name="header" />

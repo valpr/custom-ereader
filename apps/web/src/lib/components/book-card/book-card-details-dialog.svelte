@@ -41,7 +41,9 @@
   $: if (!suggestionsOpen) {
     highlightedIndex = -1;
   }
-  $: dirty = JSON.stringify([...tags].sort()) !== JSON.stringify(normalizeTagList(initialTags));
+  $: dirty =
+    JSON.stringify([...tags].sort()) !== JSON.stringify(normalizeTagList(initialTags)) ||
+    !!normalizeTag(inputValue);
 
   function addTag(raw: string) {
     const normalized = normalizeTag(raw);
@@ -83,7 +85,11 @@
   }
 
   async function save() {
-    if (!onSaveTags || saving) return;
+    if (!onSaveTags || saving || isCloudOnly) return;
+    // Commit any pending input so typing a tag then clicking Save directly works.
+    if (normalizeTag(inputValue)) {
+      addTag(inputValue);
+    }
     saving = true;
     saveError = '';
     try {
@@ -102,19 +108,21 @@
     <span class="break-words">{title}</span>
   </svelte:fragment>
   <svelte:fragment slot="content">
-    <div data-testid="book-details-dialog" class="w-64">
+    <div data-testid="book-details-dialog" class="w-full max-w-sm">
       <div>Sources:</div>
-      <div class="w-64">{sourceLabels.length ? sourceLabels.join(', ') : 'No Data'}</div>
+      <div class="w-full break-words">
+        {sourceLabels.length ? sourceLabels.join(', ') : 'No Data'}
+      </div>
       <div class="mt-4">Progress:</div>
-      <div class="w-64">{progressLabel}</div>
+      <div class="w-full">{progressLabel}</div>
       <div class="mt-4">Characters:</div>
-      <div class="w-64">{characters || 'No Data'}</div>
+      <div class="w-full">{characters || 'No Data'}</div>
       <div class="mt-4">Last Read:</div>
-      <div class="w-64">{getCardDateInfo(lastBookOpen)}</div>
+      <div class="w-full">{getCardDateInfo(lastBookOpen)}</div>
       <div class="mt-4">Bookmarked:</div>
-      <div class="w-64">{getCardDateInfo(lastBookmarkModified)}</div>
+      <div class="w-full">{getCardDateInfo(lastBookmarkModified)}</div>
       <div class="mt-4">Last Update:</div>
-      <div class="w-64">{getCardDateInfo(lastBookModified)}</div>
+      <div class="w-full">{getCardDateInfo(lastBookModified)}</div>
 
       <div class="mt-4" data-testid="book-tags-editor">
         <label for="book-tags-input" class="mb-1 block">Tags:</label>
@@ -205,7 +213,12 @@
   </svelte:fragment>
   <div class="flex grow justify-end gap-2" slot="footer">
     {#if !isCloudOnly && onSaveTags}
-      <button class={buttonClasses} disabled={saving || !dirty} on:click={save}>
+      <button
+        class={buttonClasses}
+        data-testid="save-tags"
+        disabled={saving || !dirty}
+        on:click={save}
+      >
         {saving ? 'Saving...' : 'Save tags'}
         <Ripple />
       </button>

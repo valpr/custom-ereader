@@ -119,6 +119,7 @@
     writing-mode: horizontal-tb;
     width: 100%;
     max-height: calc(100vh - 32px);
+    max-height: calc(100dvh - 32px);
     display: flex;
     flex-direction: column;
     background-color: var(--astryx-color-surface, #ffffff);
@@ -143,6 +144,7 @@
   [data-size='full'] {
     max-width: calc(100vw - 32px);
     height: calc(100vh - 32px);
+    height: calc(100dvh - 32px);
   }
 
   .astryx-dialog-header {
