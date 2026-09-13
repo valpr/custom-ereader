@@ -1,6 +1,7 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   import { pagePath } from '$lib/data/env';
+  import { logger } from '$lib/data/logger';
   import { database } from '$lib/data/store';
   import { formatPageTitle } from '$lib/functions/format-page-title';
   import { observe } from '$lib/functions/rxjs/use-observable';
@@ -12,7 +13,7 @@
   const autoNavigate$ = database.lastItem$.pipe(
     map((lastItem) => (lastItem ? `${pagePath}/b?id=${lastItem.dataId}` : targetManage)),
     catchError((err) => {
-      console.error('Error loading last item, navigating to manage:', err);
+      logger.error('Error loading last item, navigating to manage:', err);
       return of(targetManage);
     }),
     tap((target) => {
