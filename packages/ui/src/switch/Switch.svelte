@@ -90,7 +90,7 @@
     align-items: center;
     box-sizing: border-box;
     background-color: var(--astryx-color-surface-active, #e4e4e7);
-    border: 1px solid var(--astryx-color-border-default, #d4d4d8);
+    border: 1px solid var(--astryx-color-border-strong, #a1a1aa);
     border-radius: var(--astryx-radius-full, 9999px);
     cursor: pointer;
     transition:
@@ -116,6 +116,7 @@
   .astryx-switch-thumb {
     position: absolute;
     background-color: #ffffff;
+    border: 1px solid var(--astryx-color-border-strong, #a1a1aa);
     border-radius: 50%;
     box-shadow: var(--astryx-elevation-sm, 0 1px 2px rgba(0, 0, 0, 0.2));
     transition:
@@ -124,7 +125,8 @@
   }
 
   .astryx-switch.is-checked .astryx-switch-thumb {
-    background-color: var(--astryx-color-fg-on-brand, #18181b);
+    background-color: var(--astryx-color-fg-on-brand, #ffffff);
+    border-color: transparent;
   }
 
   /* Sizes */

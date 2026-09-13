@@ -250,11 +250,11 @@
   /* Variants */
   [data-variant='filled'] .astryx-select-box {
     background-color: var(--astryx-color-surface-subtle, #f4f4f5);
-    border-color: transparent;
+    border-color: var(--astryx-color-border-default, #d4d4d8);
   }
   [data-variant='filled'] .astryx-select-box:hover {
     background-color: var(--astryx-color-surface-active, #e4e4e7);
-    border-color: transparent;
+    border-color: var(--astryx-color-border-strong, #a1a1aa);
   }
   [data-variant='filled'].is-focused .astryx-select-box {
     background-color: var(--astryx-color-surface, #ffffff);
