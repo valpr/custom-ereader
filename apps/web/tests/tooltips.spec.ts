@@ -90,7 +90,7 @@ test.describe('Astryx Tooltip Component & Settings Page Tooltips', () => {
     await page.goto('/manage');
     await page.waitForLoadState('networkidle');
 
-    const importButton = page.getByRole('button', { name: 'Import', exact: true });
+    const importButton = page.getByTestId('library-import-button');
     await expect(importButton).toBeVisible();
 
     await importButton.hover();
@@ -112,7 +112,7 @@ test.describe('Astryx Tooltip Component & Settings Page Tooltips', () => {
     await page.goto('/manage');
     await page.waitForLoadState('networkidle');
 
-    const importButton = page.getByRole('button', { name: 'Import', exact: true });
+    const importButton = page.getByTestId('library-import-button');
     await expect(importButton).toBeVisible();
 
     await importButton.focus();

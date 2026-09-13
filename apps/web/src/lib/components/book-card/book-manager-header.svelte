@@ -193,12 +193,12 @@
   let isOldUrl = false;
   let showLoadCount = false;
 
-  function isFilterActive(key: StorageKey | null): boolean {
-    return key !== null && $librarySourceFilter$.size === 1 && $librarySourceFilter$.has(key);
+  function isFilterActive(filterSet: Set<StorageKey>, key: StorageKey | null): boolean {
+    return key !== null && filterSet.size === 1 && filterSet.has(key);
   }
 
-  function isAllActive(): boolean {
-    return $librarySourceFilter$.size === 0;
+  function isAllActive(filterSet: Set<StorageKey>): boolean {
+    return filterSet.size === 0;
   }
 
   // Single-select: picking a source shows only that source; picking it again
@@ -234,19 +234,22 @@
     return sourceFilters.find((f) => f.key === key)?.label ?? 'All';
   })();
 
-  function isSourceDisabled(requiresConnectivity: boolean): boolean {
-    return requiresConnectivity && !$isOnline$;
+  function isSourceDisabled(requiresConnectivity: boolean, isOnline: boolean): boolean {
+    return requiresConnectivity && !isOnline;
   }
 
   function sourceAvailabilityHint(
     key: StorageKey | null,
     requiresConnectivity: boolean,
-    setup = false
+    setup = false,
+    isOnline = true,
+    gDriveState: CloudTypeStatus = 'none',
+    oneDriveState: CloudTypeStatus = 'none'
   ): string | undefined {
     if (setup) return 'Connect a cloud';
-    if (requiresConnectivity && !$isOnline$) return 'Needs internet';
-    if (key === StorageKey.GDRIVE && gDriveStatus === 'expired') return 'Session expired';
-    if (key === StorageKey.ONEDRIVE && oneDriveStatus === 'expired') return 'Session expired';
+    if (requiresConnectivity && !isOnline) return 'Needs internet';
+    if (key === StorageKey.GDRIVE && gDriveState === 'expired') return 'Session expired';
+    if (key === StorageKey.ONEDRIVE && oneDriveState === 'expired') return 'Session expired';
     return undefined;
   }
 
@@ -341,8 +344,8 @@
     commitSearchDraft();
   }
 
-  function isTagSelected(tag: string): boolean {
-    const selected = $libraryFilters$?.tags ?? [];
+  function isTagSelected(selectedTags: string[] | undefined, tag: string): boolean {
+    const selected = selectedTags ?? [];
     const normalized = normalizeTag(tag);
     return selected.some((t) => normalizeTag(t) === normalized);
   }
@@ -524,7 +527,7 @@
       {/if}
     </div>
 
-    <div slot="end" class="flex items-center gap-1">
+    <div slot="end" class="flex items-center gap-0.5 sm:gap-1">
       {#if !selectMode}
         <Popover
           placement="bottom"
@@ -537,11 +540,15 @@
               <Button
                 variant="ghost"
                 size="md"
-                class="gap-1.5 px-2.5 text-sm font-medium text-[var(--astryx-color-fg-secondary)] hover:text-[var(--astryx-color-fg-primary)]"
+                aria-label="Import Books or Backup"
+                data-testid="library-import-button"
+                class="gap-1.5 px-2 text-sm font-medium text-[var(--astryx-color-fg-secondary)] hover:text-[var(--astryx-color-fg-primary)] sm:px-2.5"
               >
                 <Fa icon={mergeEntries.FILE_IMPORT.icon} class="text-sm opacity-80" />
-                <span>Import</span>
-                <Fa icon={faChevronDown} class="text-xs opacity-60" />
+                <span class="hidden sm:inline">Import</span>
+                <span class="hidden sm:inline-flex items-center">
+                  <Fa icon={faChevronDown} class="text-xs opacity-60" />
+                </span>
               </Button>
             </Tooltip>
           </div>
@@ -576,12 +583,15 @@
               <Button
                 variant="ghost"
                 size="md"
-                class="gap-1.5 px-2.5 text-sm font-medium text-[var(--astryx-color-fg-secondary)] hover:text-[var(--astryx-color-fg-primary)]"
+                class="gap-1.5 px-2 text-sm font-medium text-[var(--astryx-color-fg-secondary)] hover:text-[var(--astryx-color-fg-primary)] sm:px-2.5"
                 aria-label="Filter library by source"
+                data-testid="library-source-filter-button"
               >
                 <Fa icon={faFilter} class="text-sm opacity-80" />
-                <span>{currentFilterLabel}</span>
-                <Fa icon={faChevronDown} class="text-xs opacity-60" />
+                <span class="hidden sm:inline">{currentFilterLabel}</span>
+                <span class="hidden sm:inline-flex items-center">
+                  <Fa icon={faChevronDown} class="text-xs opacity-60" />
+                </span>
               </Button>
             </Tooltip>
           </div>
@@ -595,7 +605,7 @@
               on:click={() => selectSourceFilter(null)}
             >
               <span class="w-4 text-center">
-                {#if isAllActive()}
+                {#if isAllActive($librarySourceFilter$)}
                   <Fa icon={faCheck} class="text-xs" />
                 {/if}
               </span>
@@ -603,12 +613,16 @@
             </button>
             {#each sourceFilters as sourceFilter (sourceFilter.key ?? 'cloud-setup')}
               {@const disabled =
-                !sourceFilter.setup && isSourceDisabled(sourceFilter.requiresConnectivity)}
-              {@const active = isFilterActive(sourceFilter.key)}
+                !sourceFilter.setup &&
+                isSourceDisabled(sourceFilter.requiresConnectivity, $isOnline$)}
+              {@const active = isFilterActive($librarySourceFilter$, sourceFilter.key)}
               {@const hint = sourceAvailabilityHint(
                 sourceFilter.key,
                 sourceFilter.requiresConnectivity,
-                sourceFilter.setup
+                sourceFilter.setup,
+                $isOnline$,
+                gDriveStatus,
+                oneDriveStatus
               )}
               <button
                 type="button"
@@ -640,12 +654,12 @@
               <Button
                 variant="ghost"
                 size="md"
-                class="gap-1.5 px-2.5 text-sm font-medium text-[var(--astryx-color-fg-secondary)] hover:text-[var(--astryx-color-fg-primary)]"
+                class="gap-1.5 px-2 text-sm font-medium text-[var(--astryx-color-fg-secondary)] hover:text-[var(--astryx-color-fg-primary)] sm:px-2.5"
                 aria-label="Search and filter library"
                 data-testid="library-search-filter-button"
               >
                 <Fa icon={faMagnifyingGlass} class="text-sm opacity-80" />
-                <span>Search</span>
+                <span class="hidden sm:inline">Search</span>
                 {#if filtersActive}
                   <span
                     data-testid="library-active-filter-count"
@@ -712,7 +726,7 @@
                   data-testid="library-filter-tags"
                 >
                   {#each availableTags as tag (tag)}
-                    {@const selected = isTagSelected(tag)}
+                    {@const selected = isTagSelected($libraryFilters$?.tags, tag)}
                     <button
                       type="button"
                       role="checkbox"
@@ -756,6 +770,8 @@
           <div slot="icon">
             <Tooltip text="Select Sort Options">
               <div
+                data-testid="library-sort-button"
+                title="Select Sort Options"
                 class="flex h-9 w-9 cursor-pointer items-center justify-center rounded-[var(--astryx-radius-md,6px)] text-[var(--astryx-color-fg-muted)] transition-colors hover:bg-[var(--astryx-color-surface-hover)] hover:text-[var(--astryx-color-fg-primary)]"
               >
                 {#if $librarySortOption$.direction === SortDirection.ASC}
@@ -862,7 +878,7 @@
           </IconButton>
         </Tooltip>
 
-        {#if isAllActive() || isFilterActive(StorageKey.BROWSER)}
+        {#if isAllActive($librarySourceFilter$) || isFilterActive($librarySourceFilter$, StorageKey.BROWSER)}
           <Tooltip text="Go to Statistics">
             <IconButton
               nativeTooltip={false}
