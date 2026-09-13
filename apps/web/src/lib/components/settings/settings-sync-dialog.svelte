@@ -60,9 +60,9 @@
 <DialogTemplate>
   <svelte:fragment slot="header">{settingsSyncHeader}</svelte:fragment>
   <svelte:fragment slot="content">
-    <div class="flex flex-col">
+    <div class="flex flex-col min-w-0">
       <div>Source</div>
-      <select bind:value={selectedSource}>
+      <select class="max-w-full min-w-0" bind:value={selectedSource}>
         {#each sources as source (source.id)}
           <option value={source.id}>
             {source.label}
@@ -96,7 +96,7 @@
         <Fa icon={faArrowsUpDown} />
       </div>
       <div>Target</div>
-      <select bind:value={selectedTarget}>
+      <select class="max-w-full min-w-0" bind:value={selectedTarget}>
         {#each targets as target (target.id)}
           <option value={target.id}>
             {target.label}
@@ -105,7 +105,7 @@
       </select>
     </div>
   </svelte:fragment>
-  <div class="flex grow justify-between" slot="footer">
+  <div class="flex min-w-0 grow flex-wrap justify-between gap-2" slot="footer">
     <button class={buttonClasses} on:click={() => closeDialog(true)}>
       Cancel
       <Ripple />

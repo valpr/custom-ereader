@@ -142,9 +142,7 @@ test.describe('Cloud sync scope (primary-only)', () => {
       ).toBeAttached();
       // Native <option> elements cannot render icons, so disconnected sources
       // carry a text-style warning sign (U+26A0 U+FE0E) in their label.
-      await expect(
-        page.getByRole('option', { name: '⚠︎ old-onedrive (OneDrive)' })
-      ).toBeAttached();
+      await expect(page.getByRole('option', { name: '⚠︎ old-onedrive (OneDrive)' })).toBeAttached();
     });
 
     test('disconnected custom sources offer reconnect in Advanced', async ({ page }) => {

@@ -37,6 +37,31 @@ Run these quality gates before finishing any task:
 
 - **Typecheck & Build**: `pnpm -F web check` and `pnpm -F web build`.
 - **Formatting/Linting**: `pnpm -F web lint` (or ensure Prettier/ESLint pass).
-- **E2E Tests**: `pnpm -F web exec playwright test` (runs against port 5174).
+- **E2E Tests**: `pnpm -F web exec playwright test` (runs against port 5174; runs both `chromium` and `mobile` projects).
   - All tests must pass.
   - When writing new reader tests, always use `apps/web/tests/fixtures/book-fixture.ts` to seed IndexedDB. Avoid hardcoded timeouts; use Playwright `waitFor` assertions.
+  - Use `--project=chromium` or `--project=mobile` to run a single project locally during iteration.
+
+### 4.1 Mobile gate (Pixel 9, 412x915)
+
+Every dialog, new page, or responsive change needs a case in `apps/web/tests/mobile/` (Pixel 9 `mobile` project) reusing the shared helpers in `apps/web/tests/helpers/mobile-assertions.ts`:
+
+- Assert no horizontal overflow (`scrollWidth <= innerWidth`) at 412px and at narrow 360px width.
+- Assert dialogs fit fully inside the viewport and the primary footer action is visible, enabled, and tappable.
+- Prefer `tap()` over `click()` where touch semantics matter; keep footer actions reachable with the keyboard open.
+
+Mobile CSS rules:
+
+- Use dynamic viewport units with a fallback (`max-h-[90vh] max-h-[90dvh]`), never bare `100vh`.
+- Every dialog surface/wrapper needs `max-h` + `overflow-y-auto`; use fluid widths (`w-full max-w-...`), never fixed widths like `w-64`.
+- Honor `env(safe-area-inset-*)` padding, keep touch targets >= 44px, and keep suggestions/dropdowns reachable inside scrolling containers.
+
+### 4.2 Dialog text containment
+
+Dialog content must contain its text at 360–412px widths without spilling past the surface:
+
+- **App-generated text** (labels, dates, source lists, descriptions, errors): wrap with `break-words` + `[overflow-wrap:anywhere]` (the latter catches unbreakable timestamps/URLs/tokens).
+- **User/outside-generated text** (book titles, tags, filenames, profile/theme names, emails): `truncate` + `min-w-0` + `title=` tooltip with the full text.
+- Never use fixed-width children (`w-64`, `max-w-xs`) inside dialog content; use `w-full max-w-full`. Flex/grid children need `min-w-0` (flex items default to `min-width: auto` and won't shrink).
+- The shell (`dialog-template.svelte` content wrapper) already applies `min-w-0` + `overflow-wrap: anywhere` as a backstop — per-dialog classes above are still required so truncation/tooltips behave correctly.
+- Mobile specs for dialogs must seed a long unbroken string (e.g. 40+ char title) and assert no descendant overflows the dialog.

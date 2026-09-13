@@ -107,14 +107,14 @@
         {#if currentTab === 'Stored'}
           {#if $userFonts$.length}
             <div
-              class="grid grid-cols-[repeat(3,auto)] items-center gap-y-4 gap-x-4 max-h-[50vh] overflow-auto break-all md:gap-x-14"
+              class="grid grid-cols-1 items-center gap-y-4 gap-x-4 max-h-[50vh] max-h-[50dvh] overflow-auto break-all min-w-0 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] md:gap-x-14"
             >
               {#each $userFonts$ as userFont (userFont.path)}
                 <div
                   tabindex="0"
                   role="button"
-                  title="Click to select Font"
-                  class="hover:text-blue-700"
+                  title={userFont.name}
+                  class="hover:text-blue-700 min-w-0 truncate"
                   on:click={() => selectFont(userFont.name)}
                   on:keyup={dummyFn}
                 >
@@ -123,8 +123,8 @@
                 <div
                   tabindex="0"
                   role="button"
-                  title="Click to select Font"
-                  class="hover:text-blue-700"
+                  title={userFont.fileName}
+                  class="hover:text-blue-700 min-w-0 truncate"
                   on:click={() => selectFont(userFont.name)}
                   on:keyup={dummyFn}
                 >

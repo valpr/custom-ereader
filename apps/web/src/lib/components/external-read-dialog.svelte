@@ -28,8 +28,11 @@
   <svelte:fragment slot="header">External Read</svelte:fragment>
   <svelte:fragment slot="content">
     {#if bookTitle}
-      <p class="my-2">
-        “{bookTitle}” is stored on {sourceLabel || 'an external source'}.
+      <p class="my-2 min-w-0">
+        <span class="block truncate" title={bookTitle}>“{bookTitle}”</span>
+        <span class="break-words [overflow-wrap:anywhere]"
+          >is stored on {sourceLabel || 'an external source'}.</span
+        >
       </p>
     {:else}
       <p class="my-2">You are opening a book from an external storage source.</p>
@@ -42,9 +45,9 @@
     <p class="my-2 text-sm opacity-70">
       History/autosaves always stay on this device and are never uploaded.
     </p>
-    <p class="flex items-center mt-4">
+    <p class="flex items-center min-w-0 mt-4">
       <input id="ext-remember" type="checkbox" bind:checked={rememberChoice} />
-      <label class="ml-2" for="ext-remember">Remember my choice</label>
+      <label class="ml-2 min-w-0" for="ext-remember">Remember my choice</label>
     </p>
   </svelte:fragment>
   <div class="flex flex-col sm:flex-row grow sm:justify-between" slot="footer">
