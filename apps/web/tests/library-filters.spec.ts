@@ -75,15 +75,37 @@ test.describe('Library search and filters', () => {
     await expect(page.locator('.aspect-w-2').first()).toBeVisible({ timeout: 10000 });
 
     await openSearchFilters(page);
-    await page.getByTestId('library-filter-tag-fantasy').click();
+    const fantasyTag = page.getByTestId('library-filter-tag-fantasy');
+    const epicTag = page.getByTestId('library-filter-tag-epic');
+    await expect(fantasyTag).toHaveAttribute('aria-checked', 'false');
+
+    await fantasyTag.click();
+    // Visual selection state must update immediately (regression: checkbox
+    // stayed visually unchecked even though filtering applied).
+    await expect(fantasyTag).toHaveAttribute('aria-checked', 'true');
+    await expect(fantasyTag.locator('span').first()).toHaveClass(/text-white/);
+    // The popover must stay open so users can select multiple tags.
+    await expect(page.getByTestId('library-search-input')).toBeVisible();
     await expect(page.getByText(BOOK_ONE)).toBeVisible();
     await expect(page.getByText(BOOK_TWO)).toBeVisible();
 
     // Both selected => only the book carrying both tags remains.
-    await page.getByTestId('library-filter-tag-epic').click();
+    await epicTag.click();
+    await expect(epicTag).toHaveAttribute('aria-checked', 'true');
+    await expect(fantasyTag).toHaveAttribute('aria-checked', 'true');
     await expect(page.getByText(BOOK_ONE)).toBeVisible();
     await expect(page.getByText(BOOK_TWO)).toBeHidden();
     await expect(page.getByTestId('library-active-filter-count')).toHaveText('2');
+
+    // Toggling a tag off clears its visual state too.
+    await fantasyTag.click();
+    await expect(fantasyTag).toHaveAttribute('aria-checked', 'false');
+    await expect(fantasyTag.locator('span').first()).toHaveClass(/text-transparent/);
+    await expect(epicTag).toHaveAttribute('aria-checked', 'true');
+
+    await page.getByTestId('library-clear-filters').click();
+    await expect(fantasyTag).toHaveAttribute('aria-checked', 'false');
+    await expect(epicTag).toHaveAttribute('aria-checked', 'false');
   });
 
   test('progress filter separates unread, in-progress and completed', async ({ page }) => {
